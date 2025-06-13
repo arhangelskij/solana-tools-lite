@@ -1,0 +1,6 @@
+[package]
+name = "solana-tools-lite"
+version = "0.1.0"
+edition = "2025"
+
+[dependencies]
