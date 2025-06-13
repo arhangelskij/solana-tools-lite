@@ -1,6 +1,27 @@
 [package]
 name = "solana-tools-lite"
 version = "0.1.0"
-edition = "2025"
+edition = "2024"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bs58 = "0.5.1"
+thiserror = "2.0.12"
+
+# manual cryptography
+hmac = "0.12.1"
+pbkdf2 = "0.12.2"
+sha2 = "0.10.9"
+hex = "0.4.3" 
+
+# for comparison/check only in dev/tes
+bip39 = { version = "2.1.0", optional = true }
+
+ed25519-dalek = { version = "2.1.1", features = ["std"] }
+rand = "0.9.1"
+
+[features]
+default = []
+with-bip39 = ["bip39"]

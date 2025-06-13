@@ -1,0 +1,15 @@
+# === Rust build artifacts ===
+solana-tools-lite/target/
+solana-tools-lite/Cargo.lock
+
+# VSCode
+.vscode/
+/.idea/
+*.code-workspace
+
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+
