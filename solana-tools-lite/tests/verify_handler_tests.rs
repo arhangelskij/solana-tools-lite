@@ -87,4 +87,38 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// A signature that decodes to a wrong length (too short) should be rejected.
+    #[test]
+    fn test_signature_too_short_should_fail() {
+        let seed = [42u8; 64];
+        let key = ed25519::keypair_from_seed(&seed).unwrap();
+        let msg = "hello";
+
+        // Create a valid signature, then remove one byte to make it too short
+        let mut sig_bytes = ed25519::sign_message(&key, msg.as_bytes()).to_bytes().to_vec();
+        sig_bytes.pop();
+        let sig_b58 = bs58::encode(sig_bytes).into_string();
+        let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
+
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        assert!(result.is_err());
+    }
+
+    /// A public key that decodes to a wrong length (too long) should be rejected.
+    #[test]
+    fn test_pubkey_too_long_should_fail() {
+        let seed = [42u8; 64];
+        let key = ed25519::keypair_from_seed(&seed).unwrap();
+        let msg = "hello";
+
+        // Create a valid public key, then add one byte to make it too long
+        let sig_b58 = bs58::encode(ed25519::sign_message(&key, msg.as_bytes()).to_bytes())
+            .into_string();
+        let mut pubkey_bytes = key.verifying_key().to_bytes().to_vec();
+        pubkey_bytes.push(0);
+        let pubkey_b58 = bs58::encode(pubkey_bytes).into_string();
+
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        assert!(result.is_err());
+    }
 }
