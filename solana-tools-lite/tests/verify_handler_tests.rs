@@ -1,10 +1,8 @@
-use solana_tools_lite::crypto::ed25519;
-use solana_tools_lite::handlers::verify;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use bs58;
+    use solana_tools_lite::crypto::ed25519;
+    use solana_tools_lite::handlers::verify;
 
     /// A valid signature for the given message and public key should verify successfully.
     #[test]
@@ -95,7 +93,9 @@ mod tests {
         let msg = "hello";
 
         // Create a valid signature, then remove one byte to make it too short
-        let mut sig_bytes = ed25519::sign_message(&key, msg.as_bytes()).to_bytes().to_vec();
+        let mut sig_bytes = ed25519::sign_message(&key, msg.as_bytes())
+            .to_bytes()
+            .to_vec();
         sig_bytes.pop();
         let sig_b58 = bs58::encode(sig_bytes).into_string();
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
@@ -112,13 +112,33 @@ mod tests {
         let msg = "hello";
 
         // Create a valid public key, then add one byte to make it too long
-        let sig_b58 = bs58::encode(ed25519::sign_message(&key, msg.as_bytes()).to_bytes())
-            .into_string();
+        let sig_b58 =
+            bs58::encode(ed25519::sign_message(&key, msg.as_bytes()).to_bytes()).into_string();
         let mut pubkey_bytes = key.verifying_key().to_bytes().to_vec();
         pubkey_bytes.push(0);
         let pubkey_b58 = bs58::encode(pubkey_bytes).into_string();
 
         let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
         assert!(result.is_err());
+    }
+
+    /// Verifying with a mismatched public key (not the one used for signing) must fail.
+    #[test]
+    fn test_verify_with_mismatched_pubkey_should_fail() {
+        // Valid key
+        let signing_key = ed25519::keypair_from_seed(&[1u8; 64]).unwrap();
+        let msg = "message";
+        let sig = ed25519::sign_message(&signing_key, msg.as_bytes());
+        let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
+
+        // Another one valid key
+        let verification_key = ed25519::keypair_from_seed(&[2u8; 64]).unwrap();
+        let pubkey_b58 = bs58::encode(verification_key.verifying_key().to_bytes()).into_string();
+
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        assert!(
+            result.is_err(),
+            "Verification should fail with a different public key"
+        );
     }
 }

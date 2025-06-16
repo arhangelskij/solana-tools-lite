@@ -1,8 +1,6 @@
-use solana_tools_lite::crypto::ed25519;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use solana_tools_lite::crypto::ed25519;
 
     #[test]
     fn test_keypair_sign_verify() {
