@@ -5,7 +5,7 @@ mod tests {
     /// The generated mnemonic should consist of exactly 12 English words.
     #[test]
     fn test_generate_mnemonic_word_count() {
-        let phrase = bip39::generate_mnemonic();
+        let phrase = bip39::generate_mnemonic().expect("failed to generate mnemonic");
         assert_eq!(
             phrase.split_whitespace().count(),
             12,
@@ -19,8 +19,8 @@ mod tests {
     fn test_derive_seed_consistent() {
         let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
         let passphrase = "";
-        let seed1 = bip39::derive_seed(mnemonic, passphrase);
-        let seed2 = bip39::derive_seed(mnemonic, passphrase);
+        let seed1 = bip39::derive_seed(mnemonic, passphrase).expect("derive_seed failed");
+        let seed2 = bip39::derive_seed(mnemonic, passphrase).expect("derive_seed failed");
         assert_eq!(seed1, seed2, "Seeds should match for identical inputs");
     }
 
@@ -28,8 +28,8 @@ mod tests {
     #[test]
     fn test_derive_seed_different_passphrase() {
         let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let seed_no = bip39::derive_seed(mnemonic, "");
-        let seed_yes = bip39::derive_seed(mnemonic, "TREZOR");
+        let seed_no = bip39::derive_seed(mnemonic, "").expect("derive_seed failed");
+        let seed_yes = bip39::derive_seed(mnemonic, "TREZOR").expect("derive_seed failed");
         assert_ne!(
             seed_no, seed_yes,
             "Seeds should differ for different passphrases"
@@ -45,7 +45,7 @@ mod tests {
         // This seed is taken from the official BIP39 test vectors for the above mnemonic and "TREZOR" passphrase.
         let expected_seed_hex = "c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04";
 
-        let derived_seed = bip39::derive_seed(mnemonic, passphrase);
+        let derived_seed = bip39::derive_seed(mnemonic, passphrase).expect("derive_seed failed");
         let derived_seed_hex = hex::encode(&derived_seed);
 
         assert_eq!(
