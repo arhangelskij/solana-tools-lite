@@ -1,3 +1,3 @@
-pub mod r#gen;
+pub mod generate;
 pub mod verify;
 pub mod sign;
