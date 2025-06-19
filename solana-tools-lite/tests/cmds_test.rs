@@ -40,14 +40,17 @@ mod tests {
             "sign",
             "--message",
             "hello",
-            "--mnemonic",
-            "seed words here",
+            "--secret-key",
+            "4f3edf983ac636a65a842ce7c78d9aa706d3b113b5ad2efc73362be3dfc1ad7a",
         ];
         let cli = Cli::parse_from(args);
         match cli.command {
-            Commands::Sign { message, mnemonic } => {
+            Commands::Sign {
+                message,
+                secret_key,
+            } => {
                 assert_eq!(message, "hello");
-                assert_eq!(mnemonic.as_deref(), Some("seed words here"));
+                assert_eq!(secret_key.as_deref(), Some("4f3edf983ac636a65a842ce7c78d9aa706d3b113b5ad2efc73362be3dfc1ad7a"));
             }
             _ => panic!("Parsed into wrong command variant"),
         }

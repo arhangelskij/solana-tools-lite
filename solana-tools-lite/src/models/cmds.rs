@@ -19,8 +19,9 @@ pub enum Commands {
         #[arg(short, long)]
         message: String,
 
+        /// Base58-encoded private key (32 bytes)
         #[arg(long)]
-        mnemonic: Option<String>
+        secret_key: Option<String>
     },
 
     /// Verify a signature
