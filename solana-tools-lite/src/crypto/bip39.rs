@@ -11,6 +11,8 @@ pub enum Bip39Error {
     Mnemonic(#[from] bip39::Error),
     #[error("PBKDF2 failed: {0}")]
     Pbkdf2(&'static str),
+     #[error("Validation failed: {0}")]
+    Validation(bip39::Error)
 }
 
 /// Generate a random 12-word English BIP-39 mnemonic phrase.
@@ -30,4 +32,9 @@ pub fn derive_seed(mnemonic: &str, passphrase: &str) -> Result<[u8; 64], Bip39Er
         .map_err(|_| Bip39Error::Pbkdf2("iteration count is zero or output buffer is empty"))?;
 
     Ok(out)
+}
+
+/// Validate a BIP-39 mnemonic phrase.
+pub fn validate_mnemonic(phrase: &str) -> Result<(), Bip39Error> {
+    bip39::Mnemonic::parse(phrase).map(|_| ()).map_err(Bip39Error::Validation)
 }

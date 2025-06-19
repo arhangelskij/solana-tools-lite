@@ -21,7 +21,7 @@ pub enum Commands {
 
         /// Base58-encoded private key (32 bytes)
         #[arg(long)]
-        secret_key: Option<String>
+        secret_key: String
     },
 
     /// Verify a signature
