@@ -16,7 +16,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
         let pubkey_b58 = bs58::encode(pubkey.to_bytes()).into_string();
 
-        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
         assert!(result.is_ok());
     }
 
@@ -29,7 +29,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(pubkey).into_string();
         let sig_b58 = bs58::encode(sig).into_string();
 
-        let result = verify::handle_verify("fake", &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify("fake", &sig_b58, &pubkey_b58, false);
         assert!(result.is_err());
     }
 
@@ -43,7 +43,7 @@ mod tests {
         let sig = ed25519::sign_message(&key, b"other-message");
         let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
 
-        let result = verify::handle_verify("original-message", &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify("original-message", &sig_b58, &pubkey_b58, false);
         assert!(result.is_err());
     }
 
@@ -56,7 +56,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
-        let result = verify::handle_verify("", &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify("", &sig_b58, &pubkey_b58, false);
         assert!(result.is_ok());
     }
 
@@ -70,7 +70,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
-        let result = verify::handle_verify(&long_msg, &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify(&long_msg, &sig_b58, &pubkey_b58, false);
         assert!(result.is_ok());
     }
 
@@ -81,7 +81,7 @@ mod tests {
         let sig_b58 = "%%notbase58%%";
         let pubkey_b58 = "%%notbase58%%";
 
-        let result = verify::handle_verify(msg, sig_b58, pubkey_b58);
+        let result = verify::handle_verify(msg, sig_b58, pubkey_b58, false);
         assert!(result.is_err());
     }
 
@@ -100,7 +100,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig_bytes).into_string();
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
-        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
         assert!(result.is_err());
     }
 
@@ -118,7 +118,7 @@ mod tests {
         pubkey_bytes.push(0);
         let pubkey_b58 = bs58::encode(pubkey_bytes).into_string();
 
-        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
         assert!(result.is_err());
     }
 
@@ -135,7 +135,7 @@ mod tests {
         let verification_key = ed25519::keypair_from_seed(&[2u8; 64]).unwrap();
         let pubkey_b58 = bs58::encode(verification_key.verifying_key().to_bytes()).into_string();
 
-        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58);
+        let result = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
         assert!(
             result.is_err(),
             "Verification should fail with a different public key"

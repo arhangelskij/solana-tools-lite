@@ -8,21 +8,21 @@ fn main() {
 
     match &cli.command {
         Commands::Gen { mnemonic, passphrase, explain } => {
-            if let Err(e) = handlers::generate::handle_gen(mnemonic.clone(), passphrase.clone(), *explain) {
+            if let Err(e) = handlers::generate::handle_gen(mnemonic.clone(), passphrase.clone(), *explain, cli.json) {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);
             }
         }
 
         Commands::Sign { message, secret_key } => {
-            if let Err(e) = handlers::sign::handle_sign(message, secret_key) {
+            if let Err(e) = handlers::sign::handle_sign(message, secret_key, cli.json) {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
             }
         }
 
         Commands::Verify { message, signature, pubkey } => {
-            if let Err(e) = handlers::verify::handle_verify(message, signature, pubkey) {
+            if let Err(e) = handlers::verify::handle_verify(message, signature, pubkey, cli.json) {
                 eprintln!("Error executing verify command: {e}");
                 std::process::exit(1);
             }

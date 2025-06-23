@@ -1,9 +1,11 @@
 use ed25519_dalek::{SigningKey, Signature, Signer};
 use anyhow::{Result, Context};
 use std::convert::TryInto;
+use crate::models::results::SignResult;
+use crate::utils::pretty_print_json;
 
 /// Signs a given message with a provided secret key (base58 encoded)
-pub fn handle_sign(message: &str, secret_key_b58: &str) -> Result<String> {
+pub fn handle_sign(message: &str, secret_key_b58: &str, json: bool) -> Result<String> {
     // Decode the base58 secret key
     let secret_bytes = bs58::decode(secret_key_b58)
         .into_vec()
@@ -23,6 +25,18 @@ pub fn handle_sign(message: &str, secret_key_b58: &str) -> Result<String> {
 
     // Encode the signature in base58
     let signature_b58 = bs58::encode(signature.to_bytes()).into_string();
+    let pubkey_b58 = bs58::encode(signing_key.verifying_key().to_bytes()).into_string();
+
+    if json {
+        let result = SignResult {
+            message: message.to_string(),
+            signature_base58: signature_b58.clone(),
+            public_key: pubkey_b58
+        };
+        pretty_print_json(&result);
+    } else {
+        println!("{signature_b58}");
+    }
 
     Ok(signature_b58)
 }
