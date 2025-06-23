@@ -17,7 +17,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(pubkey.to_bytes()).into_string();
 
         let exit_code = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 0, "should success");
+        assert_eq!(exit_code, 0, "Signature verification should succeed for a valid signature");
     }
 
     /// An invalid signature or public key must cause verification to fail.
@@ -30,7 +30,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig).into_string();
 
         let exit_code = verify::handle_verify("fake", &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 1, "should fail");
+        assert_eq!(exit_code, 1, "Signature verification should fail for invalid signature or public key");
     }
 
     /// A signature generated for a different message should not verify for the original message.
@@ -44,7 +44,7 @@ mod tests {
         let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
 
         let exit_code = verify::handle_verify("original-message", &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 1, "should fail");
+        assert_eq!(exit_code, 1, "Signature verification should fail for a signature that does not match the original message");
     }
 
     /// Empty message should still verify when the signature matches.
@@ -57,7 +57,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
         let exit_code = verify::handle_verify("", &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 0, "should succes");
+        assert_eq!(exit_code, 0, "Signature verification should succeed for an empty message with matching signature");
     }
 
     /// Very long message (~10 KB) should verify when the signature matches.
@@ -71,7 +71,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
         let exit_code = verify::handle_verify(&long_msg, &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 0, "should succes");
+        assert_eq!(exit_code, 0, "Signature verification should succeed for a very long message (~10 KB) with matching signature");
     }
 
     /// Invalid Base58 strings (contain non‑Base58 characters) must be rejected.
@@ -82,7 +82,7 @@ mod tests {
         let pubkey_b58 = "%%notbase58%%";
 
         let exit_code = verify::handle_verify(msg, sig_b58, pubkey_b58, false);
-        assert_eq!(exit_code, 1, "should fail");
+        assert_eq!(exit_code, 1, "Signature verification should fail for invalid Base58-encoded inputs");
     }
 
     /// A signature that decodes to a wrong length (too short) should be rejected.
@@ -101,7 +101,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(key.verifying_key().to_bytes()).into_string();
 
         let exit_code = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 1, "should fail");
+        assert_eq!(exit_code, 1, "Signature verification should fail for a signature with incorrect length");
     }
 
     /// A public key that decodes to a wrong length (too long) should be rejected.
@@ -119,7 +119,7 @@ mod tests {
         let pubkey_b58 = bs58::encode(pubkey_bytes).into_string();
 
         let exit_code = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 1, "should fail");
+        assert_eq!(exit_code, 1, "Signature verification should fail for a public key with incorrect length");
     }
 
     /// Verifying with a mismatched public key (not the one used for signing) must fail.
@@ -136,6 +136,6 @@ mod tests {
         let pubkey_b58 = bs58::encode(verification_key.verifying_key().to_bytes()).into_string();
 
         let exit_code = verify::handle_verify(msg, &sig_b58, &pubkey_b58, false);
-        assert_eq!(exit_code, 1, "Verification should fail with a different public key");
+        assert_eq!(exit_code, 1, "Signature verification should fail with a mismatched public key");
     }
 }
