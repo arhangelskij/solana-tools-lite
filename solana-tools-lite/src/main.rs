@@ -1,31 +1,47 @@
-use solana_tools_lite::models::cmds::Commands;
-use solana_tools_lite::layers::cli::Cli;
-use solana_tools_lite::handlers;
 use clap::Parser;
+use solana_tools_lite::handlers;
+use solana_tools_lite::layers::cli::Cli;
+use solana_tools_lite::models::cmds::Commands;
 
 fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Gen { mnemonic, passphrase, explain } => {
-            if let Err(e) = handlers::generate::handle_gen(mnemonic.clone(), passphrase.clone(), *explain, cli.json) {
+        Commands::Gen {
+            mnemonic,
+            passphrase,
+            explain,
+        } => {
+            if let Err(e) = handlers::generate::handle_gen(
+                mnemonic.clone(),
+                passphrase.clone(),
+                *explain,
+                cli.json,
+            ) {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);
             }
         }
 
-        Commands::Sign { message, secret_key } => {
+        Commands::Sign {
+            message,
+            secret_key,
+        } => {
             if let Err(e) = handlers::sign::handle_sign(message, secret_key, cli.json) {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
             }
         }
 
-        Commands::Verify { message, signature, pubkey } => {
-            if let Err(e) = handlers::verify::handle_verify(message, signature, pubkey, cli.json) {
-                eprintln!("Error executing verify command: {e}");
-                std::process::exit(1);
-            }
+        // Commands::Verify { message, signature, pubkey } => {
+        //     if let Err(e) = handlers::verify::handle_verify(message, signature, pubkey, cli.json) {
+        //         eprintln!("Error executing verify command: {e}");
+        //         std::process::exit(1);
+        //     }
+        // }
+        Commands::Verify { message, signature, pubkey} => {
+            let exit_code = handlers::verify::handle_verify(message, signature, pubkey, cli.json);
+            std::process::exit(exit_code);
         }
 
         Commands::Base58 { action } => {

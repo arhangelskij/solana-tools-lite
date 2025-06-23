@@ -34,13 +34,14 @@ mod tests {
             .expect("signature verification failed");
 
         // Also validate through the public API
-        verify::handle_verify(
+        let exit_code = verify::handle_verify(
             message,
             &sig_b58_from_handler,
             &bs58::encode(pubkey.to_bytes()).into_string(),
             false
-        )
-        .expect("high‑level handler failed to verify");
+        );
+
+        assert_eq!(exit_code, 0, "high-level handler failed to verify");
     }
 
     /// An invalid Base58 secret key must cause signing to fail.
@@ -83,12 +84,13 @@ mod tests {
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let pubkey = key.verifying_key();
         let sig = sign::handle_sign("foo", &sk, false).unwrap();
-        let got = verify::handle_verify(
+        let exit_code = verify::handle_verify(
             "bar",
             &sig,
             &bs58::encode(pubkey.to_bytes()).into_string(),
             false
         );
-        assert!(got.is_err());
+
+        assert_eq!(exit_code, 1, "verification should fail for mismatched message");
     }
 }
