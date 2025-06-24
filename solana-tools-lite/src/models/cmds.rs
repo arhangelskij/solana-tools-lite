@@ -9,9 +9,6 @@ pub enum Commands {
 
         #[arg(long)]
         passphrase: Option<String>,
-
-        #[arg(long, default_value = "false")]
-        explain: bool
     },
 
     /// Sign a message

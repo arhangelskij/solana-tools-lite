@@ -13,20 +13,17 @@ mod tests {
             "--mnemonic",
             "test test test",
             "--passphrase",
-            "pass",
-            "--explain",
+            "pass"
         ];
 
         let cli = Cli::parse_from(args);
         match cli.command {
             Commands::Gen {
                 mnemonic,
-                passphrase,
-                explain,
+                passphrase
             } => {
                 assert_eq!(mnemonic.as_deref(), Some("test test test"));
                 assert_eq!(passphrase.as_deref(), Some("pass"));
-                assert!(explain);
             }
             _ => panic!("Parsed into wrong command variant"),
         }

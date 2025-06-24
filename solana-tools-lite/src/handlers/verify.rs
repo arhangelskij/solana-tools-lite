@@ -1,9 +1,8 @@
 //use anyhow::bail;
 use crate::models::results::VerifyResult;
 use crate::utils::pretty_print_json;
-use anyhow::{Context, Result};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use log::info;
+use anyhow::{Result};
+use ed25519_dalek::{Verifier};
 use std::convert::TryInto;
 use thiserror::Error;
 

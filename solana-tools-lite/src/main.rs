@@ -9,13 +9,11 @@ fn main() {
     match &cli.command {
         Commands::Gen {
             mnemonic,
-            passphrase,
-            explain,
+            passphrase
         } => {
             if let Err(e) = handlers::generate::handle_gen(
                 mnemonic.clone(),
                 passphrase.clone(),
-                *explain,
                 cli.json,
             ) {
                 eprintln!("Error executing gen command: {e}");
