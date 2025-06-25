@@ -30,13 +30,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-
-        // Commands::Verify { message, signature, pubkey } => {
-        //     if let Err(e) = handlers::verify::handle_verify(message, signature, pubkey, cli.json) {
-        //         eprintln!("Error executing verify command: {e}");
-        //         std::process::exit(1);
-        //     }
-        // }
+        
         Commands::Verify { message, signature, pubkey} => {
             let exit_code = handlers::verify::handle_verify(message, signature, pubkey, cli.json);
             std::process::exit(exit_code);
