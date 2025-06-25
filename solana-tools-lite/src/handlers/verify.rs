@@ -6,11 +6,13 @@ use ed25519_dalek::{Verifier};
 use std::convert::TryInto;
 use thiserror::Error;
 
+use crate::crypto::ed25519;
+
 const SIG_LEN: usize = 64;
 const PUBKEY_LEN: usize = 32;
 
 #[derive(Error, Debug)]
-enum VerifyError {
+pub enum VerifyError {
     #[error("Base58 decode error: {0}")]
     Base58Decode(#[from] bs58::decode::Error),
     #[error("Invalid signature length: expected {SIG_LEN}, got {0}")]
@@ -25,54 +27,21 @@ enum VerifyError {
     VerificationFailed,
 }
 
-fn verify_signature(
-    message: &str,
-    signature_b58: &str,
-    pubkey_b58: &str,
-) -> Result<(), VerifyError> {
-    let sig_bytes = bs58::decode(signature_b58).into_vec()?;
-    let pubkey_bytes = bs58::decode(pubkey_b58).into_vec()?;
-
-    if sig_bytes.len() != SIG_LEN {
-        return Err(VerifyError::InvalidSignatureLength(sig_bytes.len()));
-    }
-    if pubkey_bytes.len() != PUBKEY_LEN {
-        return Err(VerifyError::InvalidPubkeyLength(pubkey_bytes.len()));
-    }
-
-    let sig_array: [u8; SIG_LEN] = sig_bytes
-        .try_into()
-        .map_err(|_| VerifyError::InvalidSignatureFormat)?;
-    let pubkey_array: [u8; PUBKEY_LEN] = pubkey_bytes
-        .try_into()
-        .map_err(|_| VerifyError::InvalidPubkeyFormat)?;
-
-    let signature = ed25519_dalek::Signature::from_bytes(&sig_array);
-    let pubkey = ed25519_dalek::VerifyingKey::from_bytes(&pubkey_array)
-        .map_err(|_| VerifyError::InvalidPubkeyFormat)?;
-
-    pubkey
-        .verify(message.as_bytes(), &signature)
-        .map_err(|_| VerifyError::VerificationFailed)?;
-
-    Ok(())
-}
-
 pub fn handle_verify(message: &str, signature_b58: &str, pubkey_b58: &str, json: bool) -> i32 {
-    let result = match verify_signature(message, signature_b58, pubkey_b58) {
+    let result = match ed25519::verify_signature_raw(message, signature_b58, pubkey_b58) {
         Ok(()) => VerifyResult {
             message: message.to_string(),
             pubkey: pubkey_b58.to_string(),
             signature: signature_b58.to_string(),
             valid: true,
-            error: None,
+            error: None
         },
         Err(e) => VerifyResult {
             message: message.to_string(),
             pubkey: pubkey_b58.to_string(),
             signature: signature_b58.to_string(),
             valid: false,
-            error: Some(e.to_string()),
+            error: Some(e.to_string())
         },
     };
 
