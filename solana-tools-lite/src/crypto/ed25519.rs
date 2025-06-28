@@ -39,7 +39,7 @@ pub fn verify_signature_raw(message: &str, signature_b58: &str, pubkey_b58: &str
         .try_into()
         .map_err(|_| VerifyError::InvalidPubkeyFormat)?;
 
-    let signature = ed25519_dalek::Signature::from_bytes(&sig_array);
+    let signature = signature_from_bytes(&sig_array);
     let pubkey = ed25519_dalek::VerifyingKey::from_bytes(&pubkey_array)
         .map_err(|_| VerifyError::InvalidPubkeyFormat)?;
 
@@ -48,4 +48,9 @@ pub fn verify_signature_raw(message: &str, signature_b58: &str, pubkey_b58: &str
         .map_err(|_| VerifyError::VerificationFailed)?;
 
     Ok(())
+}
+
+/// Wrapper for creating a Signature from bytes (so that you don't use dalek directly)
+pub fn signature_from_bytes(bytes: &[u8; 64]) -> Signature {
+    Signature::from_bytes(bytes)
 }
