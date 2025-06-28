@@ -16,7 +16,7 @@ pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey> {
 pub fn sign_message(key: &SigningKey, message: &[u8]) -> Signature {
     key.sign(message)
 }
-
+// TODO: check unused funcs
 pub fn verify_signature(pubkey: &VerifyingKey, message: &[u8], signature: &Signature) -> bool {
     pubkey.verify(message, signature).is_ok()
 }

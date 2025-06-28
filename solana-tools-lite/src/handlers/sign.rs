@@ -9,7 +9,7 @@ pub fn handle_sign(message: &str, secret_key_b58: &str, json: bool) -> Result<St
     // Decode the base58 secret key
     let secret_bytes = bs58::decode(secret_key_b58)
         .into_vec()
-        .context("Invalid base58 in secret key")?;
+        .context("Invalid base58 in secret key")?; //TODO: delete context + add custom errors
 
     // Convert to [u8; 32] (only the private seed part is needed)
     let secret_bytes_arr: &[u8; 32] = secret_bytes
