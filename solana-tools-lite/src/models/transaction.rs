@@ -9,7 +9,7 @@ pub struct Transaction {
     pub signatures: Vec<String>,
 
     /// The actual message (to be signed): contains accounts, recent blockhash, and instructions.
-    pub message: Message,
+    pub message: Message
 }
 
 /// Solana transaction message — the payload to be signed.
@@ -23,7 +23,7 @@ pub struct Message {
     pub recent_blockhash: String,
 
     /// List of instructions — each instruction defines a program call (e.g., transfer, mint).
-    pub instructions: Vec<Instruction>,
+    pub instructions: Vec<Instruction>
 }
 
 /// Solana instruction — represents a single call to a smart contract/program.
@@ -36,5 +36,5 @@ pub struct Instruction {
     pub accounts: Vec<u8>,
 
     /// Instruction data, base58 or base64 encoded (depends on source, but base58 is common in Solana).
-    pub data: String,
+    pub data: String
 }
