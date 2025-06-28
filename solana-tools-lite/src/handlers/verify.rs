@@ -20,7 +20,7 @@ pub enum VerifyError {
     #[error("Invalid public key format")]
     InvalidPubkeyFormat,
     #[error("Signature verification failed")]
-    VerificationFailed,
+    VerificationFailed
 }
 
 pub fn handle_verify(message: &str, signature_b58: &str, pubkey_b58: &str, json: bool) -> i32 {

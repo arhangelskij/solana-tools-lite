@@ -12,7 +12,7 @@ pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey> {
     }
     Ok(SigningKey::from_bytes(&seed[..32].try_into()?))
 }
-
+// TODO: ? signer return no error – self.try_sign(msg).expect("signature operation failed")
 pub fn sign_message(key: &SigningKey, message: &[u8]) -> Signature {
     key.sign(message)
 }
