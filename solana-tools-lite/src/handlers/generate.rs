@@ -1,19 +1,15 @@
 use crate::crypto::bip39;
+use crate::errors::GenError;
 use crate::models::results::GenResult;
 use crate::utils::hex_encode;
 use crate::utils::pretty_print_json;
 use ed25519_dalek::SigningKey;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-enum GenError {
-    #[error("Invalid Mnemonic: {0}")]
-    InvalidMnemonic(#[from] bs58::decode::Error),
-    #[error("Invalid Seed Length: ")]
-    InvalidSeedLength
-}
-
-pub fn handle_gen(mnemonic: Option<String>, passphrase: Option<String>, json: bool) -> anyhow::Result<()> {
+pub fn handle_gen(
+    mnemonic: Option<String>,
+    passphrase: Option<String>,
+    json: bool,
+) -> anyhow::Result<()> {
     let mnemonic = match mnemonic {
         Some(m) => {
             bip39::validate_mnemonic(&m).map_err(|e| e)?;
@@ -25,12 +21,10 @@ pub fn handle_gen(mnemonic: Option<String>, passphrase: Option<String>, json: bo
     let passphrase = passphrase.unwrap_or_default();
 
     let seed = bip39::derive_seed(&mnemonic, &passphrase).map_err(|e| e)?;
-    
-    let signing_key = SigningKey::from_bytes(
-        &seed[..32]
-            .try_into()
-            .map_err(|_| GenError::InvalidSeedLength)?
-    );
+//TODO: 32 into const?
+    let signing_key = SigningKey::from_bytes(&seed[..32]
+        .try_into()
+        .map_err(|_| GenError::InvalidSeedLength)?);
 
     let pubkey_bytes = signing_key.verifying_key().to_bytes();
     let pubkey_base58 = bs58::encode(pubkey_bytes).into_string();
@@ -42,7 +36,7 @@ pub fn handle_gen(mnemonic: Option<String>, passphrase: Option<String>, json: bo
             secret_key_base58: bs58::encode(signing_key.to_bytes()).into_string(),
             seed_hex: hex_encode(&seed),
             note: "Keep your mnemonic and secret key safe!",
-            error: None
+            error: None,
         };
         pretty_print_json(&result);
     } else {

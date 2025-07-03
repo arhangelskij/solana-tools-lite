@@ -2,18 +2,7 @@ use hmac::Hmac;
 use pbkdf2::pbkdf2;
 use sha2::Sha512;
 use bip39::{Mnemonic, Language};
-use thiserror::Error;
-
-/// Errors that can arise when working with BIP‑39 helpers.
-#[derive(Debug, Error)]
-pub enum Bip39Error {
-    #[error("failed to generate mnemonic: {0}")]
-    Mnemonic(#[from] bip39::Error),
-    #[error("PBKDF2 failed: {0}")]
-    Pbkdf2(&'static str),
-     #[error("Validation failed: {0}")]
-    Validation(bip39::Error)
-}
+pub use crate::errors::Bip39Error;
 
 /// Generate a random 12-word English BIP-39 mnemonic phrase.
 pub fn generate_mnemonic() -> Result<String, Bip39Error> {

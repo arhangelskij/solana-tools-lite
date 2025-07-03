@@ -1,7 +1,7 @@
 mod tests {
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
-    use solana_tools_lite::models::transaction::{Instruction, Message, Transaction};
+    use solana_tools_lite::models::transaction::{Transaction};
 
     #[test]
     fn test_parse_and_sign_transaction_json() {

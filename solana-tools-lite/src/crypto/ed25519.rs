@@ -1,22 +1,25 @@
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use anyhow::{Result, bail};
-use crate::handlers::verify::VerifyError;
-
-const SIG_LEN: usize = 64;
-const PUBKEY_LEN: usize = 32;
+use crate::errors::{KeypairError, VerifyError, SIG_LEN, PUBKEY_LEN};
 
 /// Create key (first 32 bytes as seed)
-pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey> {
+pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey, KeypairError> {
     if seed.len() < 32 {
-        bail!("Seed must be at least 32 bytes");
+        return Err(KeypairError::SeedTooShort(seed.len()));
     }
-    Ok(SigningKey::from_bytes(&seed[..32].try_into()?))
+
+    let slice: [u8; 32] = seed[..32]
+    .try_into()
+    .map_err(|_| KeypairError::SeedSlice("expected 32-byte slice"))?;
+
+    Ok(SigningKey::from_bytes(&slice))
 }
+
 // TODO: ? signer return no error – self.try_sign(msg).expect("signature operation failed")
+// use key.try_sign instead if you want to get an error
 pub fn sign_message(key: &SigningKey, message: &[u8]) -> Signature {
     key.sign(message)
 }
-// TODO: check unused funcs
+// TODO: check unused funcs – just in test used
 pub fn verify_signature(pubkey: &VerifyingKey, message: &[u8], signature: &Signature) -> bool {
     pubkey.verify(message, signature).is_ok()
 }
