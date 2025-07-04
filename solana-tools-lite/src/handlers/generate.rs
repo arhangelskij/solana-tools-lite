@@ -12,7 +12,7 @@ pub fn handle_gen(
 ) -> anyhow::Result<()> {
     let mnemonic = match mnemonic {
         Some(m) => {
-            bip39::validate_mnemonic(&m).map_err(|e| e)?;
+            bip39::validate_mnemonic(&m)?; //.map_err(|e| e)?;
             m
         }
         None => bip39::generate_mnemonic().map_err(|e| e)?,
@@ -36,7 +36,7 @@ pub fn handle_gen(
             secret_key_base58: bs58::encode(signing_key.to_bytes()).into_string(),
             seed_hex: hex_encode(&seed),
             note: "Keep your mnemonic and secret key safe!",
-            error: None,
+            error: None
         };
         pretty_print_json(&result);
     } else {

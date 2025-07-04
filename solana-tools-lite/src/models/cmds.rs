@@ -59,10 +59,10 @@ pub enum Commands {
 pub enum Base58Action {
     Encode {
         #[arg(short, long)]
-        input: String,
+        input: String
     },
     Decode {
         #[arg(short, long)]
-        input: String,
+        input: String
     }
 }

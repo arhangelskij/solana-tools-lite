@@ -1,5 +1,4 @@
-// src/handlers/sign_tx.rs
-use std::{fs, io::{self, Read, Write}};
+use std::{fs};
 use ed25519_dalek::{SigningKey, Signature};
 use crate::{
     errors::{SignError, Result},

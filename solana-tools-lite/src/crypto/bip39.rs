@@ -6,7 +6,7 @@ pub use crate::errors::Bip39Error;
 
 /// Generate a random 12-word English BIP-39 mnemonic phrase.
 pub fn generate_mnemonic() -> Result<String, Bip39Error> {
-    let mut rng = bip39::rand::thread_rng();
+    let mut rng = bip39::rand::thread_rng(); //TODO: 12 into const?
     let mnemonic = Mnemonic::generate_in_with(&mut rng, Language::English, 12)?;
     
     Ok(mnemonic.to_string())

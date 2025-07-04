@@ -1,10 +1,8 @@
 use ed25519_dalek::{SigningKey, Signature, Signer};
-use anyhow::{Context};
+
 use std::convert::TryInto;
 use crate::models::results::SignResult;
 use crate::utils::pretty_print_json;
-use crate::models::transaction::Transaction;
-use crate::crypto::ed25519;
 
 use crate::errors::SignError;
 use crate::errors::Result;

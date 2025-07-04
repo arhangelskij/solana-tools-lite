@@ -10,6 +10,9 @@ pub enum ToolError {
     #[error("BIP-39 error: {0}")]
     Bip39(#[from] Bip39Error),
 
+     #[error(transparent)]
+    Base58(#[from] bs58::decode::Error),
+
     // Handlers
     #[error("Sign error: {0}")]
     Sign(#[from] SignError),
@@ -18,12 +21,7 @@ pub enum ToolError {
     Keypair(#[from] KeypairError),
 
     #[error("Keypair error: {0}")]
-    Gen(#[from] GenError),
-
-    //TODO: Для публичного крейта старайтесь минимизировать использование варианта ToolError::Other(String). Он не позволяет пользователям программно реагировать на ошибку
-    // Catch-all
-    #[error("Unexpected: {0}")]
-    Other(String)
+    Gen(#[from] GenError)
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -81,7 +79,7 @@ pub enum KeypairError {
 }
 
 #[derive(Error, Debug)]
-pub(crate) enum GenError {
+pub enum GenError {
     #[error("Invalid Seed Length: ")]
     InvalidSeedLength
 }
