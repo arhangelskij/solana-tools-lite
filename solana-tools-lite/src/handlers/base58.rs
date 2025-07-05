@@ -1,7 +1,7 @@
 use crate::models::cmds::Base58Action;
-use crate::errors::ToolError;
+use crate::errors::Result;
 
-pub fn handle_base58(action: &Base58Action) -> Result<(), ToolError> {
+pub fn handle_base58(action: &Base58Action) ->  Result<()> {
     match action {
         Base58Action::Encode { input } => {
             let encoded = bs58::encode(input.as_bytes()).into_string();

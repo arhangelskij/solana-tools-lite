@@ -3,18 +3,22 @@ use pbkdf2::pbkdf2;
 use sha2::Sha512;
 use bip39::{Mnemonic, Language};
 pub use crate::errors::Bip39Error;
+use crate::errors::Result;
 
 /// Generate a random 12-word English BIP-39 mnemonic phrase.
-pub fn generate_mnemonic() -> Result<String, Bip39Error> {
+pub fn generate_mnemonic() -> Result<String> {//Result<String, Bip39Error> {
     let mut rng = bip39::rand::thread_rng(); //TODO: 12 into const?
-    let mnemonic = Mnemonic::generate_in_with(&mut rng, Language::English, 12)?;
+    //let mnemonic = Mnemonic::generate_in_with(&mut rng, Language::English, 12)?;
+
+    let mnemonic = Mnemonic::generate_in_with(&mut rng, Language::English, 12)
+    .map_err(Bip39Error::from)?;
     
     Ok(mnemonic.to_string())
 }
 
 /// Derive a 64-byte seed from a BIP-39 mnemonic and passphrase.
-pub fn derive_seed(mnemonic: &str, passphrase: &str) -> Result<[u8; 64], Bip39Error> {
-    let salt = format!("mnemonic{}", passphrase);
+pub fn derive_seed(mnemonic: &str, passphrase: &str) -> Result<[u8; 64]> {//, Bip39Error> {
+    let salt = format!("mnemonic{passphrase}");
     let mut out = [0u8; 64];
     
     pbkdf2::<Hmac<Sha512>>(mnemonic.as_bytes(), salt.as_bytes(), 2048, &mut out)

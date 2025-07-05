@@ -4,8 +4,7 @@ use std::convert::TryInto;
 use crate::models::results::SignResult;
 use crate::utils::pretty_print_json;
 
-use crate::errors::SignError;
-use crate::errors::Result;
+use crate::errors::{SignError, Result};
 
 /// Signs a given message with a provided secret key (base58 encoded)
 pub fn handle_sign(message: &str, secret_key_b58: &str, json: bool) -> Result<String> {

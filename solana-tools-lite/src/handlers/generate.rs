@@ -1,26 +1,25 @@
 use crate::crypto::bip39;
-use crate::errors::GenError;
 use crate::models::results::GenResult;
-use crate::utils::hex_encode;
-use crate::utils::pretty_print_json;
+use crate::utils::{hex_encode, pretty_print_json};
 use ed25519_dalek::SigningKey;
+use crate::errors::{GenError, Result};
 
 pub fn handle_gen(
     mnemonic: Option<String>,
     passphrase: Option<String>,
     json: bool,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mnemonic = match mnemonic {
         Some(m) => {
-            bip39::validate_mnemonic(&m)?; //.map_err(|e| e)?;
+            bip39::validate_mnemonic(&m)?;
             m
         }
-        None => bip39::generate_mnemonic().map_err(|e| e)?,
+        None => bip39::generate_mnemonic()?
     };
 
     let passphrase = passphrase.unwrap_or_default();
 
-    let seed = bip39::derive_seed(&mnemonic, &passphrase).map_err(|e| e)?;
+    let seed = bip39::derive_seed(&mnemonic, &passphrase)?;
 //TODO: 32 into const?
     let signing_key = SigningKey::from_bytes(&seed[..32]
         .try_into()
@@ -40,7 +39,7 @@ pub fn handle_gen(
         };
         pretty_print_json(&result);
     } else {
-        println!("{}", pubkey_base58);
+        println!("{pubkey_base58}");
     }
 
     Ok(())

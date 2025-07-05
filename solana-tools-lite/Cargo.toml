@@ -22,6 +22,7 @@ bip39 = { version = "2.2.0", features = ["rand"]}
 
 ed25519-dalek = { version = "2.1.1", features = ["std"] }
 rand = "0.9.1"
+bincode = { version = "2.0.1", features = ["serde"] }
 
 [profile.release]
 strip = "symbols"

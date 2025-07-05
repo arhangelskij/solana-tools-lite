@@ -21,7 +21,10 @@ pub enum ToolError {
     Keypair(#[from] KeypairError),
 
     #[error("Keypair error: {0}")]
-    Gen(#[from] GenError)
+    Gen(#[from] GenError),
+
+    #[error("Bincode encode error: {0}")]
+    Bincode(#[from] bincode::error::EncodeError)
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -46,8 +49,21 @@ pub enum SignError {
 
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
-    #[error("Serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error)
+
+    #[error("I/O error {path:?}: {source}")]
+    IoWithPath {
+        #[source] source: std::io::Error,
+        path: Option<String>
+    },
+
+    // #[error("Serialization error: {0}")]
+    // SerdeJson(#[from] serde_json::Error)
+
+    #[error("Failed to parse input JSON: {0}")]
+    JsonParse(#[source] serde_json::Error),
+
+    #[error("Failed to serialize JSON for output: {0}")]
+    JsonSerialize(#[source] serde_json::Error)
 }
 
 // VerifyError constants
@@ -57,7 +73,7 @@ pub const PUBKEY_LEN: usize = 32;
 #[derive(Error, Debug)]
 pub enum VerifyError {
     #[error("Base58 decode error: {0}")]
-    Base58Decode(#[from] bs58::decode::Error),
+    Base58Decode(#[from] bs58::decode::Error), //TODO: check if needed
     #[error("Invalid signature length: expected {SIG_LEN}, got {0}")]
     InvalidSignatureLength(usize),
     #[error("Invalid public key length: expected {PUBKEY_LEN}, got {0}")]
