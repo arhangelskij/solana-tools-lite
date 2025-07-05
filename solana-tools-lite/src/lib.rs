@@ -5,3 +5,4 @@ pub mod handlers;
 pub mod utils;
 pub mod crypto;
 pub mod errors;
+pub mod adapters;

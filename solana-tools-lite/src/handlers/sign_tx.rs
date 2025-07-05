@@ -52,11 +52,10 @@ pub fn sign_transaction(tx: &mut Transaction, key: &SigningKey) -> Result<()> {
     let msg_bytes = utils::serialize(&tx.message)?;
     let sig: Signature = ed25519::sign_message(key, &msg_bytes);
 
-    let sig_b58 = bs58::encode(sig.to_bytes()).into_string();
     if tx.signatures.is_empty() {
-        tx.signatures.push(sig_b58);
+        tx.signatures.push(sig);
     } else {
-        tx.signatures[0] = sig_b58;
+        tx.signatures[0] = sig;
     }
     Ok(())
 }

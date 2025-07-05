@@ -43,7 +43,7 @@ mod tests {
         assert!(
             tx.message
                 .account_keys
-                .contains(&"11111111111111111111111111111111".to_string())
+                .contains(&"11111111111111111111111111111111".parse().unwrap())
         );
     }
 
@@ -79,6 +79,9 @@ mod tests {
 
     #[test]
     fn test_add_fake_signature() {
+use ed25519_dalek::Signature;
+
+
         let tx_json = r#"
     {
         "signatures": [""],
@@ -146,8 +149,7 @@ mod tests {
         // Sign using wrapper
         let signature = ed25519::sign_message(&signing_key, &message_bytes);
 
-        // Encode to base58 and save to tx
-        tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
+        tx.signatures[0] = signature;
 
         // For verification: decode back
         let signature_decoded = bs58::decode(&tx.signatures[0])
