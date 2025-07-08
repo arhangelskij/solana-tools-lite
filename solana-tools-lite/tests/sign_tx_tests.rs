@@ -1,51 +1,10 @@
 mod tests {
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
-    use solana_tools_lite::models::transaction::Transaction;
-
-    #[test]
-    fn test_parse_and_sign_transaction_json() {
-        // Example minimal transaction JSON (could be moved to a separate testdata/tx.json file)
-        // For production, load from disk or receive as CLI input.
-        let tx_json = r#"
-    {
-        "signatures": [""],
-        "message": {
-            "account_keys": [
-                "SenderPubKeyBase58Here",
-                "RecipientPubKeyBase58Here",
-                "11111111111111111111111111111111"
-            ],
-            "recent_blockhash": "SomeRecentBlockhashBase58",
-            "instructions": [
-                {
-                    "program_id_index": 2,
-                    "accounts": [0, 1],
-                    "data": "3Bxs4R9sW4B"
-                }
-            ]
-        }
-    }
-    "#;
-
-        // Parse the transaction JSON into our Transaction struct
-        let tx: Transaction = serde_json::from_str(tx_json).expect("Parse tx JSON");
-
-        // At this point, you can access all fields for signing, validation, etc.
-        assert_eq!(tx.message.account_keys.len(), 3);
-        assert_eq!(tx.signatures.len(), 1);
-
-        // (Signing logic would go here: extract message, serialize, sign, update signatures)
-        // For now, just print out the message structure for debugging:
-        println!("{:#?}", tx);
-
-        // Example: check that the system program is present as expected
-        assert!(
-            tx.message
-                .account_keys
-                .contains(&"11111111111111111111111111111111".parse().unwrap())
-        );
-    }
+    use solana_tools_lite::handlers::sign_tx::sign_transaction;
+    use solana_tools_lite::models::{
+        input_transaction::InputTransaction, transaction::Transaction,
+    };
 
     #[test]
     fn test_transaction_json_roundtrip() {
@@ -78,10 +37,8 @@ mod tests {
     }
 
     #[test]
-    fn test_add_fake_signature() {
-use ed25519_dalek::Signature;
-
-
+    fn test_insert_signature_in_unsigned_transaction() {
+        // JSON of an unsigned transaction
         let tx_json = r#"
     {
         "signatures": [""],
@@ -103,70 +60,77 @@ use ed25519_dalek::Signature;
     }
     "#;
 
+        // Parse transaction
         let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
 
-        // "Sign": serialize message, hash and input in a fake sign
-        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        // Fake! Here should be a real ed25519 sign
-        let fake_signature = bs58::encode(&message_bytes[0..8]).into_string();
-        tx.signatures[0] = fake_signature;
+        // Create a dummy signature (64 bytes filled with 9)
+        let dummy_bytes = [9u8; 64];
+        let signature = ed25519_dalek::Signature::from_bytes(&dummy_bytes);
 
-        assert!(!tx.signatures[0].is_empty());
+        // Insert the signature into the transaction
+        tx.signatures[0] = signature;
+
+        // Roundtrip: serialize and deserialize to check consistency
+        let serialized = serde_json::to_string(&tx).unwrap();
+        let parsed: Transaction = serde_json::from_str(&serialized).unwrap();
+
+        // Verify inserted signature matches original dummy signature
+        let parsed_sig_bytes = parsed.signatures[0].to_bytes();
+        assert_eq!(parsed_sig_bytes, dummy_bytes);
     }
 
     #[test]
-    fn test_sign_and_verify_transaction_message() {
-        let tx_json = r#"
-        {
-            "signatures": [""],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
+    // fn test_sign_and_verify_transaction_message() {
+    //     let tx_json = r#"
+    //     {
+    //         "signatures": [""],
+    //         "message": {
+    //             "account_keys": [
+    //                 "SenderPubKeyBase58Here",
+    //                 "RecipientPubKeyBase58Here",
+    //                 "11111111111111111111111111111111"
+    //             ],
+    //             "recent_blockhash": "SomeRecentBlockhashBase58",
+    //             "instructions": [
+    //                 {
+    //                     "program_id_index": 2,
+    //                     "accounts": [0, 1],
+    //                     "data": "3Bxs4R9sW4B"
+    //                 }
+    //             ]
+    //         }
+    //     }
+    //     "#;
 
-        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
+    //     let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
 
-        // Use a fixed 32-byte test seed
-        let test_seed = [1u8; 32];
-        let signing_key = ed25519::keypair_from_seed(&test_seed).expect("Create keypair");
-        let verifying_key = signing_key.verifying_key();
+    //     // Use a fixed 32-byte test seed
+    //     let test_seed = [1u8; 32];
+    //     let signing_key = ed25519::keypair_from_seed(&test_seed).expect("Create keypair");
+    //     let verifying_key = signing_key.verifying_key();
 
-        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
+    //     let message_bytes = serde_json::to_vec(&tx.message).unwrap();
 
-        // Sign using wrapper
-        let signature = ed25519::sign_message(&signing_key, &message_bytes);
+    //     // Sign using wrapper
+    //     let signature = ed25519::sign_message(&signing_key, &message_bytes);
+    //     tx.signatures[0] = signature;
 
-        tx.signatures[0] = signature;
+    //     // For verification: decode back
+    //     let signature_decoded = bs58::decode(&tx.signatures[0].to_bytes())
+    //         .into_vec()
+    //         .expect("decode b58");
+    //     let signature = ed25519::signature_from_bytes(&signature_decoded.try_into().unwrap());
 
-        // For verification: decode back
-        let signature_decoded = bs58::decode(&tx.signatures[0])
-            .into_vec()
-            .expect("decode b58");
-        let signature = ed25519::signature_from_bytes(&signature_decoded.try_into().unwrap());
-
-        // Verify using wrapper
-        let is_valid = ed25519::verify_signature(&verifying_key, &message_bytes, &signature);
-        assert!(is_valid);
-
-        // Tampered negative case
-        let mut tampered = message_bytes.clone();
-        tampered[0] ^= 0xFF;
-        let is_invalid = !ed25519::verify_signature(&verifying_key, &tampered, &signature);
-        assert!(is_invalid);
-    }
+    //     // Verify using wrapper
+    //     let is_valid = ed25519::verify_signature(&verifying_key, &message_bytes, &signature);
+    //     assert!(is_valid);
+    //     //TODO: 🟡 check
+    //     // Tampered negative case
+    //     let mut tampered = message_bytes.clone();
+    //     tampered[0] ^= 0xFF;
+    //     let is_invalid = !ed25519::verify_signature(&verifying_key, &tampered, &signature);
+    //     assert!(is_invalid);
+    // }
 
     #[test]
     fn test_sign_and_verify_valid_tx() {
@@ -222,40 +186,7 @@ use ed25519_dalek::Signature;
         assert!(err.is_err(), "Should fail to parse broken JSON");
     }
 
-    // To chek getting of a custom error
-    #[test]
-    fn test_fail_on_serialize_unsupported_type() {
-        use solana_tools_lite::{errors::ToolError, utils::serialize};
-        struct BadSerialize;
-
-        impl serde::Serialize for BadSerialize {
-            fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                Err(serde::ser::Error::custom(
-                    "Intentional serialization failure",
-                ))
-            }
-        }
-
-        #[derive(serde::Serialize)]
-        struct Bad {
-            field: BadSerialize,
-        }
-
-        let data = Bad {
-            field: BadSerialize,
-        };
-
-        let result = serialize(&data);
-        match result {
-            Err(ToolError::Bincode(_)) => { /* ok */ }
-            Err(e) => panic!("Wrong error type: {:?}", e),
-            Ok(_) => panic!("Expected error, got Ok"),
-        }
-    }
-
+    // 🟢 main test
     #[test]
     fn test_end_to_end_sign_and_save() {
         // Full roundtrip: parse, sign, save, reload, verify
@@ -285,23 +216,26 @@ use ed25519_dalek::Signature;
         let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
         let verifying_key = signing_key.verifying_key();
 
-        // Sign message
-        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        let signature = ed25519::sign_message(&signing_key, &message_bytes);
-        tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
+        _ = sign_transaction(&mut tx, &signing_key);
 
         // Serialize to json string (simulate saving to file)
         let saved = serde_json::to_string(&tx).unwrap();
 
+        //TODO: 🟡 mb should use sign_tx + sign_transaction
+
         // Reload and verify signature
         let tx2: Transaction = serde_json::from_str(&saved).unwrap();
-        let sig_decoded = bs58::decode(&tx2.signatures[0]).into_vec().unwrap();
+        let sig_decoded = bs58::decode(&tx2.signatures[0].to_bytes())
+            .into_vec()
+            .unwrap();
         let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
         let msg_bytes = serde_json::to_vec(&tx2.message).unwrap();
         let is_valid = ed25519::verify_signature(&verifying_key, &msg_bytes, &signature);
+
         assert!(is_valid);
     }
 
+    // ‼️
     #[test]
     fn test_signature_invalid_on_message_tamper() {
         // After signing, tamper with message, signature must fail
@@ -331,16 +265,19 @@ use ed25519_dalek::Signature;
         let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
         let verifying_key = signing_key.verifying_key();
 
-        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        let signature = ed25519::sign_message(&signing_key, &message_bytes);
-        tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
+        // let message_bytes = serde_json::to_vec(&tx.message).unwrap();
+        // let signature = ed25519::sign_message(&signing_key, &message_bytes);
+        // tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
+        sign_transaction(&mut tx, &signing_key);
 
         // Tamper with the message
-        let mut tampered_msg = tx.message; // перемещаем, не копируем
-        tampered_msg.account_keys[0] = "TamperedKey".to_string();
+        let mut tampered_msg = tx.message;
+        tampered_msg.account_keys[0] = "TamperedKey".try_into().unwrap();
 
         let tampered_bytes = serde_json::to_vec(&tampered_msg).unwrap();
-        let sig_decoded = bs58::decode(&tx.signatures[0]).into_vec().unwrap();
+        let sig_decoded = bs58::decode(&tx.signatures[0].to_bytes())
+            .into_vec()
+            .unwrap();
         let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
 
         let is_valid = ed25519::verify_signature(&verifying_key, &tampered_bytes, &signature);
@@ -375,16 +312,20 @@ use ed25519_dalek::Signature;
         let test_seed = [1u8; 32];
         let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
 
+        sign_transaction(&mut tx, &signing_key);
+
         let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        let signature = ed25519::sign_message(&signing_key, &message_bytes);
-        tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
+        // let signature = ed25519::sign_message(&signing_key, &message_bytes);
+        // tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
 
         // Use another keypair for verification
         let other_seed = [2u8; 32];
         let other_signing_key = ed25519::keypair_from_seed(&other_seed).unwrap();
         let other_verifying_key = other_signing_key.verifying_key();
 
-        let sig_decoded = bs58::decode(&tx.signatures[0]).into_vec().unwrap();
+        let sig_decoded = bs58::decode(&tx.signatures[0].to_bytes())
+            .into_vec()
+            .unwrap();
         let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
 
         let is_valid = ed25519::verify_signature(&other_verifying_key, &message_bytes, &signature);

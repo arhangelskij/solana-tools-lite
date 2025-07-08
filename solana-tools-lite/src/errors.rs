@@ -24,7 +24,10 @@ pub enum ToolError {
     Gen(#[from] GenError),
 
     #[error("Bincode encode error: {0}")]
-    Bincode(#[from] bincode::error::EncodeError)
+    Bincode(#[from] bincode::error::EncodeError),
+
+    #[error("Transaction parse error: {0}")]
+    TransactionParse(#[from] TransactionParseError)
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -98,4 +101,22 @@ pub enum KeypairError {
 pub enum GenError {
     #[error("Invalid Seed Length: ")]
     InvalidSeedLength
+}
+
+#[derive(Debug, Error)]
+pub enum TransactionParseError {
+    #[error("Invalid base64: {0}")]
+    InvalidBase64(String),
+    #[error("Invalid base58: {0}")]
+    InvalidBase58(String),
+    #[error("Invalid base58: {0}")]
+    InvalidInstructionData(String),
+    #[error("Invalid pubkey string: {0}")]
+    InvalidPubkeyFormat(String),
+    #[error("Invalid signature length: {0}")]
+    InvalidSignatureLength(usize),
+    #[error("Invalid signature format: {0}")]
+    InvalidSignatureFormat(String),
+    #[error("Bincode deserialize error: {0}")]
+    BincodeDeserialize(String)
 }
