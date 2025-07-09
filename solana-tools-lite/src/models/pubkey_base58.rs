@@ -1,7 +1,6 @@
 
-use serde::{Serialize, Deserialize};
-use crate::models::hash_base58::HashBase58;
-use crate::errors::ToolError::TransactionParse;
+use serde::{Deserialize};
+use crate::errors::TransactionParseError;
 
     //TODO: 🟡 check and use it
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -11,16 +10,17 @@ use std::convert::TryFrom;
 use bs58;
 
 impl TryFrom<&str> for PubkeyBase58 {
-    type Error = TransactionParse;
+    type Error = crate::errors::ToolError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let decoded = bs58::decode(s)
             .into_vec()
-            .map_err(|e| format!("Invalid base58: {}", e))?;
+            .map_err(|e| TransactionParseError::InvalidPubkeyFormat(e.to_string()))?;
 
         if decoded.len() != 32 {
-            return Err("Expected 32 bytes for PubkeyBase58".into());
+            return Err(TransactionParseError::InvalidSignatureLength(decoded.len()))?;
         }
+        
 
         let mut array = [0u8; 32];
         array.copy_from_slice(&decoded);
@@ -39,10 +39,8 @@ impl<'de> Deserialize<'de> for PubkeyBase58 {
     }
 }
 
-impl TryFrom<[u8; 32]> for PubkeyBase58 {
-    type Error = String;
-
-    fn try_from(bytes: [u8; 32]) -> Result<Self, Self::Error> {
-        Ok(PubkeyBase58(bytes))
+impl From<[u8; 32]> for PubkeyBase58 {
+    fn from(bytes: [u8; 32]) -> Self {
+        PubkeyBase58(bytes)
     }
 }

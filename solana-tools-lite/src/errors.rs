@@ -120,6 +120,8 @@ pub enum TransactionParseError {
     InvalidPubkeyFormat(String),
     #[error("Invalid signature length: {0}")]
     InvalidSignatureLength(usize),
+    #[error("Invalid pubkey length: {0}")]
+    InvalidPubkeyLength(usize),
     #[error("Invalid signature format: {0}")]
     InvalidSignatureFormat(String),
     #[error("Bincode deserialize error: {0}")]
