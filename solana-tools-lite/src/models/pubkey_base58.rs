@@ -1,6 +1,7 @@
 
 use serde::{Serialize, Deserialize};
 use crate::models::hash_base58::HashBase58;
+use crate::errors::ToolError::TransactionParse;
 
     //TODO: 🟡 check and use it
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -10,7 +11,7 @@ use std::convert::TryFrom;
 use bs58;
 
 impl TryFrom<&str> for PubkeyBase58 {
-    type Error = String;
+    type Error = TransactionParse;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let decoded = bs58::decode(s)
@@ -35,5 +36,13 @@ impl<'de> Deserialize<'de> for PubkeyBase58 {
     {
         let s = String::deserialize(deserializer)?;
         PubkeyBase58::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
+impl TryFrom<[u8; 32]> for PubkeyBase58 {
+    type Error = String;
+
+    fn try_from(bytes: [u8; 32]) -> Result<Self, Self::Error> {
+        Ok(PubkeyBase58(bytes))
     }
 }

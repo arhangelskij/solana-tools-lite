@@ -45,10 +45,18 @@ pub enum Bip39Error {
 pub enum SignError {
     #[error("Invalid base58 in secret key")]
     InvalidBase58,
+    #[error("Invalid pubkey format")]
+    InvalidPubkeyFormat,
     #[error("Secret key must be 32 bytes")]
     InvalidKeyLength,
     #[error("Failed to sign transaction: {0}")]
     SigningFailed(String),
+
+    #[error("Signer pubkey not found in account_keys")]
+    SignerKeyNotFound,
+
+    #[error("Provided signer is not within required signers")]
+    SigningNotRequiredForKey,
 
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
@@ -58,9 +66,6 @@ pub enum SignError {
         #[source] source: std::io::Error,
         path: Option<String>
     },
-
-    // #[error("Serialization error: {0}")]
-    // SerdeJson(#[from] serde_json::Error)
 
     #[error("Failed to parse input JSON: {0}")]
     JsonParse(#[source] serde_json::Error),
