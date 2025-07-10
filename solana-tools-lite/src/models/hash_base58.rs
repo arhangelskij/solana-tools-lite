@@ -1,4 +1,5 @@
 use serde::{Serialize};
+use crate::errors::TransactionParseError;
 
 #[derive(Clone, Copy)]
 pub struct HashBase58(pub [u8; 32]);
@@ -12,6 +13,8 @@ impl Serialize for HashBase58 {
 
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 use std::fmt;
+
+use crate::errors::ToolError;
 
 impl<'de> Deserialize<'de> for HashBase58 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -45,15 +48,18 @@ impl<'de> Deserialize<'de> for HashBase58 {
 }
 
 impl TryFrom<&str> for HashBase58 {
-    type Error = String;
+    type Error = ToolError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let bytes = bs58::decode(s).into_vec().map_err(|e| e.to_string())?;
+        let bytes = bs58::decode(s).into_vec()
+        .map_err(|e| TransactionParseError::InvalidBlockhashFormat(e.to_string()))?;
+       
         if bytes.len() != 32 {
-            return Err(format!("Invalid length: expected 32, got {}", bytes.len()));
+            return Err(TransactionParseError::InvalidBlockhashLength(bytes.len()))?;
         }
         let mut array = [0u8; 32];
         array.copy_from_slice(&bytes);
+
         Ok(HashBase58(array))
     }
 }

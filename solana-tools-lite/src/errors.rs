@@ -125,5 +125,9 @@ pub enum TransactionParseError {
     #[error("Invalid signature format: {0}")]
     InvalidSignatureFormat(String),
     #[error("Bincode deserialize error: {0}")]
-    BincodeDeserialize(String)
+    BincodeDeserialize(String),
+    #[error("Expected 32 bytes for blockhash, got {0}")]
+    InvalidBlockhashLength(usize),
+    #[error("Invalid blockhash string: {0}")]
+    InvalidBlockhashFormat(String)
 }
