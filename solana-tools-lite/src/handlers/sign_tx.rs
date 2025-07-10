@@ -1,11 +1,11 @@
-use ed25519_dalek::{SigningKey, Signature};
 use crate::{
-    errors::{SignError, Result},
-    models::transaction::Transaction,
-    models::pubkey_base58::PubkeyBase58,
     crypto::ed25519,
+    errors::{Result, SignError},
+    models::pubkey_base58::PubkeyBase58,
+    models::transaction::Transaction,
     utils::{self, read_stdin_or_file, write_file},
 };
+use ed25519_dalek::{Signature, SigningKey};
 
 /// Read tx JSON → sign → output JSON / stdout
 pub fn handle_sign_transaction_file(
@@ -15,15 +15,15 @@ pub fn handle_sign_transaction_file(
     json_pretty: bool,
 ) -> Result<()> {
     // 1. Load TX JSON (file or stdin)
-    let tx_raw = self::read_stdin_or_file(input)?;              // -> String
-    let mut tx: Transaction =
-        serde_json::from_str(&tx_raw).map_err(SignError::JsonParse)?;
+    let tx_raw = self::read_stdin_or_file(input)?; // -> String
+    let mut tx: Transaction = serde_json::from_str(&tx_raw).map_err(SignError::JsonParse)?;
 
     // 2. Decode & validate secret key
     let secret_bytes = bs58::decode(secret_key_b58)
         .into_vec()
         .map_err(|_| SignError::InvalidBase58)?;
-    let seed: &[u8; 32] = secret_bytes.as_slice()
+    let seed: &[u8; 32] = secret_bytes
+        .as_slice()
         .try_into()
         .map_err(|_| SignError::InvalidKeyLength)?;
     let signing_key = SigningKey::from_bytes(seed);
@@ -67,15 +67,14 @@ pub fn sign_transaction(tx: &mut Transaction, key: &SigningKey) -> Result<()> {
 /// Returns an error if the pubkey is not found or if it’s not a required signer.
 pub fn sign_transaction_by_key(tx: &mut Transaction, key: &SigningKey) -> Result<()> {
     let pubkey = PubkeyBase58::try_from(key.verifying_key().to_bytes())
-    .map_err(|e| SignError::InvalidPubkeyFormat)?;//TODO: check if error is actual
+        .map_err(|_| SignError::InvalidPubkeyFormat)?; //TODO: check if error is actual
 
-    let signer_index = tx.message.account_keys.iter().position(|k| *k == pubkey)
+    let signer_index = tx
+        .message
+        .account_keys
+        .iter()
+        .position(|k| *k == pubkey)
         .ok_or(SignError::SignerKeyNotFound)?;
-
-
-
-let signer_index = tx.message.account_keys.iter().position(|k| *k == pubkey)
-    .ok_or(SignError::SignerKeyNotFound)?;
 
     if signer_index >= tx.message.header.num_required_signatures as usize {
         return Err(SignError::SigningNotRequiredForKey)?;
@@ -86,7 +85,8 @@ let signer_index = tx.message.account_keys.iter().position(|k| *k == pubkey)
 
     // Resize signatures if needed
     if tx.signatures.len() <= signer_index {
-        tx.signatures.resize(signer_index + 1, Signature::from_bytes(&[0u8; 64]));
+        tx.signatures
+            .resize(signer_index + 1, Signature::from_bytes(&[0u8; 64]));
     }
 
     tx.signatures[signer_index] = sig;

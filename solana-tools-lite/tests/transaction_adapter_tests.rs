@@ -13,7 +13,7 @@ fn test_adapter_with_generated_data() {
     let pubkey1 = generate_mock_pubkey();
     let pubkey2 = generate_mock_pubkey();
     let program_id = generate_mock_pubkey();
-    let blockhash = generate_mock_pubkey(); // В тестах можно использовать pubkey в роли hash
+    let blockhash = generate_mock_pubkey();
 
     let signature = generate_mock_signature();
 

@@ -50,7 +50,6 @@ impl TryFrom<InputTransaction> for Transaction {
                                 TransactionParseError::InvalidPubkeyFormat(e.to_string())
                             })
                         })
-                        // .collect()
                         .collect::<Result<Vec<_>, _>>()?,
                     recent_blockhash: HashBase58::try_from(ui_tx.message.recent_blockhash.as_str())
                         .unwrap(),

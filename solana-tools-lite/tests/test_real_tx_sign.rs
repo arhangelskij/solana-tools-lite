@@ -24,12 +24,6 @@ fn test_real_tx_signature_base58() {
     let raw: [u8; 32] = recent_blockhash.0;
     println!("🟢---------- Serialize blockhash: {:?}", raw);
 
-    let my_instruction = Instruction {
-        program_id_index: 1,
-        accounts: vec![2, 3],
-        data: vec![4, 5, 6],
-    };
-
     let msg = Message {
         header: MessageHeader {
             num_required_signatures: 1,
