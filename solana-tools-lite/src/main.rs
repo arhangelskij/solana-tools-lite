@@ -12,7 +12,7 @@ fn main() {
             passphrase,
         } => {
             if let Err(e) =
-                handlers::generate::handle_gen(mnemonic.clone(), passphrase.clone(), cli.json)
+                handlers::generate::handle_gen(mnemonic.as_ref(), passphrase.as_ref(), cli.json)
             {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);
@@ -51,7 +51,7 @@ fn main() {
             output,
         } => {
             if let Err(e) =
-                handlers::sign_tx::handle_sign_transaction_file(&Some(input.clone()), secret_key, output, cli.json)
+                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json)
             {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);

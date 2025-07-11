@@ -40,7 +40,7 @@ pub fn generate_input_transaction(
     let instructions = vec![UiCompiledInstruction {
         program_id_index,
         accounts: instruction_accounts,
-        data: instruction_data.to_string(),
+        data: instruction_data.to_string(), //TODO: check
     }];
 
     let message = UiRawMessage {

@@ -9,9 +9,9 @@ use ed25519_dalek::{Signature, SigningKey};
 
 /// Read tx JSON → sign → output JSON / stdout
 pub fn handle_sign_transaction_file(
-    input: &Option<String>,
+    input: Option<&String>, //TODO: use Path?
     secret_key_b58: &str,
-    output: &Option<String>,
+    output: Option<&String>,
     json_pretty: bool,
 ) -> Result<()> {
     // 1. Load TX JSON (file or stdin)

@@ -25,7 +25,7 @@ pub fn write_file(path: &str, data: &str) -> Result<(), SignError> {
     })
 }
 
-pub fn read_stdin_or_file(path: &Option<String>) -> Result<String, SignError> {
+pub fn read_stdin_or_file(path: Option<&String>) -> Result<String, SignError> {
     use std::fs;
     
     let mut buf = String::new();
@@ -37,7 +37,7 @@ pub fn read_stdin_or_file(path: &Option<String>) -> Result<String, SignError> {
         _ => {
             io::stdin().read_to_string(&mut buf).map_err(|e| SignError::IoWithPath {
                 source: e,
-                path: path.to_owned(),
+                path: path.cloned(),
             })?;
             Ok(buf)
         }
