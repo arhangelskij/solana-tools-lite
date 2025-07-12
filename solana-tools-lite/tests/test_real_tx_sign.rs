@@ -56,6 +56,9 @@ fn test_real_tx_signature_base58() {
     let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
     println!("Signature (base58): {}", sig_bytes);
 
+    // Check sig bytes with a real result from solana sdk
+    assert_eq!(sig_bytes, "5aDjptcVLWEu3W8kWpo62tKg5JKTbK24wUrdHnZPnvfUTEMEZ8ovsbiEY3rsFcte8KqbrqRVSu6fjnEkWSTqsPEq");
+
     use solana_tools_lite::utils;
 
     let test = TestStruct {

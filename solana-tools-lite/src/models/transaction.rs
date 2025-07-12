@@ -113,30 +113,30 @@ mod serde_signature_base58 {
 //     }
 // }
 
-mod serde_pubkey_base58 {
-    use super::*;
-    use serde::{Serializer, Deserializer, Deserialize, Serialize};
+// mod serde_pubkey_base58 {
+//     use super::*;
+//     use serde::{Serializer, Deserializer, Deserialize, Serialize};
 
-    pub fn serialize<S>(keys: &Vec<PubkeyBase58>, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
-        let encoded: Vec<String> = keys.iter().map(|k| bs58::encode(k.0).into_string()).collect();
-        encoded.serialize(serializer)
-    }
+//     pub fn serialize<S>(keys: &Vec<PubkeyBase58>, serializer: S) -> Result<S::Ok, S::Error>
+//     where S: Serializer {
+//         let encoded: Vec<String> = keys.iter().map(|k| bs58::encode(k.0).into_string()).collect();
+//         encoded.serialize(serializer)
+//     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<PubkeyBase58>, D::Error>
-    where D: Deserializer<'de> {
-        let encoded: Vec<String> = Deserialize::deserialize(deserializer)?;
-        encoded
-            .into_iter()
-            .map(|s| {
-                let bytes = bs58::decode(&s).into_vec().map_err(serde::de::Error::custom)?;
-                if bytes.len() != 32 {
-                    return Err(serde::de::Error::custom(format!("Expected 32 bytes for pubkey, got {}", bytes.len())));
-                }
-                let mut raw = [0u8; 32];
-                raw.copy_from_slice(&bytes);
-                Ok(PubkeyBase58(raw))
-            })
-            .collect()
-    }
-}
+//     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<PubkeyBase58>, D::Error>
+//     where D: Deserializer<'de> {
+//         let encoded: Vec<String> = Deserialize::deserialize(deserializer)?;
+//         encoded
+//             .into_iter()
+//             .map(|s| {
+//                 let bytes = bs58::decode(&s).into_vec().map_err(serde::de::Error::custom)?;
+//                 if bytes.len() != 32 {
+//                     return Err(serde::de::Error::custom(format!("Expected 32 bytes for pubkey, got {}", bytes.len())));
+//                 }
+//                 let mut raw = [0u8; 32];
+//                 raw.copy_from_slice(&bytes);
+//                 Ok(PubkeyBase58(raw))
+//             })
+//             .collect()
+//     }
+// }
