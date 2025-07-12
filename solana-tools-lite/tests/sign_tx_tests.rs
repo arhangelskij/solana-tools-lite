@@ -1,9 +1,10 @@
 mod tests {
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
+    use solana_tools_lite::utils;
     use solana_tools_lite::models::{
         input_transaction::{InputTransaction, UiCompiledInstruction},
-        transaction::Transaction,
+        transaction::Transaction
     };
 
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
@@ -26,13 +27,13 @@ mod tests {
             &data,
         );
 
-        println!("=============== input_tx = {:?}", input_tx);
+        //input_tx = {:?}", input_tx);
 
         let tx: Transaction = Transaction::try_from(input_tx).expect("parse");
 
         let new_json = serde_json::to_string_pretty(&tx).expect("serialize");
 
-        println!("-------------- {}", new_json);
+        //println!("-------------- {}", new_json);
         let tx2: Transaction = serde_json::from_str(&new_json).expect("parse 2");
 
         assert_eq!(tx.message.account_keys, tx2.message.account_keys);
@@ -190,33 +191,30 @@ mod tests {
     #[test]
     fn test_end_to_end_sign_and_save() {
         // Full roundtrip: parse, sign, save, reload, verify
-        let tx_json = r#"
-        {
-            "signatures": [""],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
 
-        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
-        let test_seed = [1u8; 32];
-        let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
-        let verifying_key = signing_key.verifying_key();
+        // Step 1: generate keypair
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let verifying_key = keypair.verifying_key();
 
-        _ = sign_transaction_by_key(&mut tx, &signing_key);
+        // Step 2: generate pk and use fixed program_id
+        let pk = bs58::encode(verifying_key.to_bytes()).into_string();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
+
+        // Step 3: build transaction
+        let input_tx =
+            generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
+
+        let mut tx = Transaction::try_from(input_tx).unwrap();
+
+
+        // let test_seed = [1u8; 32];
+        // let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
+        // let verifying_key = signing_key.verifying_key();
+
+        _ = sign_transaction_by_key(&mut tx, &keypair);
 
         // Serialize to json string (simulate saving to file)
         let saved = serde_json::to_string(&tx).unwrap();
@@ -229,7 +227,10 @@ mod tests {
             .into_vec()
             .unwrap();
         let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
-        let msg_bytes = serde_json::to_vec(&tx2.message).unwrap();
+        //let msg_bytes = serde_json::to_vec(&tx2.message).unwrap();
+        let msg_bytes = utils::serialize(&tx2.message).unwrap();
+        
+
         let is_valid = ed25519::verify_signature(&verifying_key, &msg_bytes, &signature);
 
         assert!(is_valid);
