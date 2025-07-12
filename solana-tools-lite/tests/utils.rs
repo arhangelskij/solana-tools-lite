@@ -11,7 +11,8 @@ pub fn generate_mock_pubkey() -> String {
 }
 
 /// Generates a valid 64-byte Base58 signature
-pub fn generate_mock_signature() -> String { //TODO:check it
+pub fn generate_mock_signature() -> String {
+    //TODO:check it
     let mut bytes = [0u8; 64];
     let mut rng = rng();
     rng.fill_bytes(&mut bytes);
@@ -49,11 +50,17 @@ pub fn generate_input_transaction(
         recent_blockhash: blockhash.to_string(),
         instructions,
     };
+//TODO: check it if correct setup when need empty signs
+    let signatures = if required_signatures == 0 {
+        vec![]
+    } else {
+        (0..(required_signatures - 1))
+            .map(|_| generate_mock_signature())
+            .collect()
+    };
 
     let ui_tx = UiTransaction {
-        signatures: (0..(required_signatures - 1))
-            .map(|_| generate_mock_signature())
-            .collect(),
+        signatures,
         message,
     };
 

@@ -1,10 +1,12 @@
 mod tests {
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
-    use solana_tools_lite::handlers::sign_tx::sign_transaction;
     use solana_tools_lite::models::{
-        input_transaction::{UiCompiledInstruction, InputTransaction}, transaction::Transaction,
+        input_transaction::{InputTransaction, UiCompiledInstruction},
+        transaction::Transaction,
     };
+
+    use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
 
     use crate::utils::*;
 
@@ -137,37 +139,35 @@ mod tests {
         // TODO: Parse valid json, sign message, verify signature == true
         // assert!(...)
     }
-
+    //TODO: 🔴 test
     #[test]
-    fn test_cold_signer_empty_signatures_handling() {
-        // This test checks that a transaction with an empty signatures array
-        // (i.e., before any signing happened) is parsed and handled correctly.
+    fn test_transaction_with_zero_required_signatures_has_empty_signatures() {
+        let pk1 = generate_mock_pubkey();
+        let pk2 = generate_mock_pubkey();
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-        let tx_json = r#"
-        {
-            "signatures": [],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
+        let input_tx: InputTransaction = generate_input_transaction(
+            0, // num_required_signatures == 0
+            vec![&pk1, &pk2, "11111111111111111111111111111111"],
+            &blockhash,
+            2,
+            vec![0, 1],
+            &data,
+        );
 
         // Try parsing transaction with empty signatures array
-        let tx: Transaction = serde_json::from_str(tx_json).expect("parse");
-        // In cold-signer mode, empty signatures are valid and expected
+        let mut tx: Transaction = Transaction::try_from(input_tx).expect("parse");
+        // Ensure that when num_required_signatures == 0, the Transaction has an empty signature list
         assert_eq!(tx.signatures.len(), 0);
+        //////////
+
+        let seed = [1u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+
+        let _ = sign_transaction_by_key(&mut tx, &keypair);
+
+        println!("------- {:?}", tx);
 
         // Optionally, try adding a signature (simulate signing)
         // Should not panic if you push or insert to signatures
@@ -216,7 +216,7 @@ mod tests {
         let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
         let verifying_key = signing_key.verifying_key();
 
-        _ = sign_transaction(&mut tx, &signing_key);
+        _ = sign_transaction_by_key(&mut tx, &signing_key);
 
         // Serialize to json string (simulate saving to file)
         let saved = serde_json::to_string(&tx).unwrap();
@@ -268,7 +268,7 @@ mod tests {
         // let message_bytes = serde_json::to_vec(&tx.message).unwrap();
         // let signature = ed25519::sign_message(&signing_key, &message_bytes);
         // tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
-        sign_transaction(&mut tx, &signing_key);
+        sign_transaction_by_key(&mut tx, &signing_key);
 
         // Tamper with the message
         let mut tampered_msg = tx.message;
@@ -312,7 +312,7 @@ mod tests {
         let test_seed = [1u8; 32];
         let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
 
-        let result = sign_transaction(&mut tx, &signing_key); //TODO: 🔴
+        let result = sign_transaction_by_key(&mut tx, &signing_key); //TODO: 🔴
         assert!(result.is_ok());
 
         let message_bytes = serde_json::to_vec(&tx.message).unwrap();
@@ -374,174 +374,184 @@ mod tests {
 }
 
 ////////////////////////////////////////////////
+///
+/// 
 
+
+
+#[path = "utils.rs"]
 mod utils;
-use solana_tools_lite::models::{input_transaction::InputTransaction, transaction::Transaction};
-use solana_tools_lite::utils::serialize;
-use utils::{generate_input_transaction, generate_mock_pubkey};
 
-use solana_tools_lite::crypto::ed25519;
-use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
-use std::convert::TryFrom;
+mod tests_signing {
+use crate::utils::*;
+   
+    use solana_tools_lite::models::{transaction::Transaction};
+    use solana_tools_lite::utils::serialize;
+    
 
-#[test]
-fn test_sign_transaction_valid_index() {
-    // Step 1: generate keypair
-    let seed = [42u8; 32];
-    let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+    use solana_tools_lite::crypto::ed25519;
+    use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
+    use std::convert::TryFrom;
 
-    // Step 2: generate pk and use fixed program_id
-    let pk = bs58::encode(keypair.verifying_key().to_bytes()).into_string();
-    let program_id = "11111111111111111111111111111111";
-    let blockhash = generate_mock_pubkey();
-    let data = bs58::encode(b"mockdata").into_string();
+    #[test]
+    fn test_sign_transaction_valid_index() {
+        // Step 1: generate keypair
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
 
-    // Step 3: build transaction where pk2 is signer at index 1
-    let input_tx =
-        generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
+        // Step 2: generate pk and use fixed program_id
+        let pk = bs58::encode(keypair.verifying_key().to_bytes()).into_string();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-    let mut tx = Transaction::try_from(input_tx).unwrap();
+        // Step 3: build transaction where pk2 is signer at index 1
+        let input_tx =
+            generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
 
-    // Step 4: sign tx
-    let res = sign_transaction_by_key(&mut tx, &keypair);
-    assert!(res.is_ok(), "Signing failed: {:?}", res.unwrap_err());
+        let mut tx = Transaction::try_from(input_tx).unwrap();
 
-    // Signature at index 0 should be updated
-    println!(
-        "-----------------------------tx.signatures.len() {:?}",
-        tx.signatures.len()
-    );
-    assert_eq!(tx.signatures.len(), 1);
-    assert_ne!(tx.signatures[0].to_bytes(), [0u8; 64]);
+        // Step 4: sign tx
+        let res = sign_transaction_by_key(&mut tx, &keypair);
+        assert!(res.is_ok(), "Signing failed: {:?}", res.unwrap_err());
 
-    // Validate signature
-    let message_bytes = serialize(&tx.message).unwrap();
-    let verifying_key = keypair.verifying_key();
-    let is_valid = ed25519::verify_signature(
-        &verifying_key,
-        &message_bytes,
-        &ed25519::signature_from_bytes(&tx.signatures[0].to_bytes()),
-    );
-    assert!(is_valid);
-}
+        // Signature at index 0 should be updated
+        println!(
+            "-----------------------------tx.signatures.len() {:?}",
+            tx.signatures.len()
+        );
+        assert_eq!(tx.signatures.len(), 1);
+        assert_ne!(tx.signatures[0].to_bytes(), [0u8; 64]);
 
-#[test]
-fn test_multi_signature_correct_index() {
-    // Step 1: generate keypair for pk2
-    let seed = [42u8; 32];
-    let keypair = ed25519::keypair_from_seed(&seed).unwrap();
-    let pk2 = bs58::encode(keypair.verifying_key().to_bytes()).into_string();
+        // Validate signature
+        let message_bytes = serialize(&tx.message).unwrap();
+        let verifying_key = keypair.verifying_key();
+        let is_valid = ed25519::verify_signature(
+            &verifying_key,
+            &message_bytes,
+            &ed25519::signature_from_bytes(&tx.signatures[0].to_bytes()),
+        );
+        assert!(is_valid);
+    }
 
-    // Step 2: generate pk1 and use fixed program_id
-    let pk1 = generate_mock_pubkey();
-    let program_id = "11111111111111111111111111111111";
-    let blockhash = generate_mock_pubkey();
-    let data = bs58::encode(b"mockdata").into_string();
+    #[test]
+    fn test_multi_signature_correct_index() {
+        // Step 1: generate keypair for pk2
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let pk2 = bs58::encode(keypair.verifying_key().to_bytes()).into_string();
 
-    // Step 3: build transaction where pk2 is signer at index 1
-    let input_tx = generate_input_transaction(
-        2,
-        vec![&pk1, &pk2, program_id],
-        &blockhash,
-        2,
-        vec![0, 1],
-        &data,
-    );
+        // Step 2: generate pk1 and use fixed program_id
+        let pk1 = generate_mock_pubkey();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-    let mut tx = Transaction::try_from(input_tx).unwrap();
+        // Step 3: build transaction where pk2 is signer at index 1
+        let input_tx = generate_input_transaction(
+            2,
+            vec![&pk1, &pk2, program_id],
+            &blockhash,
+            2,
+            vec![0, 1],
+            &data,
+        );
 
-    // Save original signature at index 0
-    let original_sig_0 = tx.signatures[0].to_bytes();
+        let mut tx = Transaction::try_from(input_tx).unwrap();
 
-    // Step 4: use real keypair for pk2 (index 1)
-    let res = sign_transaction_by_key(&mut tx, &keypair);
-    assert!(res.is_ok(), "Signing failed: {:?}", res.unwrap_err());
+        // Save original signature at index 0
+        let original_sig_0 = tx.signatures[0].to_bytes();
 
-    // Signature at index 1 should be updated
-    assert_eq!(tx.signatures.len(), 2);
-    assert_ne!(tx.signatures[1].to_bytes(), [0u8; 64]);
+        // Step 4: use real keypair for pk2 (index 1)
+        let res = sign_transaction_by_key(&mut tx, &keypair);
+        assert!(res.is_ok(), "Signing failed: {:?}", res.unwrap_err());
 
-    // Signature at index 0 must remain unchanged
-    assert_eq!(tx.signatures[0].to_bytes(), original_sig_0);
+        // Signature at index 1 should be updated
+        assert_eq!(tx.signatures.len(), 2);
+        assert_ne!(tx.signatures[1].to_bytes(), [0u8; 64]);
 
-    // Validate signature at index 1
-    let message_bytes = serialize(&tx.message).unwrap();
-    let verifying_key = keypair.verifying_key();
-    let is_valid = ed25519::verify_signature(
-        &verifying_key,
-        &message_bytes,
-        &ed25519::signature_from_bytes(&tx.signatures[1].to_bytes()),
-    );
-    assert!(is_valid);
-}
+        // Signature at index 0 must remain unchanged
+        assert_eq!(tx.signatures[0].to_bytes(), original_sig_0);
 
-/// This test checks that signing fails when provided key does not match any required signer
-#[test]
-fn test_sign_transaction_missing_key() {
-    use solana_tools_lite::errors::{SignError, ToolError};
+        // Validate signature at index 1
+        let message_bytes = serialize(&tx.message).unwrap();
+        let verifying_key = keypair.verifying_key();
+        let is_valid = ed25519::verify_signature(
+            &verifying_key,
+            &message_bytes,
+            &ed25519::signature_from_bytes(&tx.signatures[1].to_bytes()),
+        );
+        assert!(is_valid);
+    }
 
-    // Step 1: generate keypair not part of transaction
-    let fake_keypair = ed25519::keypair_from_seed(&[99u8; 32]).unwrap();
+    /// This test checks that signing fails when provided key does not match any required signer
+    #[test]
+    fn test_sign_transaction_missing_key() {
+        use solana_tools_lite::errors::{SignError, ToolError};
 
-    // Step 2: generate pk1 and pk2 (required signers), program ID is fixed
-    let pk1 = generate_mock_pubkey();
-    let pk2 = generate_mock_pubkey();
-    let program_id = "11111111111111111111111111111111";
-    let blockhash = generate_mock_pubkey();
-    let data = bs58::encode(b"mockdata").into_string();
+        // Step 1: generate keypair not part of transaction
+        let fake_keypair = ed25519::keypair_from_seed(&[99u8; 32]).unwrap();
 
-    // Step 3: create input transaction with pk1 and pk2 as signers
-    let input_tx = generate_input_transaction(
-        2,
-        vec![&pk1, &pk2, program_id],
-        &blockhash,
-        2,
-        vec![0, 1],
-        &data,
-    );
+        // Step 2: generate pk1 and pk2 (required signers), program ID is fixed
+        let pk1 = generate_mock_pubkey();
+        let pk2 = generate_mock_pubkey();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-    let mut tx = Transaction::try_from(input_tx).unwrap();
+        // Step 3: create input transaction with pk1 and pk2 as signers
+        let input_tx = generate_input_transaction(
+            2,
+            vec![&pk1, &pk2, program_id],
+            &blockhash,
+            2,
+            vec![0, 1],
+            &data,
+        );
 
-    // Step 4: try signing with a key not matching pk1 or pk2
-    let result = sign_transaction_by_key(&mut tx, &fake_keypair);
-    assert!(matches!(
-        result,
-        Err(ToolError::Sign(SignError::SignerKeyNotFound))
-    ));
-}
+        let mut tx = Transaction::try_from(input_tx).unwrap();
 
-#[test]
-fn test_sign_transaction_out_of_bounds() {
-    use solana_tools_lite::errors::{SignError, ToolError};
+        // Step 4: try signing with a key not matching pk1 or pk2
+        let result = sign_transaction_by_key(&mut tx, &fake_keypair);
+        assert!(matches!(
+            result,
+            Err(ToolError::Sign(SignError::SignerKeyNotFound))
+        ));
+    }
 
-    // Step 1: Generate keypair that will be at index 2 (non-signer)
-    let non_signer_key = ed25519::keypair_from_seed(&[3u8; 32]).unwrap();
-    let pk0 = generate_mock_pubkey();
-    let pk1 = generate_mock_pubkey();
-    let pk2 = bs58::encode(non_signer_key.verifying_key().to_bytes()).into_string(); // this will be at index 2
+    #[test]
+    fn test_sign_transaction_out_of_bounds() {
+        use solana_tools_lite::errors::{SignError, ToolError};
 
-    let program_id = "11111111111111111111111111111111";
-    let blockhash = generate_mock_pubkey();
-    let data = bs58::encode(b"mockdata").into_string();
+        // Step 1: Generate keypair that will be at index 2 (non-signer)
+        let non_signer_key = ed25519::keypair_from_seed(&[3u8; 32]).unwrap();
+        let pk0 = generate_mock_pubkey();
+        let pk1 = generate_mock_pubkey();
+        let pk2 = bs58::encode(non_signer_key.verifying_key().to_bytes()).into_string(); // this will be at index 2
 
-    // Step 2: num_required_signatures = 2, so index 2 is not required
-    let input_tx = generate_input_transaction(
-        2,
-        vec![&pk0, &pk1, &pk2, program_id],
-        &blockhash,
-        3,
-        vec![0, 1],
-        &data,
-    );
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-    let mut tx = Transaction::try_from(input_tx).unwrap();
+        // Step 2: num_required_signatures = 2, so index 2 is not required
+        let input_tx = generate_input_transaction(
+            2,
+            vec![&pk0, &pk1, &pk2, program_id],
+            &blockhash,
+            3,
+            vec![0, 1],
+            &data,
+        );
 
-    // Step 3: Attempt to sign with a non-required signer (index 2)
-    let result = sign_transaction_by_key(&mut tx, &non_signer_key);
+        let mut tx = Transaction::try_from(input_tx).unwrap();
 
-    // Step 4: Assert that signing fails with correct error
-    assert!(matches!(
-        result,
-        Err(ToolError::Sign(SignError::SigningNotRequiredForKey))
-    ));
+        // Step 3: Attempt to sign with a non-required signer (index 2)
+        let result = sign_transaction_by_key(&mut tx, &non_signer_key);
+
+        // Step 4: Assert that signing fails with correct error
+        assert!(matches!(
+            result,
+            Err(ToolError::Sign(SignError::SigningNotRequiredForKey))
+        ));
+    }
 }

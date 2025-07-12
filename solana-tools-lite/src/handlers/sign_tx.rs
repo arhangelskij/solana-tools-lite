@@ -29,7 +29,7 @@ pub fn handle_sign_transaction_file(
     let signing_key = SigningKey::from_bytes(seed);
 
     // 3. Sign message
-    sign_transaction(&mut tx, &signing_key)?;
+    sign_transaction_by_key(&mut tx, &signing_key)?;
 
     // 4. Serialize back
     let json_out = if json_pretty {
@@ -45,19 +45,6 @@ pub fn handle_sign_transaction_file(
         println!("{json_out}");
     }
 
-    Ok(())
-}
-
-/// Helper: sign first signature slot
-pub fn sign_transaction(tx: &mut Transaction, key: &SigningKey) -> Result<()> {
-    let msg_bytes = utils::serialize(&tx.message)?;
-    let sig: Signature = ed25519::sign_message(key, &msg_bytes);
-
-    if tx.signatures.is_empty() {
-        tx.signatures.push(sig);
-    } else {
-        tx.signatures[0] = sig;
-    }
     Ok(())
 }
 

@@ -1,7 +1,7 @@
 use solana_tools_lite::models::hash_base58::HashBase58;
 use solana_tools_lite::{
     crypto::ed25519,
-    handlers::sign_tx::sign_transaction,
+    handlers::sign_tx::sign_transaction_by_key,
     models::pubkey_base58::PubkeyBase58,
     models::transaction::{Instruction, Message, MessageHeader, Transaction}
 };
@@ -51,7 +51,9 @@ fn test_real_tx_signature_base58() {
         message: msg,
     };
 
-    sign_transaction(&mut tx, &keypair).unwrap();
+
+//TODO: 🔴 FIXME
+    sign_transaction_by_key(&mut tx, &keypair).unwrap();
 
     let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
     println!("Signature (base58): {}", sig_bytes);

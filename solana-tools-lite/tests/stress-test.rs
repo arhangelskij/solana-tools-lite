@@ -1,5 +1,5 @@
 use solana_tools_lite::crypto::ed25519;
-use solana_tools_lite::handlers::sign_tx::sign_transaction;
+use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
 use solana_tools_lite::models::transaction::{Message, MessageHeader, Transaction, Instruction};
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use std::time::Instant;
@@ -44,7 +44,6 @@ use std::time::Instant;
 fn benchmark_signing_realistic_transactions_BIN() {
     use solana_tools_lite::{
         crypto::ed25519,
-        handlers::sign_tx::sign_transaction,
         models::transaction::{Instruction, Message, Transaction},
     };
     use std::time::Instant;
@@ -82,9 +81,9 @@ use solana_tools_lite::models::hash_base58::HashBase58;
                 ],
             },
         };
-
+//TODO: 🔴 FIXME 
         let mut tx = tx;
-        sign_transaction(&mut tx, &keypair).unwrap();
+        sign_transaction_by_key(&mut tx, &keypair).unwrap();
     }
 
     let elapsed = start.elapsed();
