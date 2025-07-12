@@ -24,14 +24,13 @@ pub struct Message {
 
     /// List of all account addresses (base58).
     #[serde(with = "short_vec")] // this is correct!
-    //#[serde(with = "serde_pubkey_base58")]
     pub account_keys: Vec<PubkeyBase58>,
 
     /// Recent blockhash as base58 string (used for replay protection).
     pub recent_blockhash: HashBase58,
 
     /// List of instructions — each instruction defines a program call (e.g., transfer, mint).
-    #[serde(with = "short_vec")] //TODO: 🔴 check a format in tests
+    #[serde(with = "short_vec")]
     pub instructions: Vec<Instruction>
 }
 

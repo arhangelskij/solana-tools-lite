@@ -6,6 +6,8 @@ use solana_tools_lite::{
     models::transaction::{Instruction, Message, MessageHeader, Transaction}
 };
 
+use solana_tools_lite::utils;
+
 #[test]
 fn test_real_tx_signature_base58() {
     let seed = [1u8; 32];
@@ -31,7 +33,7 @@ fn test_real_tx_signature_base58() {
             num_readonly_unsigned_accounts: 1,
         },
         account_keys: vec![
-            PubkeyBase58([1u8; 32]),
+            PubkeyBase58(keypair.verifying_key().to_bytes()),
             PubkeyBase58([2u8; 32]),
             PubkeyBase58([3u8; 32]),
         ],
@@ -51,17 +53,14 @@ fn test_real_tx_signature_base58() {
         message: msg,
     };
 
-
-//TODO: 🔴 FIXME
     sign_transaction_by_key(&mut tx, &keypair).unwrap();
 
     let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
     println!("Signature (base58): {}", sig_bytes);
 
-    // Check sig bytes with a real result from solana sdk
-    assert_eq!(sig_bytes, "5aDjptcVLWEu3W8kWpo62tKg5JKTbK24wUrdHnZPnvfUTEMEZ8ovsbiEY3rsFcte8KqbrqRVSu6fjnEkWSTqsPEq");
-
-    use solana_tools_lite::utils;
+    // Check sig bytes with a real result from solana sdk 
+    // for Pubkey::new_from_array([138, 136, 227, 221, 116, 9, 241, 149, 253, 82, 219, 45, 60, 186, 93, 114, 202, 103, 9, 191, 29, 148, 18, 27, 243, 116, 136, 1, 180, 15, 111, 92])
+    assert_eq!(sig_bytes, "5tU1PNYL8QvTqxiNq6vPkq69V8TKtSMFqsVr3pf7ocwserQf7SeTupg3NqR8XMURUznAC5jgLp1Xyhc6U2gRAkqF");
 
     let test = TestStruct {
         a: 1,
