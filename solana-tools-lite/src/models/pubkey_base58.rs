@@ -44,3 +44,18 @@ impl From<[u8; 32]> for PubkeyBase58 {
         PubkeyBase58(bytes)
     }
 }
+
+use std::fmt;
+//TODO: or change to custom 
+/*
+impl PubkeyBase58 {
+    pub fn as_base58(&self) -> String {
+        bs58::encode(self.0).into_string()
+    }
+} 
+*/
+impl fmt::Display for PubkeyBase58 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", bs58::encode(self.0).into_string())
+    }
+}

@@ -1,11 +1,12 @@
 mod tests {
+    use rayon::result;
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
-    use solana_tools_lite::utils;
     use solana_tools_lite::models::{
-        input_transaction::{InputTransaction, UiCompiledInstruction},
-        transaction::Transaction
+        input_transaction::{InputTransaction, UiTransaction},
+        transaction::Transaction,
     };
+    use solana_tools_lite::utils;
 
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
 
@@ -204,32 +205,32 @@ mod tests {
         let data = bs58::encode(b"mockdata").into_string();
 
         // Step 3: build transaction
-        let input_tx =
+        let input_tx: InputTransaction =
             generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
 
         let mut tx = Transaction::try_from(input_tx).unwrap();
 
+        let result = sign_transaction_by_key(&mut tx, &keypair);
+        assert!(result.is_ok());
 
-        // let test_seed = [1u8; 32];
-        // let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
-        // let verifying_key = signing_key.verifying_key();
+        let ui_tx = UiTransaction::from(&tx);
 
-        _ = sign_transaction_by_key(&mut tx, &keypair);
+        println!("Signatures in UiTransaction:");
+        for sig in &ui_tx.signatures {
+            println!("{}", sig);
+        }
 
-        // Serialize to json string (simulate saving to file)
-        let saved = serde_json::to_string(&tx).unwrap();
+        let roundtrip_input = InputTransaction::Json(ui_tx);
+        let saved_json = serde_json::to_string(&roundtrip_input).unwrap();
 
-        //TODO: 🟡 mb should use sign_tx + sign_transaction
+        // 🔁 Deserialize from same format
+        let deserialized: InputTransaction = serde_json::from_str(&saved_json).unwrap();
+        let tx2 = Transaction::try_from(deserialized).unwrap();
 
         // Reload and verify signature
-        let tx2: Transaction = serde_json::from_str(&saved).unwrap();
-        let sig_decoded = bs58::decode(&tx2.signatures[0].to_bytes())
-            .into_vec()
-            .unwrap();
-        let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
-        //let msg_bytes = serde_json::to_vec(&tx2.message).unwrap();
+        let sig_bytes = &tx2.signatures[0].to_bytes();
+        let signature = ed25519::signature_from_bytes(&sig_bytes);
         let msg_bytes = utils::serialize(&tx2.message).unwrap();
-        
 
         let is_valid = ed25519::verify_signature(&verifying_key, &msg_bytes, &signature);
 
@@ -376,19 +377,16 @@ mod tests {
 
 ////////////////////////////////////////////////
 ///
-/// 
-
-
+///
 
 #[path = "utils.rs"]
 mod utils;
 
 mod tests_signing {
-use crate::utils::*;
-   
-    use solana_tools_lite::models::{transaction::Transaction};
+    use crate::utils::*;
+
+    use solana_tools_lite::models::transaction::Transaction;
     use solana_tools_lite::utils::serialize;
-    
 
     use solana_tools_lite::crypto::ed25519;
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
