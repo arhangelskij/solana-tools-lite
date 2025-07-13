@@ -24,7 +24,7 @@ pub fn write_file(path: &str, data: &str) -> Result<(), SignError> {
         path: Some(path.to_owned())
     })
 }
-
+//TODO: looks like a wrong error type
 pub fn read_stdin_or_file(path: Option<&String>) -> Result<String, SignError> {
     use std::fs;
     
@@ -49,13 +49,6 @@ pub fn pretty_print_json<T: Serialize>(value: &T) {
     let output = serde_json::to_string_pretty(value)
         .unwrap_or_else(|_| "{\"error\":\"Serialization error\"}".to_string());
     println!("{output}");
-}
-
-//TODO: not used 
-/// Prints error to stderr and exits with code 1.
-pub fn exit_with_error(msg: &str) -> ! {
-    eprintln!("Error: {msg}");
-    std::process::exit(1)
 }
 
 /// HEX encode

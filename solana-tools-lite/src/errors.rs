@@ -129,5 +129,7 @@ pub enum TransactionParseError {
     #[error("Expected 32 bytes for blockhash, got {0}")]
     InvalidBlockhashLength(usize),
     #[error("Invalid blockhash string: {0}")]
-    InvalidBlockhashFormat(String)
+    InvalidBlockhashFormat(String),
+     #[error("Invalid input format: {0}")]
+    InvalidFormat(String)
 }
