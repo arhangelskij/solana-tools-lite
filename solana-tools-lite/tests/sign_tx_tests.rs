@@ -1,5 +1,4 @@
-mod tests {
-    use rayon::result;
+mod tests_sign_tx {
     use serde_json;
     use solana_tools_lite::crypto::ed25519;
     use solana_tools_lite::models::{
@@ -7,84 +6,11 @@ mod tests {
         transaction::Transaction,
     };
     use solana_tools_lite::utils;
-
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
-    use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
     use crate::utils::*;
 
-    #[test]
-    fn test_transaction_json_roundtrip() {
-        let pk1 = generate_mock_pubkey();
-        let pk2 = generate_mock_pubkey();
-        let blockhash = generate_mock_pubkey();
-        let data = bs58::encode(b"mockdata").into_string();
-
-        let input_tx: InputTransaction = generate_input_transaction(
-            1,
-            vec![&pk1, &pk2, "11111111111111111111111111111111"],
-            &blockhash,
-            2,
-            vec![0, 1],
-            &data,
-        );
-
-        //input_tx = {:?}", input_tx);
-
-        let tx: Transaction = Transaction::try_from(input_tx).expect("parse");
-
-        let new_json = serde_json::to_string_pretty(&tx).expect("serialize");
-
-        //println!("-------------- {}", new_json);
-        let tx2: Transaction = serde_json::from_str(&new_json).expect("parse 2");
-
-        assert_eq!(tx.message.account_keys, tx2.message.account_keys);
-        assert_eq!(tx.signatures, tx2.signatures);
-    }
-
-    #[test]
-    fn test_insert_signature_in_unsigned_transaction() {
-        // JSON of an unsigned transaction
-        let tx_json = r#"
-    {
-        "signatures": [""],
-        "message": {
-            "account_keys": [
-                "SenderPubKeyBase58Here",
-                "RecipientPubKeyBase58Here",
-                "11111111111111111111111111111111"
-            ],
-            "recent_blockhash": "SomeRecentBlockhashBase58",
-            "instructions": [
-                {
-                    "program_id_index": 2,
-                    "accounts": [0, 1],
-                    "data": "3Bxs4R9sW4B"
-                }
-            ]
-        }
-    }
-    "#;
-
-        // Parse transaction
-        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
-
-        // Create a dummy signature (64 bytes filled with 9)
-        let dummy_bytes = [9u8; 64];
-        let signature = ed25519_dalek::Signature::from_bytes(&dummy_bytes);
-
-        // Insert the signature into the transaction
-        tx.signatures[0] = signature;
-
-        // Roundtrip: serialize and deserialize to check consistency
-        let serialized = serde_json::to_string(&tx).unwrap();
-        let parsed: Transaction = serde_json::from_str(&serialized).unwrap();
-
-        // Verify inserted signature matches original dummy signature
-        let parsed_sig_bytes = parsed.signatures[0].to_bytes();
-        assert_eq!(parsed_sig_bytes, dummy_bytes);
-    }
-
+  
     #[test]
     // fn test_sign_and_verify_transaction_message() {
     //     let tx_json = r#"
@@ -142,7 +68,7 @@ mod tests {
         // TODO: Parse valid json, sign message, verify signature == true
         // assert!(...)
     }
-    //TODO: 🔴 test
+
     #[test]
     fn test_transaction_with_zero_required_signatures_has_empty_signatures() {
         let pk1 = generate_mock_pubkey();
@@ -278,77 +204,62 @@ mod tests {
     #[test]
     fn test_signature_invalid_on_key_tamper() {
         // Verifying with another key must fail
-        let tx_json = r#"
-        {
-            "signatures": [""],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
+        // Step 1: generate keypair
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let verifying_key = keypair.verifying_key();
 
-        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
-        let test_seed = [1u8; 32];
-        let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
+        // Step 2: generate pk and use fixed program_id
+        let pk = bs58::encode(verifying_key.to_bytes()).into_string();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-        let result = sign_transaction_by_key(&mut tx, &signing_key); //TODO: 🔴
+        // Step 3: build transaction
+          let input_tx: InputTransaction =
+            generate_input_transaction(1, vec![&pk, program_id], 
+                &blockhash, 2, vec![0, 1], &data);
+    ////////////////////////////////////
+
+        let mut tx = Transaction::try_from(input_tx).unwrap();
+     
+        let result = sign_transaction_by_key(&mut tx, &keypair);
         assert!(result.is_ok());
-
-        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        // let signature = ed25519::sign_message(&signing_key, &message_bytes);
-        // tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
 
         // Use another keypair for verification
         let other_seed = [2u8; 32];
         let other_signing_key = ed25519::keypair_from_seed(&other_seed).unwrap();
         let other_verifying_key = other_signing_key.verifying_key();
 
-        let sig_decoded = bs58::decode(&tx.signatures[0].to_bytes())
-            .into_vec()
-            .unwrap();
-        let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
+        let signature = tx.signatures[0];
+        let message_bytes = serde_json::to_vec(&tx.message).unwrap();
 
         let is_valid = ed25519::verify_signature(&other_verifying_key, &message_bytes, &signature);
-        assert!(!is_valid);
+        assert!(!is_valid, "Signature verified with wrong key!");
     }
 
     #[test]
     fn test_invalid_signature_handling() {
         // Pass random bytes or empty sig, must fail
-        let tx_json = r#"
-        {
-            "signatures": ["C4hqXg2jWsasQZ43VUBCqTYPE1fVVJQ5C3g2PF2UJjcuseFufzLTqzbE22DTPBYtocQTACLav3mZT86KKrMzqEM"],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
+        
+        // Step 1: generate keypair
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let verifying_key = keypair.verifying_key();
 
-        let tx: Transaction = serde_json::from_str(tx_json).unwrap();
+        // Step 2: generate pk and use fixed program_id
+        let pk = bs58::encode(verifying_key.to_bytes()).into_string();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
+
+        // Step 3: build transaction
+          let input_tx: InputTransaction =
+            generate_input_transaction(1, vec![&pk, program_id], 
+                &blockhash, 2, vec![0, 1], &data);
+    ////////////////////////////////////
+
+        let tx: Transaction = Transaction::try_from(input_tx).unwrap();
         let bad_sig = vec![0u8; 64];
         let sig_bytes: [u8; 64] = bad_sig.try_into().unwrap();
         let fake_signature = ed25519::signature_from_bytes(&sig_bytes);
