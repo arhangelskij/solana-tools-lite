@@ -10,65 +10,6 @@ mod tests_sign_tx {
 
     use crate::utils::*;
 
-  
-    #[test]
-    // fn test_sign_and_verify_transaction_message() {
-    //     let tx_json = r#"
-    //     {
-    //         "signatures": [""],
-    //         "message": {
-    //             "account_keys": [
-    //                 "SenderPubKeyBase58Here",
-    //                 "RecipientPubKeyBase58Here",
-    //                 "11111111111111111111111111111111"
-    //             ],
-    //             "recent_blockhash": "SomeRecentBlockhashBase58",
-    //             "instructions": [
-    //                 {
-    //                     "program_id_index": 2,
-    //                     "accounts": [0, 1],
-    //                     "data": "3Bxs4R9sW4B"
-    //                 }
-    //             ]
-    //         }
-    //     }
-    //     "#;
-
-    //     let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
-
-    //     // Use a fixed 32-byte test seed
-    //     let test_seed = [1u8; 32];
-    //     let signing_key = ed25519::keypair_from_seed(&test_seed).expect("Create keypair");
-    //     let verifying_key = signing_key.verifying_key();
-
-    //     let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-
-    //     // Sign using wrapper
-    //     let signature = ed25519::sign_message(&signing_key, &message_bytes);
-    //     tx.signatures[0] = signature;
-
-    //     // For verification: decode back
-    //     let signature_decoded = bs58::decode(&tx.signatures[0].to_bytes())
-    //         .into_vec()
-    //         .expect("decode b58");
-    //     let signature = ed25519::signature_from_bytes(&signature_decoded.try_into().unwrap());
-
-    //     // Verify using wrapper
-    //     let is_valid = ed25519::verify_signature(&verifying_key, &message_bytes, &signature);
-    //     assert!(is_valid);
-    //     //TODO: 🟡 check
-    //     // Tampered negative case
-    //     let mut tampered = message_bytes.clone();
-    //     tampered[0] ^= 0xFF;
-    //     let is_invalid = !ed25519::verify_signature(&verifying_key, &tampered, &signature);
-    //     assert!(is_invalid);
-    // }
-    #[test]
-    fn test_sign_and_verify_valid_tx() {
-        // TODO: Parse valid json, sign message, verify signature == true
-        // assert!(...)
-    }
-
     #[test]
     fn test_transaction_with_zero_required_signatures_has_empty_signatures() {
         let pk1 = generate_mock_pubkey();
