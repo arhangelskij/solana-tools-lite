@@ -9,6 +9,7 @@ mod tests {
     use solana_tools_lite::utils;
 
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
+    use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
     use crate::utils::*;
 
@@ -206,7 +207,8 @@ mod tests {
 
         // Step 3: build transaction
         let input_tx: InputTransaction =
-            generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
+            generate_input_transaction(1, vec![&pk, program_id], 
+                &blockhash, 2, vec![0, 1], &data);
 
         let mut tx = Transaction::try_from(input_tx).unwrap();
 
@@ -237,50 +239,37 @@ mod tests {
         assert!(is_valid);
     }
 
-    // ‼️
+    // After signing, tamper with message, signature must fail
     #[test]
     fn test_signature_invalid_on_message_tamper() {
-        // After signing, tamper with message, signature must fail
-        let tx_json = r#"
-        {
-            "signatures": [""],
-            "message": {
-                "account_keys": [
-                    "SenderPubKeyBase58Here",
-                    "RecipientPubKeyBase58Here",
-                    "11111111111111111111111111111111"
-                ],
-                "recent_blockhash": "SomeRecentBlockhashBase58",
-                "instructions": [
-                    {
-                        "program_id_index": 2,
-                        "accounts": [0, 1],
-                        "data": "3Bxs4R9sW4B"
-                    }
-                ]
-            }
-        }
-        "#;
+        // Step 1: generate keypair
+        let seed = [42u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let verifying_key = keypair.verifying_key();
 
-        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
-        let test_seed = [1u8; 32];
-        let signing_key = ed25519::keypair_from_seed(&test_seed).unwrap();
-        let verifying_key = signing_key.verifying_key();
+        // Step 2: generate pk and use fixed program_id
+        let pk = bs58::encode(verifying_key.to_bytes()).into_string();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
 
-        // let message_bytes = serde_json::to_vec(&tx.message).unwrap();
-        // let signature = ed25519::sign_message(&signing_key, &message_bytes);
-        // tx.signatures[0] = bs58::encode(signature.to_bytes()).into_string();
-        sign_transaction_by_key(&mut tx, &signing_key);
+        // Step 3: build transaction
+          let input_tx: InputTransaction =
+            generate_input_transaction(1, vec![&pk, program_id], 
+                &blockhash, 2, vec![0, 1], &data);
+
+
+        let mut tx = Transaction::try_from(input_tx).unwrap();
+
+        let result = sign_transaction_by_key(&mut tx, &keypair);
+        assert!(result.is_ok(), "Signing failed: {:?}", result.unwrap_err());
 
         // Tamper with the message
         let mut tampered_msg = tx.message;
-        tampered_msg.account_keys[0] = "TamperedKey".try_into().unwrap();
+        tampered_msg.account_keys[0] = generate_fake_pubkey();
 
         let tampered_bytes = serde_json::to_vec(&tampered_msg).unwrap();
-        let sig_decoded = bs58::decode(&tx.signatures[0].to_bytes())
-            .into_vec()
-            .unwrap();
-        let signature = ed25519::signature_from_bytes(&sig_decoded.try_into().unwrap());
+        let signature = tx.signatures[0];
 
         let is_valid = ed25519::verify_signature(&verifying_key, &tampered_bytes, &signature);
         assert!(!is_valid);

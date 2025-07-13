@@ -1,6 +1,7 @@
 use bs58;
 use rand::RngCore;
 use rand::rng;
+use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
 /// Generates a valid 32-byte Base58 public key
 pub fn generate_mock_pubkey() -> String {
@@ -17,6 +18,12 @@ pub fn generate_mock_signature() -> String {
     let mut rng = rng();
     rng.fill_bytes(&mut bytes);
     bs58::encode(bytes).into_string()
+}
+
+pub fn generate_fake_pubkey() -> PubkeyBase58 {
+    let bytes = [42u8; 32];
+    let encoded = bs58::encode(bytes).into_string();
+    PubkeyBase58::try_from(encoded.as_str()).unwrap()
 }
 
 use solana_tools_lite::models::input_transaction::{
