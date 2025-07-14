@@ -130,6 +130,8 @@ pub enum TransactionParseError {
     InvalidBlockhashLength(usize),
     #[error("Invalid blockhash string: {0}")]
     InvalidBlockhashFormat(String),
-     #[error("Invalid input format: {0}")]
-    InvalidFormat(String)
+    #[error("Invalid input format: {0}")]
+    InvalidFormat(String),
+    #[error("Serialization error: {0}")]
+    Serialization(String)//TODO: 🟡 serde error?
 }

@@ -16,6 +16,7 @@ pub fn read_stdin_or_arg(arg: &str) -> io::Result<String> {
 }
     */
 
+    /* Deprecated
 pub fn write_file(path: &str, data: &str) -> Result<(), SignError> {
     use std::{fs};
 
@@ -43,6 +44,8 @@ pub fn read_stdin_or_file(path: Option<&String>) -> Result<String, SignError> {
         }
     }
 }
+
+    */
 
 /// Pretty-prints any serializable struct as JSON.
 pub fn pretty_print_json<T: Serialize>(value: &T) {

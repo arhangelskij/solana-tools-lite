@@ -224,7 +224,7 @@ mod tests_sign_tx {
 mod utils;
 
 mod tests_signing {
-    use crate::utils::*;
+    use crate::utils::{generate_input_transaction, generate_mock_pubkey};
 
     use solana_tools_lite::models::transaction::Transaction;
     use solana_tools_lite::utils::serialize;

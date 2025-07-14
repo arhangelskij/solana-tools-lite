@@ -23,7 +23,7 @@ pub struct Message {
     pub header: MessageHeader,
 
     /// List of all account addresses (base58).
-    #[serde(with = "short_vec")] // this is correct!
+    #[serde(with = "short_vec")]
     pub account_keys: Vec<PubkeyBase58>,
 
     /// Recent blockhash as base58 string (used for replay protection).
@@ -49,12 +49,10 @@ pub struct Instruction {
 
     /// List of indices of the involved accounts (in account_keys array).
     #[serde(with = "short_vec")]
-    //#[serde(with = "serde_bytes_base58")]
     pub accounts: Vec<u8>,
 
     /// Instruction data, base58 or base64 encoded (depends on source, but base58 is common in Solana).
     #[serde(with = "short_vec")]
-    //#[serde(with = "serde_bytes_base58")]
     pub data: Vec<u8>
 }
 

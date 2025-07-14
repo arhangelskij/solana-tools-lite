@@ -3,9 +3,10 @@ use crate::{
     errors::{Result, SignError},
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
-    utils::{self, read_stdin_or_file, write_file},
+    utils::{serialize},
 };
 use ed25519_dalek::{Signature, SigningKey};
+use crate::layers::io::*;
 
 /// Read tx JSON → sign → output JSON / stdout
 pub fn handle_sign_transaction_file(
@@ -15,7 +16,7 @@ pub fn handle_sign_transaction_file(
     json_pretty: bool,
 ) -> Result<()> {
     // 1. Load TX JSON (file or stdin)
-    let tx_raw = self::read_stdin_or_file(input)?; // -> String
+    let tx_raw = read_input(input.map(|s| s.as_str()))?; // -> String
     let mut tx: Transaction = serde_json::from_str(&tx_raw).map_err(SignError::JsonParse)?;
 
     // 2. Decode & validate secret key
@@ -40,7 +41,7 @@ pub fn handle_sign_transaction_file(
 
     // 5. Output
     if let Some(path) = output {
-        write_file(path, &json_out)?;
+        write_output(Some(path.as_str()), &json_out)?;
     } else {
         println!("{json_out}");
     }
@@ -67,7 +68,7 @@ pub fn sign_transaction_by_key(tx: &mut Transaction, key: &SigningKey) -> Result
         return Err(SignError::SigningNotRequiredForKey)?;
     }
 
-    let msg_bytes = utils::serialize(&tx.message)?;
+    let msg_bytes = serialize(&tx.message)?;
     let sig = ed25519::sign_message(key, &msg_bytes);
 
     // Resize signatures if needed
