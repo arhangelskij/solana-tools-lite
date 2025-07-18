@@ -17,7 +17,7 @@ pub fn generate_mnemonic() -> Result<String> {//Result<String, Bip39Error> {
 }
 
 /// Derive a 64-byte seed from a BIP-39 mnemonic and passphrase.
-pub fn derive_seed(mnemonic: &str, passphrase: &str) -> Result<[u8; 64]> {//, Bip39Error> {
+pub fn derive_seed(mnemonic: &str, passphrase: &str) -> Result<[u8; 64]> {
     let salt = format!("mnemonic{passphrase}");
     let mut out = [0u8; 64];
     
