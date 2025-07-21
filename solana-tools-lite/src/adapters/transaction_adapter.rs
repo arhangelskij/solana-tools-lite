@@ -1,14 +1,14 @@
 use std::convert::TryFrom;
 
 use crate::models::hash_base58::HashBase58;
-use crate::models::input_transaction::InputTransaction;
+use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, Transaction};
 
 use crate::errors::TransactionParseError;
-use base64::{Engine, engine::general_purpose};
-use bincode::config::standard;
-use bincode::serde::decode_from_slice;
+use data_encoding::BASE64;
+use bs58;
+use serde_json;
 use ed25519_dalek::Signature;
 
 impl TryFrom<InputTransaction> for Transaction {
@@ -17,25 +17,23 @@ impl TryFrom<InputTransaction> for Transaction {
     fn try_from(input: InputTransaction) -> Result<Self, Self::Error> {
         match input {
             InputTransaction::Base64(s) => {
-                let bytes = general_purpose::STANDARD
-                    .decode(&s)
-                    .map_err(|e| TransactionParseError::InvalidBase64(e.to_string()))?;
+                // Decode Base64-encoded JSON
+                let decoded = BASE64
+                    .decode(s.as_bytes())
+                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
 
-                let config = standard().with_fixed_int_encoding();
-
-                let (tx, _) = decode_from_slice::<Transaction, _>(&bytes, config)
-                    .map_err(|e| TransactionParseError::BincodeDeserialize(e.to_string()))?;
-                Ok(tx)
+                let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
+                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
+                Transaction::try_from(ui_tx)
             }
             InputTransaction::Base58(s) => {
-                let bytes = bs58::decode(&s)
+                // Decode Base58-encoded JSON
+                let decoded = bs58::decode(s)
                     .into_vec()
-                    .map_err(|e| TransactionParseError::InvalidBase58(e.to_string()))?;
-
-                let config = standard().with_fixed_int_encoding();
-                let (tx, _) = decode_from_slice::<Transaction, _>(&bytes, config)
-                    .map_err(|e| TransactionParseError::BincodeDeserialize(e.to_string()))?;
-                Ok(tx)
+                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
+                let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
+                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
+                Transaction::try_from(ui_tx)
             }
             InputTransaction::Json(ui_tx) => {
                 let message = Message {

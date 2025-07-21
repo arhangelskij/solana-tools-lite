@@ -1,13 +1,16 @@
+use crate::errors::Result;
+use crate::errors::SignError;
 use crate::errors::TransactionParseError;
-use crate::errors::{Result};
-use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::layers::io::*;
+use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use serde_json;
+use std::io;
+use std::path::Path;
 
 pub enum InputFormat {
     Json,
     Base64,
-    Base58
+    Base58,
 }
 
 pub enum OutputFormat {
@@ -15,11 +18,47 @@ pub enum OutputFormat {
     Base64,
     Base58,
 }
+//TODO: 🟡 why sign error?
+fn read_raw_input(input: Option<&str>) -> std::result::Result<String, SignError> {
+    if let Some(p) = input {
+        let p = p.trim();
 
-pub fn read_input_transaction(input: Option<&String>) -> Result<InputTransaction> {
-    let input_str = read_input(input.map(|s| s.as_str()))?;
+        if p != "-" {
+            let path = Path::new(p);
 
-    if let Ok(json_tx) = serde_json::from_str::<UiTransaction>(&input_str) {
+            if path.exists() {
+                println!("🟡 path is exist!");
+                if path.is_file() {
+                    return read_input(Some(p));
+                } else {
+                    println!(" it isnt file 🤷🏾‍♂️");
+                    // path exists but is not a file (e.g. a directory)
+                    return Err(SignError::IoWithPath {
+                        source: io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "input path is not a file",
+                        ),
+                        path: Some(p.to_string()),
+                    });
+                }
+            } else {
+                // literal input string
+                return Ok(p.to_string());
+            }
+        }
+    }
+    // None or "-" => read from stdin
+    read_input(None)
+}
+
+pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
+    let input_str = read_raw_input(input)
+        .map_err(|e| TransactionParseError::InvalidFormat(format!("I/O error: {}", e)))?;
+
+    //TODO: 🔴 check it
+    let trimmed_input = input_str.trim();
+
+    if let Ok(json_tx) = serde_json::from_str::<UiTransaction>(&trimmed_input) {
         return Ok(InputTransaction::Json(json_tx));
     }
 
@@ -34,12 +73,23 @@ pub fn read_input_transaction(input: Option<&String>) -> Result<InputTransaction
     Err(TransactionParseError::InvalidFormat("Unknown input format".into()).into())
 }
 
-
-use base64::{Engine as _, engine::general_purpose};
 use bs58;
+use data_encoding::BASE64;
 
-pub fn is_base64(s: &str) -> bool {
-    general_purpose::STANDARD.decode(s).is_ok()
+fn is_base64(s: &str) -> bool {
+    // check safety
+    if s.len() % 4 != 0 {
+        return false;
+    }
+
+    if !s
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
+    {
+        return false;
+    }
+
+    BASE64.decode(s.as_bytes()).is_ok()
 }
 
 pub fn is_base58(s: &str) -> bool {
@@ -66,17 +116,12 @@ pub fn write_output_transaction(
                 json_str.clone()
             }
         }
-        OutputFormat::Base64 => {
-            general_purpose::STANDARD.encode(&json_str)
-        }
-        OutputFormat::Base58 => {
-            bs58::encode(&json_str).into_string()
-        }
+        OutputFormat::Base64 => BASE64.encode(&json_str.as_bytes()),
+        OutputFormat::Base58 => bs58::encode(&json_str).into_string(),
     };
 
     // Write to file or stdout
-    write_output(output, &out_str)
-        .map_err(|e| e)?;
+    write_output(output, &out_str).map_err(|e| e)?;
 
     Ok(())
 }

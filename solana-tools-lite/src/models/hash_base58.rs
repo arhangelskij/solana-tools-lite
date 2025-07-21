@@ -14,8 +14,6 @@ impl Serialize for HashBase58 {
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 use std::fmt;
 
-use crate::errors::ToolError;
-
 impl<'de> Deserialize<'de> for HashBase58 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -48,14 +46,14 @@ impl<'de> Deserialize<'de> for HashBase58 {
 }
 
 impl TryFrom<&str> for HashBase58 {
-    type Error = ToolError;
+    type Error = TransactionParseError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let bytes = bs58::decode(s).into_vec()
         .map_err(|e| TransactionParseError::InvalidBlockhashFormat(e.to_string()))?;
        
         if bytes.len() != 32 {
-            return Err(TransactionParseError::InvalidBlockhashLength(bytes.len()))?;
+            return Err(TransactionParseError::InvalidBlockhashLength(bytes.len()));
         }
         let mut array = [0u8; 32];
         array.copy_from_slice(&bytes);
@@ -73,5 +71,15 @@ impl fmt::Display for HashBase58 {
 impl fmt::Debug for HashBase58 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "HashBase58({})", self)
+    }
+}
+
+use std::str::FromStr;
+
+impl FromStr for HashBase58 {
+    type Err = TransactionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        HashBase58::try_from(s)
     }
 }

@@ -35,9 +35,13 @@ pub struct Message {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct MessageHeader {
+    #[serde(alias = "numRequiredSignatures")]
     pub num_required_signatures: u8,
+    #[serde(alias = "numReadonlySignedAccounts")]
     pub num_readonly_signed_accounts: u8,
+    #[serde(alias = "numReadonlyUnsignedAccounts")]
     pub num_readonly_unsigned_accounts: u8
 }
 

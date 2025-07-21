@@ -7,18 +7,25 @@ use crate::{
 };
 use ed25519_dalek::{Signature, SigningKey};
 use crate::layers::io::*;
+use crate::adapters::io_adapter::read_input_transaction;
+use crate::models::input_transaction::InputTransaction;
 
 /// Read tx JSON → sign → output JSON / stdout
+//TODO: 🟡 rename into common name
 pub fn handle_sign_transaction_file(
     input: Option<&String>, //TODO: use Path?
     secret_key_b58: &str,
     output: Option<&String>,
     json_pretty: bool,
 ) -> Result<()> {
-    // 1. Load TX JSON (file or stdin)
-    let tx_raw = read_input(input.map(|s| s.as_str()))?; // -> String
-    let mut tx: Transaction = serde_json::from_str(&tx_raw).map_err(SignError::JsonParse)?;
+    // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
+    // println!("[DEBUG] -- before read_input");
+    let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
 
+    let mut tx: Transaction = Transaction::try_from(input_tx)?;
+      
+
+      println!("[DEBUG] --  Transaction::try_from(input_tx)");
     // 2. Decode & validate secret key
     let secret_bytes = bs58::decode(secret_key_b58)
         .into_vec()

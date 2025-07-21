@@ -2,8 +2,8 @@ use std::fs;
 use std::error::Error;
 
 use bs58;
-use base64::engine::general_purpose::STANDARD as BASE64;
-use base64::Engine;
+use data_encoding::BASE64;
+
 
 use solana_tools_lite::adapters::io_adapter::{is_base58, read_input_transaction};
 use solana_tools_lite::models::input_transaction::InputTransaction;
