@@ -6,6 +6,8 @@ use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, Transaction};
 
 use crate::errors::TransactionParseError;
+use anyhow::Ok;
+use bincode::config::standard;
 use data_encoding::BASE64;
 use bs58;
 use serde_json;
@@ -22,15 +24,27 @@ impl TryFrom<InputTransaction> for Transaction {
                     .decode(s.as_bytes())
                     .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
 
-                let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
-                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
-                Transaction::try_from(ui_tx)
+                let raw = BASE64
+                    .decode(s.as_bytes())
+                    .map_err(|e| TransactionParseError::InvalidBase64(e.to_string()))?;
+
+
+
+                    let (tx, _) = bincode::decode_from_slice::<Transaction, _>(&raw, standard())
+        .map_err(|e| TransactionParseError::BincodeDeserialize(e.to_string()))?;
+
+        Ok(tx)
+
+                //let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
+                //    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
+                //Transaction::try_from(ui_tx)
             }
             InputTransaction::Base58(s) => {
                 // Decode Base58-encoded JSON
                 let decoded = bs58::decode(s)
                     .into_vec()
                     .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
+                //TODO: 🔴 1) here must be bincode deserialize!
                 let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
                     .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
                 Transaction::try_from(ui_tx)

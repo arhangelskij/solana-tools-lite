@@ -28,6 +28,23 @@ impl TryFrom<&str> for PubkeyBase58 {
     }
 }
 
+impl PubkeyBase58 {
+    /// Construct a PubkeyBase58 directly from raw 32-byte slice.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, crate::errors::ToolError> {
+        // Expect exactly 32 bytes for a valid public key
+        if bytes.len() != 32 {
+            return Err(
+                crate::errors::TransactionParseError::InvalidPubkeyFormat(
+                    format!("invalid byte length: {}", bytes.len())
+                ).into()
+            );
+        }
+        let mut array = [0u8; 32];
+        array.copy_from_slice(bytes);
+        Ok(PubkeyBase58(array))
+    }
+}
+
 use serde::{Deserializer};
 impl<'de> Deserialize<'de> for PubkeyBase58 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

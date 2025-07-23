@@ -27,7 +27,10 @@ pub enum ToolError {
     Bincode(#[from] bincode::error::EncodeError),
 
     #[error("Transaction parse error: {0}")]
-    TransactionParse(#[from] TransactionParseError)
+    TransactionParse(#[from] TransactionParseError),
+
+    #[error ("Deserialization error: {0}")]
+    Deserialize(#[from] DeserializeError)
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -134,4 +137,10 @@ pub enum TransactionParseError {
     InvalidFormat(String),
     #[error("Serialization error: {0}")]
     Serialization(String)//TODO: 🟡 serde error?
+}
+
+#[derive(Debug, Error)]
+pub enum DeserializeError {
+    #[error("Deserialization error: {0}")]
+    Deserialization(String)
 }
