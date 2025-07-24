@@ -5,7 +5,7 @@ use crate::models::transaction::{Instruction, Message, MessageHeader, Transactio
 use ed25519_dalek::Signature;
 use crate::models::hash_base58::HashBase58;
 
-fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeError> {
+pub fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeError> {
     let mut cursor = 0;
 
     // 1. Читаем количество подписей (compact-u16)
@@ -37,7 +37,7 @@ fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeError>
     })
 }
 
-fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
+pub fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
     let mut cursor = 0;
 
     // 1. MessageHeader (3 bytes)
@@ -117,7 +117,7 @@ fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
 
 /// Helpers
 
-fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
+pub fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
     if data.is_empty() {
         return Err(DeserializeError::Deserialization(
             "data is empty".to_string(),
@@ -140,7 +140,7 @@ fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
     Ok((value, 2))
 }
 
-fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, DeserializeError> {
+pub fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, DeserializeError> {
     // program_id_index (1 byte)
     if *cursor + 1 > data.len() {
         return Err(DeserializeError::Deserialization(

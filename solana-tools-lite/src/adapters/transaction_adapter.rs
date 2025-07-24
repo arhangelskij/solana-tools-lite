@@ -6,12 +6,12 @@ use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, Transaction};
 
 use crate::errors::TransactionParseError;
-use anyhow::Ok;
 use bincode::config::standard;
 use data_encoding::BASE64;
 use bs58;
 use serde_json;
 use ed25519_dalek::Signature;
+use crate::deserializator::deserialize_transaction as deserialize_tx_bytes;
 
 impl TryFrom<InputTransaction> for Transaction {
     type Error = TransactionParseError;
@@ -19,25 +19,16 @@ impl TryFrom<InputTransaction> for Transaction {
     fn try_from(input: InputTransaction) -> Result<Self, Self::Error> {
         match input {
             InputTransaction::Base64(s) => {
-                // Decode Base64-encoded JSON
-                let decoded = BASE64
-                    .decode(s.as_bytes())
-                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
-
+                // Decode Base64-encoded raw Solana transaction bytes
                 let raw = BASE64
                     .decode(s.as_bytes())
                     .map_err(|e| TransactionParseError::InvalidBase64(e.to_string()))?;
 
+                // Use our custom deserializer instead of bincode::Decode
+                let tx = deserialize_tx_bytes(&raw)
+                    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
 
-
-                    let (tx, _) = bincode::decode_from_slice::<Transaction, _>(&raw, standard())
-        .map_err(|e| TransactionParseError::BincodeDeserialize(e.to_string()))?;
-
-        Ok(tx)
-
-                //let ui_tx: UiTransaction = serde_json::from_slice(&decoded)
-                //    .map_err(|e| TransactionParseError::InvalidFormat(e.to_string()))?;
-                //Transaction::try_from(ui_tx)
+                Ok(tx)
             }
             InputTransaction::Base58(s) => {
                 // Decode Base58-encoded JSON
@@ -69,7 +60,7 @@ impl TryFrom<InputTransaction> for Transaction {
                         .message
                         .instructions
                         .into_iter()
-                        .map(|i| {
+                        .map(|i| -> Result<Instruction, TransactionParseError> {
                             let data = bs58::decode(&i.data)
                                 .into_vec()
                                 .map_err(|e| TransactionParseError::InvalidInstructionData(e.to_string()))?;
@@ -80,24 +71,26 @@ impl TryFrom<InputTransaction> for Transaction {
                                 data,
                             })
                         })
-                        .collect::<Result<Vec<_>, TransactionParseError>>()?,
+                        .collect::<Result<Vec<Instruction>, TransactionParseError>>()?,
                 };
 
                 let signatures = ui_tx
                     .signatures
                     .into_iter()
-                    .map(|s| {
+                    .map(|s| -> Result<Signature, TransactionParseError> {
                         let bytes = bs58::decode(&s)
                             .into_vec()
                             .map_err(|e| TransactionParseError::InvalidSignatureFormat(e.to_string()))?;
-
-                        let sig_bytes: &[u8; 64] = bytes
+//TODO: check it
+                        let sig_bytes: [u8; 64] = bytes
                             .as_slice()
                             .try_into()
                             .map_err(|_| TransactionParseError::InvalidSignatureLength(bytes.len()))?;
 
-                        Ok(Signature::from_bytes(sig_bytes))
-                    }).collect::<Result<Vec<Signature>, TransactionParseError>>()?;
+                        Signature::try_from(&sig_bytes[..])
+                            .map_err(|e| TransactionParseError::InvalidSignatureFormat(e.to_string()))
+                    })
+                    .collect::<Result<Vec<Signature>, TransactionParseError>>()?;
 
                 Ok(Transaction {
                     signatures: signatures,
