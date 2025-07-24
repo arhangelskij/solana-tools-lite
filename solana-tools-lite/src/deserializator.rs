@@ -3,6 +3,8 @@ use crate::errors::Result;
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, MessageHeader, Transaction};
 use ed25519_dalek::Signature;
+use std::convert::TryFrom;
+use solana_short_vec::decode_shortu16_len;
 use crate::models::hash_base58::HashBase58;
 
 pub fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeError> {
@@ -13,7 +15,7 @@ pub fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeEr
     cursor += offset;
 
     // 2. Читаем подписи (по 64 байта каждая)
-    let mut signatures = Vec::new();
+    let mut signatures = Vec::with_capacity(signatures_count);
     for _ in 0..signatures_count {
         if cursor + 64 > data.len() {
             return Err(DeserializeError::Deserialization(
@@ -24,7 +26,9 @@ pub fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeEr
         let sig_bytes: [u8; 64] = data[cursor..cursor + 64].try_into().map_err(|_| {
             DeserializeError::Deserialization("Invalid signature length".to_string())
         })?;
-        signatures.push(Signature::from_bytes(&sig_bytes));
+        let sig = Signature::try_from(&sig_bytes[..])
+            .map_err(|_| DeserializeError::Deserialization("Invalid signature bytes".to_string()))?;
+        signatures.push(sig);
         cursor += 64;
     }
 
@@ -118,26 +122,9 @@ pub fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
 /// Helpers
 
 pub fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
-    if data.is_empty() {
-        return Err(DeserializeError::Deserialization(
-            "data is empty".to_string(),
-        ));
-    }
-
-    let first_byte = data[0];
-    if first_byte <= 127 {
-        return Ok((first_byte as usize, 1));
-    }
-
-    if data.len() < 2 {
-        return Err(DeserializeError::Deserialization(
-            "Not enough bytes for compact u16".to_string(),
-        ));
-    }
-
-    // Two-byte compact form (not a full shortvec, but at least safe)
-    let value = ((first_byte as u16 - 128) | ((data[1] as u16) << 7)) as usize;
-    Ok((value, 2))
+    decode_shortu16_len(data)
+        .map(|(len, consumed)| (len as usize, consumed))
+        .map_err(|_| DeserializeError::Deserialization("invalid short_vec length".to_string()))
 }
 
 pub fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, DeserializeError> {
