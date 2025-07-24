@@ -1,36 +1,45 @@
 use crate::errors::DeserializeError;
 use crate::errors::Result;
+use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, MessageHeader, Transaction};
 use ed25519_dalek::Signature;
+use crate::models::hash_base58::HashBase58;
 
 fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeError> {
     let mut cursor = 0;
-    
+
     // 1. Читаем количество подписей (compact-u16)
     let (signatures_count, offset) = read_compact_u16(&data[cursor..])?;
     cursor += offset;
-    
+
     // 2. Читаем подписи (по 64 байта каждая)
     let mut signatures = Vec::new();
     for _ in 0..signatures_count {
         if cursor + 64 > data.len() {
-            return Err(DeserializeError::Deserialization("Not enough bytes for signature".to_string()));
+            return Err(DeserializeError::Deserialization(
+                "Not enough bytes for signature".to_string(),
+            ));
         }
 
-        let sig_bytes: [u8; 64] = data[cursor..cursor + 64].try_into().map_err(|_| DeserializeError::Deserialization("Invalid signature length".to_string()))?;
+        let sig_bytes: [u8; 64] = data[cursor..cursor + 64].try_into().map_err(|_| {
+            DeserializeError::Deserialization("Invalid signature length".to_string())
+        })?;
         signatures.push(Signature::from_bytes(&sig_bytes));
         cursor += 64;
     }
-    
+
     // 3. Парсим Message
     let message = deserialize_message(&data[cursor..])?;
 
-    Ok(Transaction {signatures, message})
+    Ok(Transaction {
+        signatures,
+        message,
+    })
 }
 
 fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
     let mut cursor = 0;
-    
+
     // 1. MessageHeader (3 байта)
     let header = MessageHeader {
         num_required_signatures: data[cursor],
@@ -38,33 +47,40 @@ fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
         num_readonly_unsigned_accounts: data[cursor + 2],
     };
     cursor += 3;
-    
+
     // 2. Account keys
     let (accounts_count, offset) = read_compact_u16(&data[cursor..])?;
     cursor += offset;
-    
-    let mut account_keys = Vec::new();
+
+    let mut account_keys: Vec<PubkeyBase58> = Vec::new();
     for _ in 0..accounts_count {
-        let pubkey_bytes = &data[cursor..cursor + 32];
-        account_keys.push(bs58::encode(pubkey_bytes).into_string());
+        let pubkey_bytes: [u8; 32] = data[cursor..cursor + 32]
+            .try_into()
+            .map_err(|_| DeserializeError::Deserialization("Invalid pubkey length".to_string()))?;
+        
+        account_keys.push(PubkeyBase58(pubkey_bytes));
         cursor += 32;
     }
-    
+
     // 3. Recent blockhash (32 байта)
-    let blockhash_bytes = &data[cursor..cursor + 32];
-    let recent_blockhash = bs58::encode(blockhash_bytes).into_string();
-    cursor += 32;
+    let blockhash_bytes: [u8; 32] = data[cursor..cursor + 32].try_into()
+    .map_err(|_| DeserializeError::Deserialization("Invalid pubkey length".to_string()))?;
     
+    //pub struct HashBase58(pub [u8; 32]);
+    let recent_blockhash= HashBase58(blockhash_bytes);
+    
+    cursor += 32;
+
     // 4. Instructions
     let (instructions_count, offset) = read_compact_u16(&data[cursor..])?;
     cursor += offset;
-    
+
     let mut instructions = Vec::new();
     for _ in 0..instructions_count {
         let instruction = parse_instruction(&data[cursor..], &mut cursor)?;
         instructions.push(instruction);
     }
-    
+
     Ok(Message {
         header,
         account_keys,
@@ -77,7 +93,9 @@ fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
 
 fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
     if data.is_empty() {
-        return Err(DeserializeError::Deserialization("data is empty".to_string()));
+        return Err(DeserializeError::Deserialization(
+            "data is empty".to_string(),
+        ));
     }
 
     let first_byte = data[0];
@@ -85,7 +103,9 @@ fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
         0..=127 => Ok((first_byte as usize, 1)),
         128..=255 => {
             if data.len() < 2 {
-                return Err(DeserializeError::Deserialization("Not enough bytes for compact u16".to_string()));
+                return Err(DeserializeError::Deserialization(
+                    "Not enough bytes for compact u16".to_string(),
+                ));
             }
             //TODO: add comments
             let value = ((first_byte as u16 - 128) | ((data[1] as u16) << 7)) as usize;
@@ -96,7 +116,9 @@ fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
 
 fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, DeserializeError> {
     if *cursor + 1 > data.len() {
-        return  Err(DeserializeError::Deserialization("Not enough bytes for program_id_index".to_string()));
+        return Err(DeserializeError::Deserialization(
+            "Not enough bytes for program_id_index".to_string(),
+        ));
     }
     let program_id_index = data[*cursor];
     *cursor += 1;
@@ -107,7 +129,9 @@ fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, Des
 
     // Read accounts
     if *cursor + accounts_len > data.len() {
-        return Err(DeserializeError::Deserialization("Not enough bytes for accounts".to_string()));
+        return Err(DeserializeError::Deserialization(
+            "Not enough bytes for accounts".to_string(),
+        ));
     }
     let accounts = data[*cursor..*cursor + accounts_len].to_vec();
     *cursor += accounts_len;
@@ -118,7 +142,9 @@ fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction, Des
 
     // Read data
     if *cursor + data_len > data.len() {
-        return Err(DeserializeError::Deserialization("Not enough bytes for instruction data".to_string()));
+        return Err(DeserializeError::Deserialization(
+            "Not enough bytes for instruction data".to_string(),
+        ));
     }
     let data_bytes = data[*cursor..*cursor + data_len].to_vec();
     *cursor += data_len;
