@@ -11,7 +11,7 @@ pub fn deserialize_transaction(data: &[u8]) -> Result<Transaction, DeserializeEr
     let mut cursor = 0;
 
     // 1. Читаем количество подписей (compact-u16)
-    let (signatures_count, offset) = read_compact_u16(&data[cursor..])?;
+    let (signatures_count, offset) = read_shortvec_len(&data[cursor..])?;
     cursor += offset;
 
     // 2. Читаем подписи (по 64 байта каждая)
@@ -58,7 +58,7 @@ pub fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
     cursor += 3;
 
     // 2. Account keys
-    let (accounts_count, offset) = read_compact_u16(&data[cursor..])?;
+    let (accounts_count, offset) = read_shortvec_len(&data[cursor..])?;
     cursor += offset;
 
     let mut account_keys: Vec<PubkeyBase58> = Vec::with_capacity(accounts_count);
@@ -88,7 +88,7 @@ pub fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
     cursor += 32;
 
     // 4. Instructions
-    let (instructions_count, offset) = read_compact_u16(&data[cursor..])?;
+    let (instructions_count, offset) = read_shortvec_len(&data[cursor..])?;
     cursor += offset;
 
     let mut instructions = Vec::with_capacity(instructions_count);
@@ -121,7 +121,7 @@ pub fn deserialize_message(data: &[u8]) -> Result<Message, DeserializeError> {
 
 /// Helpers
 
-pub fn read_compact_u16(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
+pub fn read_shortvec_len(data: &[u8]) -> Result<(usize, usize), DeserializeError> {
     decode_shortu16_len(data)
         .map(|(len, consumed)| (len as usize, consumed))
         .map_err(|_| DeserializeError::Deserialization("invalid short_vec length".to_string()))
@@ -138,7 +138,7 @@ pub fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction,
     *cursor += 1;
 
     // accounts_len (compact-u16)
-    let (accounts_len, offset) = read_compact_u16(&data[*cursor..])?;
+    let (accounts_len, offset) = read_shortvec_len(&data[*cursor..])?;
     *cursor += offset;
 
     // accounts
@@ -151,7 +151,7 @@ pub fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction,
     *cursor += accounts_len;
 
     // data_len (compact-u16)
-    let (data_len, offset) = read_compact_u16(&data[*cursor..])?;
+    let (data_len, offset) = read_shortvec_len(&data[*cursor..])?;
     *cursor += offset;
 
     // data bytes

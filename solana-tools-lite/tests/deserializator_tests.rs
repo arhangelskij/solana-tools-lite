@@ -7,7 +7,7 @@ mod tests {
     #[test]
     fn test_read_compact_u16_small() {
         let data = [5u8];
-        let (value, offset) = read_compact_u16(&data).unwrap();
+        let (value, offset) = read_shortvec_len(&data).unwrap();
         assert_eq!(value, 5);
         assert_eq!(offset, 1);
     }
@@ -16,7 +16,7 @@ mod tests {
     fn test_read_compact_u16_two_bytes_128() {
         // short-vec two-byte encoding for 128 is 0x80 0x01
         let data = [0x80u8, 0x01];
-        let (value, offset) = read_compact_u16(&data).unwrap();
+        let (value, offset) = read_shortvec_len(&data).unwrap();
         assert_eq!(value, 128);
         assert_eq!(offset, 2);
     }
@@ -104,27 +104,27 @@ mod tests {
     #[test]
     fn test_shortvec_edge_cases() {
         // 0
-        let (val, offset) = read_compact_u16(&[0]).unwrap();
+        let (val, offset) = read_shortvec_len(&[0]).unwrap();
         assert_eq!(val, 0);
         assert_eq!(offset, 1);
 
         // 127 (max 1-byte)
-        let (val, offset) = read_compact_u16(&[127]).unwrap();
+        let (val, offset) = read_shortvec_len(&[127]).unwrap();
         assert_eq!(val, 127);
         assert_eq!(offset, 1);
 
         // 128 (first 2-byte) -> 0x80 0x01
-        let (val, offset) = read_compact_u16(&[0x80, 0x01]).unwrap();
+        let (val, offset) = read_shortvec_len(&[0x80, 0x01]).unwrap();
         assert_eq!(val, 128);
         assert_eq!(offset, 2);
 
         // 16_383 (max 2-byte) -> 0xFF 0x7F
-        let (val, offset) = read_compact_u16(&[0xFF, 0x7F]).unwrap();
+        let (val, offset) = read_shortvec_len(&[0xFF, 0x7F]).unwrap();
         assert_eq!(val, 16_383);
         assert_eq!(offset, 2);
 
         // 16_384 (first 3-byte) -> 0x80 0x80 0x01
-        let (val, offset) = read_compact_u16(&[0x80, 0x80, 0x01]).unwrap();
+        let (val, offset) = read_shortvec_len(&[0x80, 0x80, 0x01]).unwrap();
         assert_eq!(val, 16_384);
         assert_eq!(offset, 3);
     }
