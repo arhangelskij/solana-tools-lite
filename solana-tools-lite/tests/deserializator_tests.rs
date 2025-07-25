@@ -5,7 +5,7 @@ mod tests {
     use std::convert::TryFrom;
 
     #[test]
-    fn test_read_compact_u16_small() {
+    fn test_read_shortvec_len_small() {
         let data = [5u8];
         let (value, offset) = read_shortvec_len(&data).unwrap();
         assert_eq!(value, 5);
@@ -13,7 +13,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_compact_u16_two_bytes_128() {
+    fn test_read_shortvec_len_two_bytes_128() {
         // short-vec two-byte encoding for 128 is 0x80 0x01
         let data = [0x80u8, 0x01];
         let (value, offset) = read_shortvec_len(&data).unwrap();
@@ -127,5 +127,142 @@ mod tests {
         let (val, offset) = read_shortvec_len(&[0x80, 0x80, 0x01]).unwrap();
         assert_eq!(val, 16_384);
         assert_eq!(offset, 3);
+    }
+
+    #[test]
+    fn test_shortvec_not_enough_bytes() {
+        let res = read_shortvec_len(&[0x80]);
+        assert!(res.is_err(), "expected error for truncated shortvec length");
+    }
+
+    #[test]
+    fn test_message_program_index_oob() {
+        // header: 1 required sig, 0/0 readonly
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 1 (out of bounds, since only 1 account -> valid indices: 0)
+        data.push(1);
+        // accounts_len = 0
+        data.push(0);
+        // data_len = 0
+        data.push(0);
+
+        let res = deserialize_message(&data);
+        assert!(res.is_err(), "expected error due to program_id_index out of bounds");
+    }
+
+    #[test]
+    fn test_message_account_index_oob() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 0 (ok)
+        data.push(0);
+        // accounts_len = 1
+        data.push(1);
+        // accounts: index 5 (out of bounds)
+        data.push(5);
+        // data_len = 0
+        data.push(0);
+
+        let res = deserialize_message(&data);
+        assert!(res.is_err(), "expected error due to account index out of bounds");
+    }
+
+    // -------------------------------
+    // Section: shortvec extra negatives / limits
+    // -------------------------------
+    #[test]
+    fn test_shortvec_too_long_encoding_err() {
+        // 4-byte continuation should be rejected by solana-short-vec (u16 max, up to 3 bytes)
+        let res = read_shortvec_len(&[0x80, 0x80, 0x80, 0x01]);
+        assert!(res.is_err(), "expected error for length encoded with >3 bytes");
+    }
+
+    // -------------------------------
+    // Section: Transaction / Message – positive and negative
+    // -------------------------------
+    #[test]
+    fn test_deserialize_transaction_multisig_minimal() {
+        // signatures_count = 2
+        let mut data: Vec<u8> = vec![2];
+        // 2 signatures (2 * 64 bytes)
+        data.extend_from_slice(&[0u8; 64]);
+        data.extend_from_slice(&[0u8; 64]);
+
+        // Message
+        // header: 2 required signatures, 0/0 readonly
+        data.extend_from_slice(&[2, 0, 0]);
+        // accounts_count = 2
+        data.push(2);
+        // 2 pubkeys (2 * 32)
+        data.extend_from_slice(&[1u8; 32]);
+        data.extend_from_slice(&[2u8; 32]);
+        // recent_blockhash (32 bytes)
+        data.extend_from_slice(&[3u8; 32]);
+        // instructions_count = 0
+        data.push(0);
+
+        let tx = deserialize_transaction(&data).expect("must parse minimal multisig tx");
+        assert_eq!(tx.signatures.len(), 2);
+        assert_eq!(tx.message.header.num_required_signatures, 2);
+        assert_eq!(tx.message.account_keys.len(), 2);
+        assert!(tx.message.instructions.is_empty());
+    }
+
+    #[test]
+    fn test_message_truncated_blockhash() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash – truncate intentionally: only 10 bytes
+        data.extend_from_slice(&[0u8; 10]);
+
+        let res = deserialize_message(&data);
+        assert!(res.is_err(), "expected error due to truncated blockhash");
+    }
+
+    #[test]
+    fn test_message_truncated_instruction_data() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 0
+        data.push(0);
+        // accounts_len = 0
+        data.push(0);
+        // data_len = 2, but we will provide only 1 byte
+        data.push(2);
+        data.push(0xAA);
+
+        let res = deserialize_message(&data);
+        assert!(res.is_err(), "expected error due to truncated instruction data");
     }
 }
