@@ -52,7 +52,7 @@ impl From<&Transaction> for UiTransaction {
                         data: bs58::encode(&ix.data).into_string(),
                     })
                     .collect(),
-            },
+            }
         }
     }
 }

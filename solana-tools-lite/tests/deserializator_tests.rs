@@ -3,7 +3,14 @@ mod tests {
     use ed25519_dalek::Signature;
     use solana_tools_lite::deserializator::*;
     use std::convert::TryFrom;
+    use data_encoding::BASE64;
+    use solana_tools_lite::models::input_transaction::UiTransaction;
 
+    // -------------------------------
+    // Section: shortvec decoding – basic cases
+    // -------------------------------
+
+    // Basic case: decode single-byte shortvec (<128)
     #[test]
     fn test_read_shortvec_len_small() {
         let data = [5u8];
@@ -12,6 +19,7 @@ mod tests {
         assert_eq!(offset, 1);
     }
 
+    // Two-byte shortvec decode: 128 encoded as [0x80,0x01]
     #[test]
     fn test_read_shortvec_len_two_bytes_128() {
         // short-vec two-byte encoding for 128 is 0x80 0x01
@@ -21,6 +29,11 @@ mod tests {
         assert_eq!(offset, 2);
     }
 
+    // -------------------------------
+    // Section: ed25519 signature parsing
+    // -------------------------------
+
+    // Parse a valid 64-byte ed25519 signature
     #[test]
     fn test_signature_from_bytes() {
         let bytes = [1u8; 64];
@@ -28,6 +41,7 @@ mod tests {
         assert_eq!(sig.to_bytes(), bytes);
     }
 
+    // Error on invalid signature length (not 64 bytes)
     #[test]
     fn test_signature_from_bytes_invalid_length() {
         let bytes = [1u8; 63];
@@ -35,6 +49,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // Zeroed signature bytes still produce a valid Signature struct
     #[test]
     fn test_empty_signature() {
         let bytes = [0u8; 64];
@@ -43,6 +58,11 @@ mod tests {
         assert_eq!(sig.to_bytes(), bytes);
     }
 
+    // -------------------------------
+    // Section: deserialize_transaction – negative cases
+    // -------------------------------
+
+    // Error when transaction byte slice is too short for declared signature count
     #[test]
     fn test_insufficient_data() {
         let data = vec![1u8]; // 1 signature, но нет самих байтов
@@ -50,6 +70,11 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // -------------------------------
+    // Section: parse_instruction – basic cases
+    // -------------------------------
+
+    // Simple instruction parse: one account, fixed data
     #[test]
     fn test_parse_instruction_simple() {
         // program_id_index = 2, 1 account = [3], data = [0x01, 0x02]
@@ -70,6 +95,11 @@ mod tests {
         assert_eq!(cursor, data.len());
     }
 
+    // -------------------------------
+    // Section: deserialize_message – basic cases
+    // -------------------------------
+
+    // Basic message deserialization: one account, no instruction data
     #[test]
     fn test_full_message_parsing() {
         // Простое сообщение: 1 аккаунт, 1 инструкция
@@ -98,9 +128,7 @@ mod tests {
         assert_eq!(message.instructions.len(), 1);
     }
 
-    ///////
-    ///
-
+    // Edge-case shortvec decoding: boundary values 0,127,128,16383,16384
     #[test]
     fn test_shortvec_edge_cases() {
         // 0
@@ -129,12 +157,14 @@ mod tests {
         assert_eq!(offset, 3);
     }
 
+    // Error on truncated shortvec encoding (missing continuation byte)
     #[test]
     fn test_shortvec_not_enough_bytes() {
         let res = read_shortvec_len(&[0x80]);
         assert!(res.is_err(), "expected error for truncated shortvec length");
     }
 
+    // Error on program_id_index out of bounds in message parsing
     #[test]
     fn test_message_program_index_oob() {
         // header: 1 required sig, 0/0 readonly
@@ -159,6 +189,7 @@ mod tests {
         assert!(res.is_err(), "expected error due to program_id_index out of bounds");
     }
 
+    // Error on account index out of bounds within instruction
     #[test]
     fn test_message_account_index_oob() {
         // header
@@ -188,6 +219,7 @@ mod tests {
     // -------------------------------
     // Section: shortvec extra negatives / limits
     // -------------------------------
+    // Error on overly long shortvec encoding (>3 bytes)
     #[test]
     fn test_shortvec_too_long_encoding_err() {
         // 4-byte continuation should be rejected by solana-short-vec (u16 max, up to 3 bytes)
@@ -198,6 +230,7 @@ mod tests {
     // -------------------------------
     // Section: Transaction / Message – positive and negative
     // -------------------------------
+    // Deserialize minimal multisig transaction with two signatures
     #[test]
     fn test_deserialize_transaction_multisig_minimal() {
         // signatures_count = 2
@@ -226,6 +259,7 @@ mod tests {
         assert!(tx.message.instructions.is_empty());
     }
 
+    // Error on truncated recent_blockhash field
     #[test]
     fn test_message_truncated_blockhash() {
         // header
@@ -241,6 +275,7 @@ mod tests {
         assert!(res.is_err(), "expected error due to truncated blockhash");
     }
 
+    // Error on truncated instruction data (length mismatch)
     #[test]
     fn test_message_truncated_instruction_data() {
         // header
@@ -264,5 +299,25 @@ mod tests {
 
         let res = deserialize_message(&data);
         assert!(res.is_err(), "expected error due to truncated instruction data");
+    }
+
+    // ----------------------------------------
+    // Main test: deserialize provided Base64 transaction fixture
+    // ----------------------------------------
+    #[test]
+    fn test_deserialize_provided_base64_tx() {
+        // Unsigned Tx from the Solana SDK
+        let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAED4viKcSXOZTHLc68aIq0QRoeJ7pPCtJIumjEv636+oX/NLoC2Z66TEsGaE4CkHQIC/XLT0yZ7mSg2EtNl+5KzsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgIAAQwCAAAAQEIPAAAAAAA=";
+        let raw = BASE64.decode(b64.as_bytes()).expect("failed to decode base64 transaction");
+        let tx = deserialize_transaction(&raw).expect("failed to deserialize transaction");
+        // Sanity checks
+        assert!(!tx.signatures.is_empty(), "expected at least one signature");
+        assert!(!tx.message.account_keys.is_empty(), "expected at least one account key");
+        assert!(!tx.message.instructions.is_empty(), "expected at least one instruction");
+
+        let ui_tx = UiTransaction::from(&tx); 
+
+        println!("------- 🥂 TX: {:?}", ui_tx);
+       
     }
 }
