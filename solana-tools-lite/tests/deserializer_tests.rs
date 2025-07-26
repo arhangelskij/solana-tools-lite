@@ -329,7 +329,6 @@ mod tests {
     // Utility test: generate signed transaction Base64
     // ----------------------------------------
     #[test]
-    #[ignore]
     fn test_generate_signed_base64_tx() {
         // Derive deterministic keypair from a fixed secret (all ones)
         let seed = [1u8; 32];
@@ -355,9 +354,6 @@ mod tests {
         println!("sig_bytes: {:?}", sig_bytes);
 
         assert_eq!(sig_bytes, "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb");
-
-
-
 
         ///////// Additional 
         let tx_raw_again = serialize_transaction(&tx);
