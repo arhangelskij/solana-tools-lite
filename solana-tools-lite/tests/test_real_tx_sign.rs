@@ -61,21 +61,4 @@ fn test_real_tx_signature_base58() {
     // Check sig bytes with a real result from solana sdk 
     // for Pubkey::new_from_array([138, 136, 227, 221, 116, 9, 241, 149, 253, 82, 219, 45, 60, 186, 93, 114, 202, 103, 9, 191, 29, 148, 18, 27, 243, 116, 136, 1, 180, 15, 111, 92])
     assert_eq!(sig_bytes, "5tU1PNYL8QvTqxiNq6vPkq69V8TKtSMFqsVr3pf7ocwserQf7SeTupg3NqR8XMURUznAC5jgLp1Xyhc6U2gRAkqF");
-
-    let test = TestStruct {
-        a: 1,
-        b: 2,
-        c: "3".to_string(),
-    };
-    let bytes = utils::serialize(&test);
-
-    println!("🔴---------------- Bytes: {:?}", bytes);
-}
-
-use serde::Serialize;
-#[derive(Serialize)]
-struct TestStruct {
-    a: u32,
-    b: u64,
-    c: String,
 }

@@ -64,6 +64,7 @@ pub fn sign_transaction_by_key(tx: &mut Transaction, key: &SigningKey) -> Result
     let pubkey = PubkeyBase58::try_from(key.verifying_key().to_bytes())
         .map_err(|_| SignError::InvalidPubkeyFormat)?; //TODO: check if error is actual
 
+        //TODO: additionally check position and signers
     let signer_index = tx
         .message
         .account_keys

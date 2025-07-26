@@ -5,6 +5,9 @@ mod tests {
     use std::convert::TryFrom;
     use data_encoding::BASE64;
     use solana_tools_lite::models::input_transaction::UiTransaction;
+    use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
+
+    use solana_tools_lite::crypto::ed25519;
 
     // -------------------------------
     // Section: shortvec decoding – basic cases
@@ -315,9 +318,37 @@ mod tests {
         assert!(!tx.message.account_keys.is_empty(), "expected at least one account key");
         assert!(!tx.message.instructions.is_empty(), "expected at least one instruction");
 
+        println!("------- tx: {:?}", tx);
+
         let ui_tx = UiTransaction::from(&tx); 
 
         println!("------- 🥂 TX: {:?}", ui_tx);
        
+    }
+    // ----------------------------------------
+    // Utility test: generate signed transaction Base64
+    // ----------------------------------------
+    #[test]
+    #[ignore]
+    fn test_generate_signed_base64_tx() {
+        // Derive deterministic keypair from a fixed secret (all ones)
+        let seed = [1u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let pk = bs58::encode(keypair.verifying_key().to_bytes()).into_string();
+
+        // Use provided Base64-encoded unsigned tx fixture
+        let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
+        let raw = BASE64.decode(b64.as_bytes()).expect("decode unsigned tx");
+        let mut tx = deserialize_transaction(&raw).expect("failed to deserialize transaction");
+
+
+        sign_transaction_by_key(&mut tx, &keypair).unwrap();
+
+        let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
+        
+        println!("sig_bytes: {:?}", sig_bytes);
+
+        assert_eq!(sig_bytes, "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb");
+
     }
 }
