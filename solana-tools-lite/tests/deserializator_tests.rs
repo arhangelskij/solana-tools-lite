@@ -339,8 +339,14 @@ mod tests {
         // Use provided Base64-encoded unsigned tx fixture
         let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
         let raw = BASE64.decode(b64.as_bytes()).expect("decode unsigned tx");
-        let mut tx = deserialize_transaction(&raw).expect("failed to deserialize transaction");
+        let mut tx: solana_tools_lite::models::transaction::Transaction = deserialize_transaction(&raw).expect("failed to deserialize transaction");
 
+        let tx_raw_again = serialize_transaction(&tx);
+        let bs64_back = BASE64.encode(&tx_raw_again);
+
+        println!("😼 bs64_back: {}", bs64_back);
+
+        assert_eq!(raw, tx_raw_again);
 
         sign_transaction_by_key(&mut tx, &keypair).unwrap();
 
@@ -349,6 +355,15 @@ mod tests {
         println!("sig_bytes: {:?}", sig_bytes);
 
         assert_eq!(sig_bytes, "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb");
+
+
+
+
+        ///////// Additional 
+        let tx_raw_again = serialize_transaction(&tx);
+        let signed_base64 = BASE64.encode(&tx_raw_again);
+
+        println!("signed_base64:   {}", signed_base64);
 
     }
 }

@@ -169,3 +169,85 @@ pub fn parse_instruction(data: &[u8], cursor: &mut usize) -> Result<Instruction,
         data: data_bytes,
     })
 }
+
+/// Write a usize as a Solana-compatible shortvec (1-3 bytes) into `buf`.
+fn write_shortvec_len(value: usize, buf: &mut Vec<u8>) {
+    if value <= 0x7F {
+        // single-byte
+        buf.push(value as u8);
+    } else if value <= 0x3FFF {
+        // two-byte
+        let lo = (value as u8 & 0x7F) | 0x80;
+        let hi = (value >> 7) as u8;
+        buf.push(lo);
+        buf.push(hi);
+    } else {
+        // three-byte (value <= u16::MAX)
+        let lo = (value as u8 & 0x7F) | 0x80;
+        let hi = (((value >> 7) as u8) & 0x7F) | 0x80;
+        let third = (value >> 14) as u8;
+        buf.push(lo);
+        buf.push(hi);
+        buf.push(third);
+    }
+}
+
+/// Serialize an Instruction into wire-format bytes.
+pub fn serialize_instruction(instr: &Instruction) -> Vec<u8> {
+    let mut buf = Vec::new();
+    
+    // program_id_index
+    buf.push(instr.program_id_index);
+    
+    // accounts
+    write_shortvec_len(instr.accounts.len(), &mut buf);
+    buf.extend_from_slice(&instr.accounts);
+    
+    // data
+    write_shortvec_len(instr.data.len(), &mut buf);
+    buf.extend_from_slice(&instr.data);
+    buf
+}
+
+/// Serialize a Message into wire-format bytes.
+pub fn serialize_message(msg: &Message) -> Vec<u8> {
+    let mut buf = Vec::new();
+    
+    // header
+    buf.push(msg.header.num_required_signatures);
+    buf.push(msg.header.num_readonly_signed_accounts);
+    buf.push(msg.header.num_readonly_unsigned_accounts);
+    
+    // account keys
+    write_shortvec_len(msg.account_keys.len(), &mut buf);
+    for PubkeyBase58(pk) in &msg.account_keys {
+        buf.extend_from_slice(pk);
+    }
+    // recent blockhash
+    let HashBase58(bh) = &msg.recent_blockhash;
+    buf.extend_from_slice(bh);
+   
+    // instructions
+    write_shortvec_len(msg.instructions.len(), &mut buf);
+    for instr in &msg.instructions {
+        buf.extend_from_slice(&serialize_instruction(instr));
+    }
+    buf
+}
+
+/// Serialize a Transaction into wire-format bytes.
+pub fn serialize_transaction(tx: &Transaction) -> Vec<u8> {
+    let mut buf = Vec::new();
+    
+    // signatures count
+    write_shortvec_len(tx.signatures.len(), &mut buf);
+    
+    // signatures
+    for sig in &tx.signatures {
+        buf.extend_from_slice(&sig.to_bytes());
+    }
+    
+    // message
+    buf.extend_from_slice(&serialize_message(&tx.message));
+    buf
+}
