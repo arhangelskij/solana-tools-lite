@@ -102,6 +102,7 @@ mod tests {
     fn test_parse_base58_decode_command() {
         let args = vec!["solana-lite", "base58", "decode", "--input", "cafebabe"];
         let cli = Cli::parse_from(args);
+        
         match cli.command {
             Commands::Base58 { action } => match action {
                 Base58Action::Decode { input } => {
@@ -112,4 +113,62 @@ mod tests {
             _ => panic!("Parsed into wrong command variant"),
         }
     }
+       //TODO: check if we have all commands are tested
+
+    /// Test parsing the `sign-tx` command with all options provided.
+    #[test]
+    fn test_parse_sign_tx_full() {
+        let args = vec![
+            "solana-lite",
+            "--json-pretty",
+            "sign-tx",
+            "--input",
+            "in.json",
+            "--secret-key",
+            "mysecretkey",
+            "--output",
+            "out.json",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Commands::SignTx {
+                input,
+                secret_key,
+                output
+            } => {
+                assert_eq!(input, "in.json");
+                assert_eq!(secret_key, "mysecretkey");
+                assert_eq!(output.as_deref(), Some("out.json"));
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
+
+    /// Test parsing the `sign-tx` command with only required options.
+    #[test]
+    fn test_parse_sign_tx_minimal() {
+        let args = vec![
+            "solana-lite",
+            "sign-tx",
+            "--input",
+            "in.json",
+            "--secret-key",
+            "mysecretkey",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Commands::SignTx {
+                input,
+                secret_key,
+                output
+            } => {
+                assert_eq!(input, "in.json");
+                assert_eq!(secret_key, "mysecretkey");
+                assert_eq!(output, None);
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
 }
+
+ 

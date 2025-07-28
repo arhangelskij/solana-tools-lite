@@ -1,5 +1,6 @@
 use crate::errors::{Result, SignError};
 
+// Use it only in apapters
 pub fn write_output(path: Option<&str>, data: &str) -> Result<(), SignError> {
     use std::fs;
     use std::io::{self, Write};

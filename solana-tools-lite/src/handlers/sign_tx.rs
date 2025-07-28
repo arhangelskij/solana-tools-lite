@@ -1,14 +1,14 @@
+use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction};
+use crate::layers::io::*;
+use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
     errors::{Result, SignError},
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
-    utils::{serialize},
+    utils::serialize,
 };
 use ed25519_dalek::{Signature, SigningKey};
-use crate::layers::io::*;
-use crate::adapters::io_adapter::read_input_transaction;
-use crate::models::input_transaction::InputTransaction;
 
 /// Read tx JSON → sign → output JSON / stdout
 //TODO: 🟡 rename into common name
@@ -23,9 +23,8 @@ pub fn handle_sign_transaction_file(
     let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
 
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
-      
 
-      println!("[DEBUG] --  Transaction::try_from(input_tx)");
+    println!("[DEBUG] --  Transaction::try_from(input_tx)");
     // 2. Decode & validate secret key
     let secret_bytes = bs58::decode(secret_key_b58)
         .into_vec()
@@ -39,19 +38,12 @@ pub fn handle_sign_transaction_file(
     // 3. Sign message
     sign_transaction_by_key(&mut tx, &signing_key)?;
 
-    // 4. Serialize back
-    let json_out = if json_pretty {
-        serde_json::to_string_pretty(&tx).map_err(SignError::JsonSerialize)?
-    } else {
-        serde_json::to_string(&tx).map_err(SignError::JsonSerialize)?
-    };
-
-    // 5. Output
-    if let Some(path) = output {
-        write_output(Some(path.as_str()), &json_out)?;
-    } else {
-        println!("{json_out}");
-    }
+    // 4. Serialize back (to UI DTO) 
+    let ui_tx = UiTransaction::from(&tx);
+    let format = OutputFormat::Json { pretty: json_pretty };
+    
+     // 5. Output
+    write_output_transaction(&ui_tx, format, output.map(|s| s.as_str()))?;
 
     Ok(())
 }
@@ -64,7 +56,7 @@ pub fn sign_transaction_by_key(tx: &mut Transaction, key: &SigningKey) -> Result
     let pubkey = PubkeyBase58::try_from(key.verifying_key().to_bytes())
         .map_err(|_| SignError::InvalidPubkeyFormat)?; //TODO: check if error is actual
 
-        //TODO: additionally check position and signers
+    //TODO: additionally check position and signers
     let signer_index = tx
         .message
         .account_keys

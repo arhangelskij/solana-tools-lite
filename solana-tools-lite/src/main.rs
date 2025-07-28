@@ -12,7 +12,7 @@ fn main() {
             passphrase,
         } => {
             if let Err(e) =
-                handlers::generate::handle_gen(mnemonic.as_ref(), passphrase.as_ref(), cli.json)
+                handlers::generate::handle_gen(mnemonic.as_ref(), passphrase.as_ref(), cli.json_pretty)
             {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);
@@ -23,7 +23,7 @@ fn main() {
             message,
             secret_key,
         } => {
-            if let Err(e) = handlers::sign::handle_sign(message, secret_key, cli.json) {
+            if let Err(e) = handlers::sign::handle_sign(message, secret_key, cli.json_pretty) {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
             }
@@ -34,7 +34,7 @@ fn main() {
             signature,
             pubkey,
         } => {
-            let exit_code = handlers::verify::handle_verify(message, signature, pubkey, cli.json);
+            let exit_code = handlers::verify::handle_verify(message, signature, pubkey, cli.json_pretty);
             std::process::exit(exit_code);
         }
 
@@ -48,10 +48,10 @@ fn main() {
         Commands::SignTx {
             input,
             secret_key,
-            output,
+            output
         } => {
             if let Err(e) =
-                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json)
+                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json_pretty)
             {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);

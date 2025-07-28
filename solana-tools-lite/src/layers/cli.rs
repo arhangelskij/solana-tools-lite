@@ -8,7 +8,7 @@ use crate::models::cmds::Commands;
     arg_required_else_help = true)]
 pub struct Cli {
     #[arg(global = true, long, help = "Output as JSON")]
-    pub json: bool,
+    pub json_pretty: bool,
     #[command(subcommand)]
     pub command: Commands
 }

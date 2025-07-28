@@ -7,16 +7,16 @@ use serde_json;
 use std::io;
 use std::path::Path;
 
-pub enum InputFormat {
+pub enum InputFormat { //TODO: delete if not used
     Json,
     Base64,
-    Base58,
+    Base58
 }
 
 pub enum OutputFormat {
     Json { pretty: bool },
     Base64,
-    Base58,
+    Base58
 }
 //TODO: 🟡 why sign error?
 fn read_raw_input(input: Option<&str>) -> std::result::Result<String, SignError> {
