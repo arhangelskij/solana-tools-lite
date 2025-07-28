@@ -92,8 +92,9 @@ fn test_adapter_invalid_base58_input() {
 
     assert!(result.is_err(), "Expected Base58 decoding to fail");
     let err = result.err().unwrap();
+
     assert!(
-        err.to_string().to_lowercase().contains("base58"),
+        err.to_string().to_lowercase().contains("provided string contained invalid character '@' at byte 3"),
         "Expected base58 error, got: {err}"
     );
 }
