@@ -1,51 +1,5 @@
 use serde::Serialize;
-use std::io::{self, Read};
-use crate::errors::{ToolError, SignError, Result};
-
-/// Reads from stdin if input is "-", otherwise returns the argument as a string.
-//TODO: looks like not used – delete if not needed
-/* 
-pub fn read_stdin_or_arg(arg: &str) -> io::Result<String> {
-    if arg == "-" {
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer)?;
-        Ok(buffer)
-    } else {
-        Ok(arg.to_string())
-    }
-}
-    */
-
-    /* Deprecated
-pub fn write_file(path: &str, data: &str) -> Result<(), SignError> {
-    use std::{fs};
-
-    fs::write(path, data).map_err(|e| SignError::IoWithPath {
-        source: e,
-        path: Some(path.to_owned())
-    })
-}
-//TODO: looks like a wrong error type
-pub fn read_stdin_or_file(path: Option<&String>) -> Result<String, SignError> {
-    use std::fs;
-    
-    let mut buf = String::new();
-    match path {
-        Some(p) if p != "-" => fs::read_to_string(p).map_err(|e| SignError::IoWithPath {
-            source: e,
-            path: Some(p.clone()),
-        }),
-        _ => {
-            io::stdin().read_to_string(&mut buf).map_err(|e| SignError::IoWithPath {
-                source: e,
-                path: path.cloned(),
-            })?;
-            Ok(buf)
-        }
-    }
-}
-
-    */
+use crate::errors::{ToolError, Result};
 
 /// Pretty-prints any serializable struct as JSON.
 pub fn pretty_print_json<T: Serialize>(value: &T) {

@@ -3,6 +3,7 @@ mod tests {
     use clap::Parser;
     use solana_tools_lite::layers::cli::Cli;
     use solana_tools_lite::models::cmds::{Commands, Base58Action};
+    use solana_tools_lite::models::cmds::OutFmt;
 
     /// Test that CLI arguments correctly parse into the `Gen` variant of `Commands`.
     #[test]
@@ -117,28 +118,25 @@ mod tests {
 
     /// Test parsing the `sign-tx` command with all options provided.
     #[test]
+
     fn test_parse_sign_tx_full() {
         let args = vec![
             "solana-lite",
-            "--json-pretty",
+            "--json-pretty",          // global pretty flag
             "sign-tx",
-            "--input",
-            "in.json",
-            "--secret-key",
-            "mysecretkey",
-            "--output",
-            "out.json",
+            "--input", "in.json",
+            "--secret-key", "mysecretkey",
+            "--output", "out.json",
+            "--out", "base64",      // explicit output format
         ];
         let cli = Cli::parse_from(args);
+        assert!(cli.json_pretty, "global --json-pretty should be set");
         match cli.command {
-            Commands::SignTx {
-                input,
-                secret_key,
-                output
-            } => {
+            Commands::SignTx { input, secret_key, output, out } => {
                 assert_eq!(input, "in.json");
                 assert_eq!(secret_key, "mysecretkey");
                 assert_eq!(output.as_deref(), Some("out.json"));
+                assert!(matches!(out, Some(OutFmt::Base64)));
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -160,15 +158,17 @@ mod tests {
             Commands::SignTx {
                 input,
                 secret_key,
-                output
+                output,
+                out
             } => {
                 assert_eq!(input, "in.json");
                 assert_eq!(secret_key, "mysecretkey");
                 assert_eq!(output, None);
+
+                println!("out --- {:?}", out);
+                assert!(matches!(out, None));
             }
             _ => panic!("Parsed into wrong command variant"),
         }
     }
 }
-
- 
