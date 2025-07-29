@@ -53,9 +53,9 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<String>,
 
-        /// Force output format (json|base64|base58). Если не указан — зеркалим формат входа.
-        #[arg(long, value_enum)]
-        out: Option<OutFmt>
+        /// Force output format (json|base64|base58). If not specified, we mirror the input format.
+        #[arg(long = "output-format", value_enum, alias = "f")]
+        output_format: Option<OutFmt>
     },
 }
 
@@ -75,7 +75,7 @@ pub enum Base58Action {
 pub enum OutFmt {
     Json,
     Base64,
-    Base58,
+    Base58
 }
 
 //TODO: 🟡 add also base64?

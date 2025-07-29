@@ -127,16 +127,16 @@ mod tests {
             "--input", "in.json",
             "--secret-key", "mysecretkey",
             "--output", "out.json",
-            "--out", "base64",      // explicit output format
+            "--output-format", "base64",      // explicit output format
         ];
         let cli = Cli::parse_from(args);
         assert!(cli.json_pretty, "global --json-pretty should be set");
         match cli.command {
-            Commands::SignTx { input, secret_key, output, out } => {
+            Commands::SignTx { input, secret_key, output, output_format } => {
                 assert_eq!(input, "in.json");
                 assert_eq!(secret_key, "mysecretkey");
                 assert_eq!(output.as_deref(), Some("out.json"));
-                assert!(matches!(out, Some(OutFmt::Base64)));
+                assert!(matches!(output_format, Some(OutFmt::Base64)));
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -159,14 +159,13 @@ mod tests {
                 input,
                 secret_key,
                 output,
-                out
+                output_format
             } => {
                 assert_eq!(input, "in.json");
                 assert_eq!(secret_key, "mysecretkey");
                 assert_eq!(output, None);
 
-                println!("out --- {:?}", out);
-                assert!(matches!(out, None));
+                assert!(matches!(output_format, None));
             }
             _ => panic!("Parsed into wrong command variant"),
         }

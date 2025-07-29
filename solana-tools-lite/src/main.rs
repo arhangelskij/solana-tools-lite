@@ -49,10 +49,10 @@ fn main() {
             input,
             secret_key,
             output,
-            out
+            output_format
         } => {
             if let Err(e) =
-                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json_pretty, *out)
+                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json_pretty, *output_format)
             {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);
