@@ -7,7 +7,7 @@ use ed25519_dalek::SigningKey;
 pub fn handle_gen(
     mnemonic: Option<&String>,
     passphrase: Option<&String>,
-    json: bool,
+    json: bool
 ) -> Result<()> {
     let mnemonic = match mnemonic {
         Some(m) => {
