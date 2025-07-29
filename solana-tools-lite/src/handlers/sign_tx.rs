@@ -1,13 +1,14 @@
 use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction};
-use crate::layers::io::*;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
     errors::{Result, SignError},
+    models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
     utils::serialize,
 };
+
 use ed25519_dalek::{Signature, SigningKey};
 
 /// Read tx JSON → sign → output JSON / stdout
@@ -17,10 +18,19 @@ pub fn handle_sign_transaction_file(
     secret_key_b58: &str,
     output: Option<&String>,
     json_pretty: bool,
+    out_override: Option<OutFmt>,
 ) -> Result<()> {
     // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
     // println!("[DEBUG] -- before read_input");
     let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
+
+    let default_format = match &input_tx {
+        InputTransaction::Json(_) => OutputFormat::Json {
+            pretty: json_pretty,
+        },
+        InputTransaction::Base64(_) => OutputFormat::Base64,
+        InputTransaction::Base58(_) => OutputFormat::Base58,
+    };
 
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
 
@@ -38,12 +48,21 @@ pub fn handle_sign_transaction_file(
     // 3. Sign message
     sign_transaction_by_key(&mut tx, &signing_key)?;
 
-    // 4. Serialize back (to UI DTO) 
+    // 4. Serialize back (to UI DTO)
     let ui_tx = UiTransaction::from(&tx);
-    let format = OutputFormat::Json { pretty: json_pretty };
-    
-     // 5. Output
-    write_output_transaction(&ui_tx, format, output.map(|s| s.as_str()))?;
+
+    // Override format output if needed
+    let chosen_format = match out_override {
+        Some(OutFmt::Json) => OutputFormat::Json {
+            pretty: json_pretty,
+        },
+        Some(OutFmt::Base64) => OutputFormat::Base64,
+        Some(OutFmt::Base58) => OutputFormat::Base58,
+        None => default_format
+    };
+
+    // 5. Output
+    write_output_transaction(&ui_tx, chosen_format, output.map(|s| s.as_str()))?;
 
     Ok(())
 }

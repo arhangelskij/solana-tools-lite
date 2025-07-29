@@ -1,4 +1,4 @@
-use clap::{Subcommand};
+use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
@@ -18,7 +18,7 @@ pub enum Commands {
 
         /// Base58-encoded private key (32 bytes)
         #[arg(long)]
-        secret_key: String
+        secret_key: String,
     },
 
     /// Verify a signature
@@ -30,13 +30,13 @@ pub enum Commands {
         signature: String,
 
         #[arg(long)]
-        pubkey: String
+        pubkey: String,
     },
 
     /// Base58 encode/decode
     Base58 {
         #[command(subcommand)]
-        action: Base58Action
+        action: Base58Action,
     },
 
     /// Sign a transaction JSON file (cold-signer)
@@ -51,18 +51,31 @@ pub enum Commands {
 
         /// Optional output file (if not set, print to stdout)
         #[arg(short, long)]
-        output: Option<String>
-    }
+        output: Option<String>,
+
+        /// Force output format (json|base64|base58). Если не указан — зеркалим формат входа.
+        #[arg(long, value_enum)]
+        out: Option<OutFmt>
+    },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Base58Action {
     Encode {
         #[arg(short, long)]
-        input: String
+        input: String,
     },
     Decode {
         #[arg(short, long)]
-        input: String
-    }
+        input: String,
+    },
 }
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum OutFmt {
+    Json,
+    Base64,
+    Base58,
+}
+
+//TODO: 🟡 add also base64?
