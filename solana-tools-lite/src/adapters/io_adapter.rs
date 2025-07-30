@@ -73,7 +73,13 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     Err(TransactionParseError::InvalidFormat("Unknown input format".into()).into())
 }
 
-pub fn read_secret_key_file(path: &str) -> Result<String, SignError> {
+pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError> {
+    // Support "-" to read secret key from stdin
+    if path == "-" {
+        let s = read_input(None)?;
+        return Ok(s.trim().to_string());
+    }
+
     let p = Path::new(path);
 
     if !p.exists() {
@@ -82,6 +88,7 @@ pub fn read_secret_key_file(path: &str) -> Result<String, SignError> {
             path: Some(path.to_string()),
         });
     }
+    
     if !p.is_file() {
         return Err(SignError::IoWithPath {
             source: std::io::Error::new(
