@@ -42,19 +42,19 @@ pub enum Commands {
     /// Sign a transaction JSON file (cold-signer)
     SignTx {
         /// Path to input JSON file
-        #[arg(short, long)]
+        #[arg(long, short = 'i')]
         input: String,
 
         /// Base58-encoded private key (32 bytes)
-        #[arg(long)]
+        #[arg(long, short = 'k')]
         secret_key: String,
 
         /// Optional output file (if not set, print to stdout)
-        #[arg(short, long)]
+        #[arg(long, short = 'o')]
         output: Option<String>,
 
         /// Force output format (json|base64|base58). If not specified, we mirror the input format.
-        #[arg(long = "output-format", value_enum, alias = "f")]
+        #[arg(long = "output-format", value_enum, short = 'f')]
         output_format: Option<OutFmt>
     },
 }
