@@ -6,7 +6,6 @@ use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::{Instruction, Message, Transaction};
 
 use crate::errors::TransactionParseError;
-use bincode::config::standard;
 use data_encoding::BASE64;
 use bs58;
 use serde_json;

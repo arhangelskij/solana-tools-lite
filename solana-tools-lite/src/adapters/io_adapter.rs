@@ -7,7 +7,7 @@ use serde_json;
 use std::io;
 use std::path::Path;
 
-pub enum InputFormat { //TODO: delete if not used
+pub enum InputFormat {
     Json,
     Base64,
     Base58
@@ -71,6 +71,30 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     }
 
     Err(TransactionParseError::InvalidFormat("Unknown input format".into()).into())
+}
+
+pub fn read_secret_key_file(path: &str) -> Result<String, SignError> {
+    let p = Path::new(path);
+
+    if !p.exists() {
+        return Err(SignError::IoWithPath {
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "secret key file not found"),
+            path: Some(path.to_string()),
+        });
+    }
+    if !p.is_file() {
+        return Err(SignError::IoWithPath {
+            source: std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "secret key path is not a file",
+            ),
+            path: Some(path.to_string()),
+        });
+    }
+
+    let s = read_input(Some(path))?;
+
+    Ok(s.trim().to_string())
 }
 
 use bs58;

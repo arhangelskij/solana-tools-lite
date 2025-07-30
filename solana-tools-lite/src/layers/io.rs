@@ -39,6 +39,7 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
             let file_size = metadata.len();
             println!("📏 File size: {} bytes", file_size);
             
+            // TODO: remove debug things
             if file_size > 50_000_000 { // 50MB limit
                 return Err(SignError::IoWithPath {
                     source: io::Error::new(io::ErrorKind::InvalidInput, "file too large"),
