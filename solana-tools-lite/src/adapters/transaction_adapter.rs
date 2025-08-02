@@ -10,7 +10,7 @@ use data_encoding::BASE64;
 use bs58;
 use serde_json;
 use ed25519_dalek::Signature;
-use crate::deserializator::deserialize_transaction as deserialize_tx_bytes;
+use crate::deserializer::deserialize_transaction as deserialize_tx_bytes;
 
 impl TryFrom<InputTransaction> for Transaction {
     type Error = TransactionParseError;

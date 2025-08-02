@@ -6,4 +6,4 @@ pub mod utils;
 pub mod crypto;
 pub mod errors;
 pub mod adapters;
-pub mod deserializator;
+pub mod deserializer;

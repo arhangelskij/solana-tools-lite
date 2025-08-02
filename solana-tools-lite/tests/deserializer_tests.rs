@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use ed25519_dalek::Signature;
-    use solana_tools_lite::deserializator::*;
+    use solana_tools_lite::deserializer::*;
     use std::convert::TryFrom;
     use data_encoding::BASE64;
     use solana_tools_lite::models::input_transaction::UiTransaction;
