@@ -34,7 +34,7 @@ pub fn handle_sign_transaction_file(
 
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
     println!("[DEBUG] --  Transaction::try_from(input_tx)");
-    
+    //TODO: 🔴 4 aug
     // 2. Read secret key string via adapter and decode Base58
     let sk_str = read_secret_key_file(secret_key_b58)
         .map_err(SignError::from)?;

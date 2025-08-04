@@ -6,8 +6,6 @@ use solana_tools_lite::{
     models::transaction::{Instruction, Message, MessageHeader, Transaction}
 };
 
-use solana_tools_lite::utils;
-
 #[test]
 fn test_real_tx_signature_base58() {
     let seed = [1u8; 32];

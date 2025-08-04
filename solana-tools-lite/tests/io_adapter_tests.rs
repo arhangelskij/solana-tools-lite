@@ -1,3 +1,5 @@
+use ed25519_dalek::SigningKey;
+use solana_tools_lite::adapters::io_adapter::parse_signing_key_content;
 use std::fs;
 use std::error::Error;
 
@@ -9,6 +11,7 @@ use solana_tools_lite::adapters::io_adapter::{is_base58, read_input_transaction,
 use solana_tools_lite::errors::SignError;
 use solana_tools_lite::models::input_transaction::InputTransaction;
 
+// Validate that is_base58 accepts a correct Base58 string
 #[test]
 fn test_is_base58_valid() {
     let plain = "hello world";
@@ -16,6 +19,7 @@ fn test_is_base58_valid() {
     assert!(is_base58(&encoded));
 }
 
+// Reject strings containing characters outside the Base58 alphabet
 #[test]
 fn test_is_base58_invalid() {
     // contains characters not in Base58 alphabet
@@ -23,6 +27,7 @@ fn test_is_base58_invalid() {
     assert!(!is_base58(not_bs58));
 }
 
+// Read Base58-encoded transaction from file
 #[test]
 fn test_read_input_transaction_base58() -> Result<(), Box<dyn Error>> {
     let path = "test_io_adapter_bs58.txt";
@@ -42,6 +47,7 @@ fn test_read_input_transaction_base58() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+// Read Base64-encoded transaction from file
 #[test]
 fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
     let path = "test_io_adapter_b64.txt";
@@ -61,6 +67,7 @@ fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+// Read and trim secret key from file
 #[test]
 fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> {
     let path = "test_secret_key.txt";
@@ -74,6 +81,7 @@ fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// Error when secret key file is not found
 #[test]
 fn test_read_secret_key_file_not_found() {
     let path = "nonexistent_secret.txt";
@@ -84,6 +92,7 @@ fn test_read_secret_key_file_not_found() {
     }
 }
 
+// Error when secret key path is a directory
 #[test]
 fn test_read_secret_key_file_not_a_file() -> Result<(), Box<dyn std::error::Error>> {
     let dir = "test_secret_dir";
@@ -95,4 +104,108 @@ fn test_read_secret_key_file_not_a_file() -> Result<(), Box<dyn std::error::Erro
     }
     fs::remove_dir(dir)?;
     Ok(())
+}
+
+// Parse SigningKey from 64-byte JSON array
+#[test]
+fn test_parse_signing_key_content_json_array_64() {
+    let seed = build_seed32();
+    let kp = keypair_bytes_from_seed(&seed);
+    let json = format!("[{}]", kp.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let sk = parse_signing_key_content(&json).expect("parse array64");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Parse SigningKey from 32-byte JSON array
+#[test]
+fn test_parse_signing_key_content_json_array_32() {
+    let seed = build_seed32();
+    let json = format!("[{}]", seed.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let sk = parse_signing_key_content(&json).expect("parse array32");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Parse SigningKey from Solana CLI JSON with 64-byte Base58 secretKey
+#[test]
+fn test_parse_signing_key_content_keypair_json_64() {
+    let seed = build_seed32();
+    let kp = keypair_bytes_from_seed(&seed);
+    let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
+    let sec_b58 = bs58::encode(kp).into_string();
+    let json = format!(
+        "{{\"publicKey\":\"{}\",\"secretKey\":\"{}\"}}",
+        pk_b58, sec_b58
+    );
+    let sk = parse_signing_key_content(&json).expect("parse keypair json 64");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Parse SigningKey from Solana CLI JSON with 32-byte Base58 secretKey
+#[test]
+fn test_parse_signing_key_content_keypair_json_32() {
+    let seed = build_seed32();
+    let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
+    let sec_b58 = bs58::encode(seed).into_string();
+    let json = format!(
+        "{{\"publicKey\":\"{}\",\"secretKey\":\"{}\"}}",
+        pk_b58, sec_b58
+    );
+    let sk = parse_signing_key_content(&json).expect("parse keypair json 32");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Parse SigningKey from raw 64-byte Base58 string
+#[test]
+fn test_parse_signing_key_content_raw_base58_64() {
+    let seed = build_seed32();
+    let kp = keypair_bytes_from_seed(&seed);
+    let s = bs58::encode(kp).into_string();
+    let sk = parse_signing_key_content(&s).expect("parse raw b58 64");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Parse SigningKey from raw 32-byte Base58 seed
+#[test]
+fn test_parse_signing_key_content_raw_base58_32() {
+    let seed = build_seed32();
+    let s = bs58::encode(seed).into_string();
+    let sk = parse_signing_key_content(&s).expect("parse raw b58 32");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+}
+
+// Error on invalid Base58 input
+#[test]
+fn test_parse_signing_key_content_invalid_base58() {
+    let bad = "0OIl+/="; // not valid base58
+    let err = parse_signing_key_content(bad).unwrap_err();
+    matches!(err, SignError::InvalidBase58);
+}
+
+// Error on invalid signature length (not 32 or 64 bytes)
+#[test]
+fn test_parse_signing_key_content_invalid_length_array() {
+    let json = "[1,2,3,4,5]"; // neither 32 nor 64
+    let err = parse_signing_key_content(json).unwrap_err();
+    matches!(err, SignError::InvalidKeyLength);
+}
+
+// Test helpers
+
+fn build_seed32() -> [u8; 32] {
+    let mut seed = [0u8; 32];
+    for i in 0..32 { seed[i] = i as u8; }
+    seed
+}
+
+fn seed_pk_bytes(seed: &[u8; 32]) -> [u8; 32] {
+    let sk = SigningKey::from_bytes(seed);
+    *sk.verifying_key().as_bytes()
+}
+
+fn keypair_bytes_from_seed(seed: &[u8; 32]) -> [u8; 64] {
+    let pk = seed_pk_bytes(seed);
+    let mut kp = [0u8; 64];
+    kp[..32].copy_from_slice(seed);
+    kp[32..].copy_from_slice(&pk);
+    kp
 }

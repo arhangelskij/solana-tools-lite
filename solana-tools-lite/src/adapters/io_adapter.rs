@@ -88,7 +88,7 @@ pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError
             path: Some(path.to_string()),
         });
     }
-    
+
     if !p.is_file() {
         return Err(SignError::IoWithPath {
             source: std::io::Error::new(
@@ -155,4 +155,73 @@ pub fn write_output_transaction(
     write_output(output, &out_str).map_err(|e| e)?;
 
     Ok(())
+}
+
+/////////////
+use crate::models::keypair_json::KeypairJson;
+use ed25519_dalek::SigningKey;
+use std::convert::TryInto;
+
+/// Build SigningKey from decoded bytes: accept 32-byte seed or 64-byte keypair bytes.
+fn signing_key_from_decoded(bytes: Vec<u8>) -> Result<SigningKey, SignError> {
+    match bytes.len() {
+        64 => {
+            // keypair bytes => take first 32 as seed
+            let mut seed = [0u8; 32];
+            seed.copy_from_slice(&bytes[..32]);
+            Ok(SigningKey::from_bytes(&seed))
+        }
+        32 => {
+            // raw 32-byte seed
+            let arr: [u8; 32] = bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| SignError::InvalidKeyLength)?;
+            Ok(SigningKey::from_bytes(&arr))
+        }
+        _ => Err(SignError::InvalidKeyLength),
+    }
+}
+
+/// Parse signing key from *content* (no I/O here).
+/// Supported formats:
+/// 1) JSON array of 64 bytes: [u8; 64]
+/// 2) Keypair JSON: {"publicKey": "...", "secretKey": "<base58>"}
+/// 3) Raw Base58 string (32-byte seed or 64-byte keypair bytes)
+pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError> {
+    let text = content.trim();
+
+    // 1) JSON array of bytes (supports 64-byte keypair or 32-byte seed)
+    if let Ok(arr) = serde_json::from_str::<Vec<u8>>(text) {
+        return match arr.len() {
+            64 => {
+                let mut seed = [0u8; 32];
+                seed.copy_from_slice(&arr[..32]);
+                
+                Ok(SigningKey::from_bytes(&seed))
+            }
+            32 => {
+                let mut seed = [0u8; 32];
+                seed.copy_from_slice(&arr[..32]);
+                
+                Ok(SigningKey::from_bytes(&seed))
+            }
+            _ => Err(SignError::InvalidKeyLength)
+        };
+    }
+
+    // 2) Keypair JSON with Base58 secretKey
+    if let Ok(kp_json) = serde_json::from_str::<KeypairJson>(text) {
+        let sec = kp_json.secret_key.trim();
+        let bytes = bs58::decode(sec)
+            .into_vec()
+            .map_err(|_| SignError::InvalidBase58)?;
+        return signing_key_from_decoded(bytes);
+    }
+
+    // 3) Raw Base58 string
+    let decoded = bs58::decode(text)
+        .into_vec()
+        .map_err(|_| SignError::InvalidBase58)?;
+    signing_key_from_decoded(decoded)
 }
