@@ -1,4 +1,4 @@
-use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file};
+use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file, parse_signing_key_content};
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
@@ -33,20 +33,10 @@ pub fn handle_sign_transaction_file(
     };
 
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
-    println!("[DEBUG] --  Transaction::try_from(input_tx)");
-    //TODO: 🔴 4 aug
-    // 2. Read secret key string via adapter and decode Base58
-    let sk_str = read_secret_key_file(secret_key_b58)
-        .map_err(SignError::from)?;
-    let secret_bytes = bs58::decode(&sk_str)
-        .into_vec()
-        .map_err(|_| SignError::InvalidBase58)?;
-
-    let seed: &[u8; 32] = secret_bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| SignError::InvalidKeyLength)?;
-    let signing_key = SigningKey::from_bytes(seed);
+    
+    // 2. Read and parse the secret key content (file or "-")
+    let key_text = read_secret_key_file(secret_key_b58)?;
+    let signing_key = parse_signing_key_content(&key_text)?;
 
     // 3. Sign message
     sign_transaction_by_key(&mut tx, &signing_key)?;

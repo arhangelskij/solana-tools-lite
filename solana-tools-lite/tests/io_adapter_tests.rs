@@ -209,3 +209,79 @@ fn keypair_bytes_from_seed(seed: &[u8; 32]) -> [u8; 64] {
     kp[32..].copy_from_slice(&pk);
     kp
 }
+
+// Read key JSON object (secretKey Base58 of 64-byte keypair) and parse
+#[test]
+fn test_read_secret_key_file_and_parse_keypair_json_64() -> Result<(), Box<dyn std::error::Error>> {
+    let seed = build_seed32();
+    let kp = keypair_bytes_from_seed(&seed);
+    let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
+    let sec_b58 = bs58::encode(kp).into_string();
+    let json = format!(
+        "{{\"publicKey\":\"{}\",\"secretKey\":\"{}\"}}",
+        pk_b58, sec_b58
+    );
+    let path = "test_secret_key_obj64.json";
+    fs::write(path, &json)?;
+
+    let text = read_secret_key_file(path)?;
+    let sk = parse_signing_key_content(&text).expect("parse keypair json 64 from file");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+
+    fs::remove_file(path)?;
+    Ok(())
+}
+
+// Read key JSON object (secretKey Base58 of 32-byte seed) and parse
+#[test]
+fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<(), Box<dyn std::error::Error>> {
+    let seed = build_seed32();
+    let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
+    let sec_b58 = bs58::encode(seed).into_string();
+    let json = format!(
+        "{{\"publicKey\":\"{}\",\"secretKey\":\"{}\"}}",
+        pk_b58, sec_b58
+    );
+    let path = "test_secret_key_obj32.json";
+    fs::write(path, &json)?;
+
+    let text = read_secret_key_file(path)?;
+    let sk = parse_signing_key_content(&text).expect("parse keypair json 32 from file");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+
+    fs::remove_file(path)?;
+    Ok(())
+}
+
+// Read key as JSON array of 64 bytes and parse
+#[test]
+fn test_read_secret_key_file_and_parse_json_array_64() -> Result<(), Box<dyn std::error::Error>> {
+    let seed = build_seed32();
+    let kp = keypair_bytes_from_seed(&seed);
+    let json = format!("[{}]", kp.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let path = "test_secret_key_arr64.json";
+    fs::write(path, &json)?;
+
+    let text = read_secret_key_file(path)?;
+    let sk = parse_signing_key_content(&text).expect("parse array64 from file");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+
+    fs::remove_file(path)?;
+    Ok(())
+}
+
+// Read key as JSON array of 32 bytes and parse
+#[test]
+fn test_read_secret_key_file_and_parse_json_array_32() -> Result<(), Box<dyn std::error::Error>> {
+    let seed = build_seed32();
+    let json = format!("[{}]", seed.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let path = "test_secret_key_arr32.json";
+    fs::write(path, &json)?;
+
+    let text = read_secret_key_file(path)?;
+    let sk = parse_signing_key_content(&text).expect("parse array32 from file");
+    assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
+
+    fs::remove_file(path)?;
+    Ok(())
+}
