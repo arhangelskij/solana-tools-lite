@@ -4,8 +4,8 @@ use crate::errors::{ToolError, Result};
 /// Pretty-prints any serializable struct as JSON.
 pub fn pretty_print_json<T: Serialize>(value: &T) {
     let output = serde_json::to_string_pretty(value)
-        .unwrap_or_else(|_| "{\"error\":\"Serialization error\"}".to_string());
-    println!("{output}");
+        .unwrap_or_else(|_| "{\"error\":\"Serialization error\"}".to_string()); //TODO: add custom error
+    println!("{output}"); //TODO: 🟡 remove print
 }
 
 /// HEX encode

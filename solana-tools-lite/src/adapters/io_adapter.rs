@@ -225,3 +225,19 @@ pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError>
         .map_err(|_| SignError::InvalidBase58)?;
     signing_key_from_decoded(decoded)
 }
+
+
+/// Mnemonic 
+
+/// Read mnemonic from file or stdin (`-`) and normalize whitespace.
+pub fn read_mnemonic(input: &str) -> Result<String, SignError> {
+    let raw = read_input(if input == "-" { None } else { Some(input) })?;
+    Ok(raw.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+
+//TODO: 🟡 unused?
+/// Read a single-line secret-like text (file or stdin), trimmed.
+pub fn read_text(input: &str) -> Result<String, SignError> {
+    let raw = read_input(if input == "-" { None } else { Some(input) })?;
+    Ok(raw.trim().to_string())
+}

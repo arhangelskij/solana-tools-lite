@@ -4,11 +4,13 @@ use clap::Subcommand;
 pub enum Commands {
     /// Generate keypair from mnemonic
     Gen {
-        #[arg(short, long)]
+        /// Read mnemonic from file or stdin ("-"). If omitted, a new mnemonic is generated.
+        #[arg(long, value_name = "FILE")]
         mnemonic: Option<String>,
 
-        #[arg(long)]
-        passphrase: Option<String>,
+        /// Read passphrase from file or stdin ("-"). Optional.
+        #[arg(long, value_name = "FILE")]
+        passphrase: Option<String>
     },
 
     /// Sign a message
@@ -55,7 +57,7 @@ pub enum Commands {
 
         /// Force output format (json|base64|base58). If not specified, we mirror the input format.
         #[arg(long = "output-format", value_enum, short = 'f')]
-        output_format: Option<OutFmt>
+        output_format: Option<OutFmt>,
     },
 }
 
@@ -75,7 +77,7 @@ pub enum Base58Action {
 pub enum OutFmt {
     Json,
     Base64,
-    Base58
+    Base58,
 }
 
 //TODO: 🟡 add also base64?

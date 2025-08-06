@@ -9,11 +9,14 @@ fn main() {
     match &cli.command {
         Commands::Gen {
             mnemonic,
-            passphrase,
+            passphrase//TODO: 🔴 add show_secret param
         } => {
-            if let Err(e) =
-                handlers::generate::handle_gen(mnemonic.as_ref(), passphrase.as_ref(), cli.json_pretty)
-            {
+            if let Err(e) = handlers::generate::handle_gen(
+                mnemonic.as_ref(),
+                passphrase.as_ref(),
+                cli.json_pretty,
+                false
+            ) {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);
             }
@@ -34,7 +37,8 @@ fn main() {
             signature,
             pubkey,
         } => {
-            let exit_code = handlers::verify::handle_verify(message, signature, pubkey, cli.json_pretty);
+            let exit_code =
+                handlers::verify::handle_verify(message, signature, pubkey, cli.json_pretty);
             std::process::exit(exit_code);
         }
 
@@ -49,11 +53,15 @@ fn main() {
             input,
             secret_key,
             output,
-            output_format
+            output_format,
         } => {
-            if let Err(e) =
-                handlers::sign_tx::handle_sign_transaction_file(Some(&input.clone()), secret_key, output.as_ref(), cli.json_pretty, *output_format)
-            {
+            if let Err(e) = handlers::sign_tx::handle_sign_transaction_file(
+                Some(&input.clone()),
+                secret_key,
+                output.as_ref(),
+                cli.json_pretty,
+                *output_format,
+            ) {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);
             }

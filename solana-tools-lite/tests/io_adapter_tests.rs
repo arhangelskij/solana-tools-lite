@@ -8,6 +8,7 @@ use data_encoding::BASE64;
 
 
 use solana_tools_lite::adapters::io_adapter::{is_base58, read_input_transaction, read_secret_key_file};
+use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::errors::SignError;
 use solana_tools_lite::models::input_transaction::InputTransaction;
 
@@ -282,6 +283,20 @@ fn test_read_secret_key_file_and_parse_json_array_32() -> Result<(), Box<dyn std
     let sk = parse_signing_key_content(&text).expect("parse array32 from file");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 
+    fs::remove_file(path)?;
+    Ok(())
+}
+
+// Read mnemonic from file and normalize whitespace
+#[test]
+fn test_read_mnemonic_file_normalize() -> Result<(), Box<dyn std::error::Error>> {
+    let path = "test_mnemonic.txt";
+    // Write mnemonic with varied whitespace and newlines
+    let content = "word1  word2\nword3\tword4  ";
+    fs::write(path, content)?;
+    // Should collapse whitespace into single spaces
+    let normalized = read_mnemonic(path)?;
+    assert_eq!(normalized, "word1 word2 word3 word4");
     fs::remove_file(path)?;
     Ok(())
 }

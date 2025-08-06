@@ -21,7 +21,7 @@ pub fn write_output(path: Option<&str>, data: &str) -> Result<(), SignError> {
         }
     }
 }
-
+// TODO: 🟡🟡 think about SignError mb separate type for IO
 pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
     use std::fs;
     use std::io::{self, Read};
