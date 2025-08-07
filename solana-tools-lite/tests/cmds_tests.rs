@@ -21,10 +21,13 @@ mod tests {
         match cli.command {
             Commands::Gen {
                 mnemonic,
-                passphrase
+                passphrase,
+                show_secret
             } => {
                 assert_eq!(mnemonic.as_deref(), Some("test test test"));
                 assert_eq!(passphrase.as_deref(), Some("pass"));
+                // False by default
+                assert_eq!(show_secret, false);
             }
             _ => panic!("Parsed into wrong command variant"),
         }

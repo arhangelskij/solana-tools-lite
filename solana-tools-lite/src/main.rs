@@ -10,7 +10,7 @@ fn main() {
         Commands::Gen {
             mnemonic,
             passphrase,
-            show_secret//TODO: 🔴 add show_secret param
+            show_secret
         } => {
             if let Err(e) = handlers::generate::handle_gen(
                 mnemonic.as_ref(),
