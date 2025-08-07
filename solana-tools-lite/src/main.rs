@@ -9,13 +9,14 @@ fn main() {
     match &cli.command {
         Commands::Gen {
             mnemonic,
-            passphrase//TODO: 🔴 add show_secret param
+            passphrase,
+            show_secret//TODO: 🔴 add show_secret param
         } => {
             if let Err(e) = handlers::generate::handle_gen(
                 mnemonic.as_ref(),
                 passphrase.as_ref(),
                 cli.json_pretty,
-                false
+                *show_secret
             ) {
                 eprintln!("Error executing gen command: {e}");
                 std::process::exit(1);

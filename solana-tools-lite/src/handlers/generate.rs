@@ -37,8 +37,8 @@ pub fn handle_gen(
 
     let result = GenResult {
         mnemonic: mnemonic.clone(),
-        public_key_base58: pubkey_base58.clone(),
-        secret_key_base58: bs58::encode(signing_key.to_bytes()).into_string(),
+        public_key: pubkey_base58.clone(),
+        secret_key: bs58::encode(signing_key.to_bytes()).into_string(),
         seed_hex: hex_encode(&seed),
     };
 

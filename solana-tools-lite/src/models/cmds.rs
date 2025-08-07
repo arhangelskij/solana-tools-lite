@@ -7,10 +7,12 @@ pub enum Commands {
         /// Read mnemonic from file or stdin ("-"). If omitted, a new mnemonic is generated.
         #[arg(long, value_name = "FILE")]
         mnemonic: Option<String>,
-
         /// Read passphrase from file or stdin ("-"). Optional.
         #[arg(long, value_name = "FILE")]
-        passphrase: Option<String>
+        passphrase: Option<String>,
+        /// Show secret in output //TODO: correct comment if needed and add shor vers
+        #[arg(long, default_value = "false")]
+        show_secret: bool
     },
 
     /// Sign a message
@@ -20,7 +22,7 @@ pub enum Commands {
 
         /// Base58-encoded private key (32 bytes)
         #[arg(long)]
-        secret_key: String,
+        secret_key: String
     },
 
     /// Verify a signature
@@ -32,13 +34,13 @@ pub enum Commands {
         signature: String,
 
         #[arg(long)]
-        pubkey: String,
+        pubkey: String
     },
 
     /// Base58 encode/decode
     Base58 {
         #[command(subcommand)]
-        action: Base58Action,
+        action: Base58Action
     },
 
     /// Sign a transaction JSON file (cold-signer)
@@ -57,7 +59,7 @@ pub enum Commands {
 
         /// Force output format (json|base64|base58). If not specified, we mirror the input format.
         #[arg(long = "output-format", value_enum, short = 'f')]
-        output_format: Option<OutFmt>,
+        output_format: Option<OutFmt>
     },
 }
 

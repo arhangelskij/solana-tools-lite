@@ -16,9 +16,11 @@ pub struct VerifyResult {
 #[derive(Serialize)]
 pub struct GenResult {
     pub mnemonic: String,
-    pub public_key_base58: String,
-    pub secret_key_base58: String,
-    pub seed_hex: String,
+    #[serde(rename = "publicKey")]
+    pub public_key: String,
+    #[serde(rename = "secretKey")]
+    pub secret_key: String,
+    pub seed_hex: String
 }
 
 #[derive(Serialize)]
@@ -42,7 +44,7 @@ impl GenResult {
     pub fn as_public(&self) -> PublicGenResult {
         PublicGenResult {
             mnemonic: self.mnemonic.clone(),
-            public_key_base58: self.public_key_base58.clone(),
+            public_key_base58: self.public_key.clone(),
         }
     }
 
@@ -50,7 +52,7 @@ impl GenResult {
     pub fn to_public_display(&self) -> String {
         format!(
             "Mnemonic: {}\nPublic Key: {}",
-            self.mnemonic, self.public_key_base58
+            self.mnemonic, self.public_key
         )
     }
 

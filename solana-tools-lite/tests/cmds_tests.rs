@@ -12,7 +12,7 @@ mod tests {
             "solana-lite",
             "gen",
             "--mnemonic",
-            "test test test",
+            "test test test", //TODO: 🔴 mnemonic from file, but for test mb can use this variant
             "--passphrase",
             "pass"
         ];
