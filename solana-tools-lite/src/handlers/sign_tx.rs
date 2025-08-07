@@ -6,7 +6,7 @@ use crate::{
     models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
-    utils::serialize,
+    utils::serialize
 };
 
 use ed25519_dalek::{Signature, SigningKey};
@@ -21,15 +21,14 @@ pub fn handle_sign_transaction_file(
     out_override: Option<OutFmt>,
 ) -> Result<()> {
     // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
-    // println!("[DEBUG] -- before read_input");
     let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
 
     let default_format = match &input_tx {
         InputTransaction::Json(_) => OutputFormat::Json {
-            pretty: json_pretty,
+            pretty: json_pretty
         },
         InputTransaction::Base64(_) => OutputFormat::Base64,
-        InputTransaction::Base58(_) => OutputFormat::Base58,
+        InputTransaction::Base58(_) => OutputFormat::Base58
     };
 
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
@@ -47,7 +46,7 @@ pub fn handle_sign_transaction_file(
     // Override format output if needed
     let chosen_format = match out_override {
         Some(OutFmt::Json) => OutputFormat::Json {
-            pretty: json_pretty,
+            pretty: json_pretty
         },
         Some(OutFmt::Base64) => OutputFormat::Base64,
         Some(OutFmt::Base58) => OutputFormat::Base58,

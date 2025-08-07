@@ -55,7 +55,6 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     let input_str = read_raw_input(input)
         .map_err(|e| TransactionParseError::InvalidFormat(format!("I/O error: {}", e)))?;
 
-    //TODO: 🔴 check it
     let trimmed_input = input_str.trim();
 
     if let Ok(json_tx) = serde_json::from_str::<UiTransaction>(&trimmed_input) {
@@ -131,7 +130,7 @@ pub fn is_base58(s: &str) -> bool {
 pub fn write_output_transaction(
     transaction: &UiTransaction,
     format: OutputFormat,
-    output: Option<&str>,
+    output: Option<&str>
 ) -> Result<()> {
     // First, serialize to JSON (for both JSON and encoded formats)
     let json_str = serde_json::to_string(transaction)

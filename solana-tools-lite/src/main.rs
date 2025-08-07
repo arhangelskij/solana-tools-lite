@@ -2,6 +2,8 @@ use clap::Parser;
 use solana_tools_lite::handlers;
 use solana_tools_lite::layers::cli::Cli;
 use solana_tools_lite::models::cmds::Commands;
+use solana_tools_lite::models::results::GenResult;
+use solana_tools_lite::flows::generation;
 
 fn main() {
     let cli = Cli::parse();
@@ -10,15 +12,29 @@ fn main() {
         Commands::Gen {
             mnemonic,
             passphrase,
-            show_secret
+            show_secret,
+            //  output //TODO: 🟡
         } => {
-            if let Err(e) = handlers::generate::handle_gen(
-                mnemonic.as_ref(),
-                passphrase.as_ref(),
+            // Resolve optional refs for handler
+            let mnemonic_path = mnemonic.as_ref();
+            let passphrase_path = passphrase.as_ref();
+
+            // Call domain handler and handle errors early
+            let result = handlers::generate::handle_gen(mnemonic_path, passphrase_path)
+                .unwrap_or_else(|e| {
+                    eprintln!("Error executing gen command: {e}");
+                    std::process::exit(1);
+                });
+
+            // Present the result and save wallet file.
+            // If presenter fails we exit with error.
+            if let Err(e) = generation::execute(
+                &result,
                 cli.json_pretty,
-                *show_secret
+                *show_secret,
+                None, //output.as_deref(),//TODO:
             ) {
-                eprintln!("Error executing gen command: {e}");
+                eprintln!("Presenter error: {e}");
                 std::process::exit(1);
             }
         }
@@ -27,7 +43,7 @@ fn main() {
             message,
             secret_key,
         } => {
-            if let Err(e) = handlers::sign::handle_sign(message, secret_key, cli.json_pretty) {
+            if let Err(e) = handlers::sign::handle_sign(message, secret_key) {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
             }

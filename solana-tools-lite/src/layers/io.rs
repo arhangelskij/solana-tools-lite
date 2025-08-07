@@ -9,14 +9,14 @@ pub fn write_output(path: Option<&str>, data: &str) -> Result<(), SignError> {
         Some(p) if p != "-" => {
             fs::write(p, data).map_err(|e| SignError::IoWithPath {
                 source: e,
-                path: Some(p.to_owned()),
+                path: Some(p.to_owned())
             })
         }
         _ => {
             let mut stdout = io::stdout();
             stdout.write_all(data.as_bytes()).map_err(|e| SignError::IoWithPath {
                 source: e,
-                path: None,
+                path: None
             })
         }
     }

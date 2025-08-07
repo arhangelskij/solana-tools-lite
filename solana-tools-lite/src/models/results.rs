@@ -23,10 +23,23 @@ pub struct GenResult {
     pub seed_hex: String
 }
 
+impl fmt::Display for GenResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Mnemonic: {}\nPublic Key: {}\nSecret Key: {}\nSeed Hex: {}",
+            self.mnemonic,
+            self.public_key,
+            self.secret_key,
+            self.seed_hex
+        )
+    }
+}
+
 #[derive(Serialize)]
 pub struct PublicGenResult {
     pub mnemonic: String,
-    pub public_key_base58: String
+    pub public_key: String
 }
 
 impl fmt::Display for PublicGenResult {
@@ -35,7 +48,7 @@ impl fmt::Display for PublicGenResult {
             f,
             "Mnemonic: {}\nPublic Key: {}",
             self.mnemonic,
-            self.public_key_base58
+            self.public_key
         )
     }
 }
@@ -44,7 +57,7 @@ impl GenResult {
     pub fn as_public(&self) -> PublicGenResult {
         PublicGenResult {
             mnemonic: self.mnemonic.clone(),
-            public_key_base58: self.public_key.clone(),
+            public_key: self.public_key.clone(),
         }
     }
 

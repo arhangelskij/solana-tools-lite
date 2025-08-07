@@ -335,10 +335,9 @@ mod tests {
         let keypair = ed25519::keypair_from_seed(&seed).unwrap();
         
         /////////////////TODO: remove secret – just for test
-      let mut sk = bs58::encode(keypair.to_bytes()[..32].to_vec()).into_string();
+      let sk = bs58::encode(keypair.to_bytes()[..32].to_vec()).into_string();
  
         println!("S key: {:?}", sk);
-        /// /////////////////
 
         // Use provided Base64-encoded unsigned tx fixture
         let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
