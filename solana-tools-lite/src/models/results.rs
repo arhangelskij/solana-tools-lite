@@ -36,37 +36,10 @@ impl fmt::Display for GenResult {
     }
 }
 
-#[derive(Serialize)]
-pub struct PublicGenResult {
-    pub mnemonic: String,
-    pub public_key: String
-}
-
-impl fmt::Display for PublicGenResult {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Mnemonic: {}\nPublic Key: {}",
-            self.mnemonic,
-            self.public_key
-        )
-    }
-}
-
 impl GenResult {
-    pub fn as_public(&self) -> PublicGenResult {
-        PublicGenResult {
-            mnemonic: self.mnemonic.clone(),
-            public_key: self.public_key.clone(),
-        }
-    }
-
     /// Returns a human-friendly display showing only mnemonic and public key.
     pub fn to_public_display(&self) -> String {
-        format!(
-            "Mnemonic: {}\nPublic Key: {}",
-            self.mnemonic, self.public_key
-        )
+        format!("Public Key: {}", self.public_key)
     }
 
     /// Returns a pretty-printed JSON containing all generation result fields.
@@ -80,5 +53,5 @@ impl GenResult {
 pub struct SignResult {
     pub message: String,
     pub signature_base58: String,
-    pub public_key: String, //TODO: add - pub error: Option<String> ?
+    pub public_key: String //TODO: add - pub error: Option<String> ?
 }

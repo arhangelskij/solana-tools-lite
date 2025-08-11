@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use crate::errors::ToolError;
 use crate::layers::io::write_output;
 use crate::models::results::GenResult;
@@ -30,25 +30,37 @@ fn print_result(result: &GenResult, json: bool, show_secret: bool) -> Result<(),
         (true, true ) => pretty_print_json(result),
         // With secrets
         (false, true ) => println!("{}", result),
-        // Public
-        (true, false) => pretty_print_json(&result.as_public()),
-        (false, false) => println!("{}", result.as_public())
+        // Public key only
+        (false, false) | (true, false) => println!("{}", result.to_public_display())
         
     }
     Ok(())
 }
 
 fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Result<(), ToolError> {
-    // Default file name when user didn't provide one
-    let wallet_path = out_path.unwrap_or("wallet.json");
+    // Resolve final target path (directory -> append wallet.json; None -> wallet.json)
+    let target: PathBuf = get_final_path(out_path.unwrap_or("wallet.json"));
 
-    // If file exists and not forced, return an error
-    if Path::new(wallet_path).exists() && !force {
-        return Err(ToolError::FileExists { path: wallet_path.to_string() });
+    // If target exists and not forced, return an error
+    if target.exists() && !force {
+        return Err(ToolError::FileExists { path: target.display().to_string() });
     }
 
     // Always save full wallet to file
-    write_output(Some(wallet_path), &result.to_full_json())?;
+    let target_str = target.to_string_lossy();
+    write_output(Some(&target_str), &result.to_full_json())?;
 
     Ok(())
+}
+
+/// Resolve the final wallet path:
+/// - if `output_path_str` points to a directory, append `wallet.json`
+/// - otherwise treat it as a file path
+fn get_final_path(output_path_str: &str) -> PathBuf {
+    let p = Path::new(output_path_str);
+    if p.is_dir() {
+        p.join("wallet.json")
+    } else {
+        p.to_path_buf()
+    }
 }
