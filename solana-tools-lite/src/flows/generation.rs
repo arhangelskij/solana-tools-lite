@@ -10,6 +10,7 @@ use crate::utils::pretty_print_json;
 /// * `json`         – pretty JSON requested (`--json-pretty`)
 /// * `show_secret`  – print private part to stdout (`--show-secret`)
 /// * `out_path`     – where to save the full wallet
+/// * `force`        – override the wallet file
 pub fn execute(
     result: &GenResult,
     json: bool,
@@ -43,7 +44,7 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
 
     // If file exists and not forced, return an error
     if Path::new(wallet_path).exists() && !force {
-        return Err(ToolError::FileExists(wallet_path.to_string()));
+        return Err(ToolError::FileExists { path: wallet_path.to_string() });
     }
 
     // Always save full wallet to file

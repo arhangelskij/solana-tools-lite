@@ -10,9 +10,15 @@ pub enum Commands {
         /// Read passphrase from file or stdin ("-"). Optional.
         #[arg(long, value_name = "FILE")]
         passphrase: Option<String>,
-        /// Show secret in output //TODO: correct comment if needed and add shor vers
+        /// Show secret in output
         #[arg(long, default_value = "false")]
-        show_secret: bool
+        show_secret: bool,
+        /// Output path for a wallet
+         #[arg(long, short)]
+        output: Option<String>,
+        /// Force save(override) a wallet file
+        #[arg(long, short, default_value = "false")]
+        force: bool
     },
 
     /// Sign a message

@@ -2,7 +2,6 @@ use clap::Parser;
 use solana_tools_lite::handlers;
 use solana_tools_lite::layers::cli::Cli;
 use solana_tools_lite::models::cmds::Commands;
-use solana_tools_lite::models::results::GenResult;
 use solana_tools_lite::flows::generation;
 
 fn main() {
@@ -13,11 +12,14 @@ fn main() {
             mnemonic,
             passphrase,
             show_secret,
-            //  output //TODO: 🟡
+            //TODO: 🟡
+            output, 
+            force 
         } => {
             // Resolve optional refs for handler
             let mnemonic_path = mnemonic.as_ref();
             let passphrase_path = passphrase.as_ref();
+            let output_path = output.as_deref();
 
             // Call domain handler and handle errors early
             let result = handlers::generate::handle_gen(mnemonic_path, passphrase_path)
@@ -32,9 +34,10 @@ fn main() {
                 &result,
                 cli.json_pretty,
                 *show_secret,
-                None, //output.as_deref(),//TODO:
+                output_path,
+                *force
             ) {
-                eprintln!("Presenter error: {e}");
+                eprintln!("Flow error: {e}");
                 std::process::exit(1);
             }
         }

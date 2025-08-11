@@ -30,7 +30,10 @@ pub enum ToolError {
     TransactionParse(#[from] TransactionParseError),
 
     #[error ("Deserialization error: {0}")]
-    Deserialize(#[from] DeserializeError)
+    Deserialize(#[from] DeserializeError),
+
+    #[error("Save file error (already exists): {path}")]
+    FileExists { path: String }
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
