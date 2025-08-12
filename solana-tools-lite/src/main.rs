@@ -1,8 +1,8 @@
 use clap::Parser;
+use solana_tools_lite::flows;
 use solana_tools_lite::handlers;
 use solana_tools_lite::layers::cli::Cli;
 use solana_tools_lite::models::cmds::Commands;
-use solana_tools_lite::flows;
 
 fn main() {
     let cli = Cli::parse();
@@ -12,8 +12,8 @@ fn main() {
             mnemonic,
             passphrase,
             show_secret,
-            output, 
-            force 
+            output,
+            force
         } => {
             // Resolve optional refs for handler
             let mnemonic_path = mnemonic.as_ref();
@@ -28,13 +28,13 @@ fn main() {
                 });
 
             // Present the result and save wallet file.
-            // If presenter fails we exit with error.
+            // If flow fails we exit with error.
             if let Err(e) = flows::generation::execute(
                 &result,
                 cli.json_pretty,
                 *show_secret,
                 output_path,
-                *force
+                *force,
             ) {
                 eprintln!("Flow error: {e}");
                 std::process::exit(1);
@@ -45,10 +45,12 @@ fn main() {
             message,
             secret_key,
         } => {
-            if let Err(e) = handlers::sign_message::handle_sign(message, secret_key) {
+            let result = handlers::sign_message::execute(message, secret_key).unwrap_or_else(|e| {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
-            }
+            });
+
+            //TODO: 12aug flow for Sign
         }
 
         Commands::Verify {
