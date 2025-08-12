@@ -45,7 +45,7 @@ fn main() {
             message,
             secret_key,
         } => {
-            if let Err(e) = handlers::sign::handle_sign(message, secret_key) {
+            if let Err(e) = handlers::sign_message::handle_sign(message, secret_key) {
                 eprintln!("Error executing sign command: {e}");
                 std::process::exit(1);
             }
