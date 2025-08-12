@@ -6,7 +6,7 @@ use crate::utils::{hex_encode};
 use ed25519_dalek::SigningKey;
 use std::convert::TryInto;
 
-pub fn handle_gen(
+pub fn execute(
     mnemonic_path: Option<&String>,
     passphrase: Option<&String>
 ) -> Result<GenResult> {

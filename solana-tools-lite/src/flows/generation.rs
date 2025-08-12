@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
+use clap::builder::ValueParserFactory;
+
 use crate::errors::ToolError;
-use crate::layers::io::write_output;
+use crate::layers::io::write_secret_file;
 use crate::models::results::GenResult;
 use crate::utils::pretty_print_json;
 
@@ -18,39 +20,20 @@ pub fn execute(
     out_path: Option<&str>,
     force: bool
 ) -> Result<(), ToolError> {
-    save_to_file(result, out_path, force)?;
-    print_result(result, json, show_secret)?;
+    let saved_path = save_to_file(result, out_path, force)?;
+    print_result(result, json, show_secret, &saved_path)?;
 
     Ok(())
 }
 
-fn print_result(result: &GenResult, json: bool, show_secret: bool) -> Result<(), ToolError> {
-    match (json, show_secret) {
-        // Pretty JSON with secrets
-        (true, true ) => pretty_print_json(result),
-        // With secrets
-        (false, true ) => println!("{}", result),
-        // Public key only
-        (false, false) | (true, false) => println!("{}", result.to_public_display())
-        
-    }
-    Ok(())
-}
-
-fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Result<(), ToolError> {
+fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Result<PathBuf, ToolError> {
     // Resolve final target path (directory -> append wallet.json; None -> wallet.json)
     let target: PathBuf = get_final_path(out_path.unwrap_or("wallet.json"));
 
-    // If target exists and not forced, return an error
-    if target.exists() && !force {
-        return Err(ToolError::FileExists { path: target.display().to_string() });
-    }
-
     // Always save full wallet to file
-    let target_str = target.to_string_lossy();
-    write_output(Some(&target_str), &result.to_full_json())?;
+    write_secret_file(&target, &result.to_full_json(), force)?;
 
-    Ok(())
+    Ok(target)
 }
 
 /// Resolve the final wallet path:
@@ -63,4 +46,19 @@ fn get_final_path(output_path_str: &str) -> PathBuf {
     } else {
         p.to_path_buf()
     }
+}
+
+/// Print output of a generation
+fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &Path) -> Result<(), ToolError> {
+    match (json, show_secret) {
+        // Pretty JSON with secrets
+        (true, true ) => pretty_print_json(result),
+        // With secrets
+        (false, true ) => println!("{}", result),
+        // Public key only
+        (false, false) | (true, false) => println!("{}", result.to_public_display())
+    }
+    // Always inform where the wallet was saved
+    println!("Saved: {}", saved_path.display());
+    Ok(())
 }

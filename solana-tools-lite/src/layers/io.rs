@@ -1,6 +1,9 @@
 use crate::errors::{Result, SignError};
+use std::path::Path;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
-// Use it only in apapters
+/// Use it only in apapters
 pub fn write_output(path: Option<&str>, data: &str) -> Result<(), SignError> {
     use std::fs;
     use std::io::{self, Write};
@@ -21,6 +24,7 @@ pub fn write_output(path: Option<&str>, data: &str) -> Result<(), SignError> {
         }
     }
 }
+
 // TODO: 🟡🟡 think about SignError mb separate type for IO
 pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
     use std::fs;
@@ -68,4 +72,49 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
             Ok(buf)
         }
     }
+}
+
+/// Write secret material to a file path, never to stdout.
+/// - `path` must be a filesystem path ("-" is rejected)
+/// - if the file exists and `force == false`, returns an AlreadyExists error
+/// - on Unix, sets permissions to 0o600 (rw-------)
+pub fn write_secret_file(path: &Path, data: &str, force: bool) -> Result<(), SignError> {
+    use std::fs;
+    use std::io;
+
+    // Refuse to write secrets to stdout
+    if path == Path::new("-") {
+        return Err(SignError::IoWithPath {
+            source: io::Error::new(io::ErrorKind::InvalidInput, "refusing to write secrets to stdout (-)"),
+            path: Some(path.display().to_string())
+        });
+    }
+
+    let target = path;
+
+    // If file already exists and not forced, fail fast
+    if target.exists() && !force {
+        return Err(SignError::IoWithPath {
+            source: io::Error::new(io::ErrorKind::AlreadyExists, "file already exists"),
+            path: Some(target.display().to_string())
+        });
+    }
+
+    // Write content (parent directory must exist; fs::write will error otherwise)
+    fs::write(target, data).map_err(|e| SignError::IoWithPath {
+        source: e,
+        path: Some(target.display().to_string())
+    })?;
+
+    // Restrict permissions on Unix
+    #[cfg(unix)]
+    {
+        if let Ok(meta) = fs::metadata(target) {
+            let mut perms = meta.permissions();
+            perms.set_mode(0o600); // rw-------
+            let _ = fs::set_permissions(target, perms);
+        }
+    }
+
+    Ok(())
 }

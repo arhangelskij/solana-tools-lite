@@ -2,7 +2,7 @@ use clap::Parser;
 use solana_tools_lite::handlers;
 use solana_tools_lite::layers::cli::Cli;
 use solana_tools_lite::models::cmds::Commands;
-use solana_tools_lite::flows::generation;
+use solana_tools_lite::flows;
 
 fn main() {
     let cli = Cli::parse();
@@ -12,7 +12,6 @@ fn main() {
             mnemonic,
             passphrase,
             show_secret,
-            //TODO: 🟡
             output, 
             force 
         } => {
@@ -22,7 +21,7 @@ fn main() {
             let output_path = output.as_deref();
 
             // Call domain handler and handle errors early
-            let result = handlers::generate::handle_gen(mnemonic_path, passphrase_path)
+            let result = handlers::generate::execute(mnemonic_path, passphrase_path)
                 .unwrap_or_else(|e| {
                     eprintln!("Error executing gen command: {e}");
                     std::process::exit(1);
@@ -30,7 +29,7 @@ fn main() {
 
             // Present the result and save wallet file.
             // If presenter fails we exit with error.
-            if let Err(e) = generation::execute(
+            if let Err(e) = flows::generation::execute(
                 &result,
                 cli.json_pretty,
                 *show_secret,
