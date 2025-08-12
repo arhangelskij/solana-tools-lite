@@ -12,7 +12,7 @@ pub enum Commands {
         passphrase: Option<String>,
         /// Show secret in output
         #[arg(long, default_value = "false")]
-        show_secret: bool,
+        show_secret: bool, //TODO: 🟡 rename to unsafe_show_secret
         /// Output path for a wallet
          #[arg(long, short)]
         output: Option<String>,

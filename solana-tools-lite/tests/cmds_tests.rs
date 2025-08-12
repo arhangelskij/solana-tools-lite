@@ -14,7 +14,9 @@ mod tests {
             "--mnemonic",
             "test test test", //TODO: 🔴 mnemonic from file, but for test mb can use this variant
             "--passphrase",
-            "pass"
+            "pass",
+            "--output", 
+            "./path"
         ];
 
         let cli = Cli::parse_from(args);
@@ -22,12 +24,17 @@ mod tests {
             Commands::Gen {
                 mnemonic,
                 passphrase,
-                show_secret
+                show_secret,
+                output,
+                force
             } => {
                 assert_eq!(mnemonic.as_deref(), Some("test test test"));
                 assert_eq!(passphrase.as_deref(), Some("pass"));
                 // False by default
                 assert_eq!(show_secret, false);
+                assert_eq!(output.as_deref(), Some("./path"));
+                // False by default
+                assert_eq!(force, false);
             }
             _ => panic!("Parsed into wrong command variant"),
         }
