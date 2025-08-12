@@ -49,7 +49,7 @@ impl GenResult {
 }
 
 /// Output for signing (sign command)
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct SignResult {
     pub message: String,
     pub signature_base58: String,

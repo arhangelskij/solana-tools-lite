@@ -49,10 +49,8 @@ mod tests {
     #[test]
     fn test_sign_invalid_base58_secret_should_fail() {
         let bad = "%%%not_base58%%%";
-
-        //TODO: 🔴 7 aug -- Fix test
-
-        let err = sign::handle_sign("foo", bad, false).unwrap_err().to_string();
+        
+        let err = sign::handle_sign("foo", bad).unwrap_err().to_string();
         assert!(err.contains("Invalid base58 in secret key"));
     }
 
@@ -64,7 +62,7 @@ mod tests {
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let mut sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         sk.pop();
-        assert!(sign::handle_sign("foo", &sk, false).is_err());
+        assert!(sign::handle_sign("foo", &sk).is_err());
     }
 
     /// An empty message should still produce a valid signature of correct length.
@@ -73,7 +71,7 @@ mod tests {
         let seed = [42u8; 64];
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
-        let sig = sign::handle_sign("", &sk, false).unwrap();
+        let sig = sign::handle_sign("", &sk).unwrap().signature_base58;
         // Decode the signature and verify its byte length is SIG_LEN
         let bytes = bs58::decode(&sig).into_vec().unwrap();
         assert_eq!(bytes.len(), 64);
@@ -87,7 +85,7 @@ mod tests {
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let pubkey = key.verifying_key();
-        let sig = sign::handle_sign("foo", &sk, false).unwrap();
+        let sig = sign::handle_sign("foo", &sk).unwrap().signature_base58;
         let exit_code = verify::handle_verify(
             "bar",
             &sig,
