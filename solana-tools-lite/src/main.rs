@@ -43,14 +43,12 @@ fn main() {
 
         Commands::Sign {
             message,
-            secret_key,
+            secret_key,//TODO: rename into path
         } => {
-            let result = handlers::sign_message::execute(message, secret_key).unwrap_or_else(|e| {
-                eprintln!("Error executing sign command: {e}");
+            if let Err(e) =  flows::sign::execute(message, secret_key, cli.json_pretty) {
+                eprintln!("Flow error: {e}");
                 std::process::exit(1);
-            });
-
-            //TODO: 12aug flow for Sign
+            }
         }
 
         Commands::Verify {

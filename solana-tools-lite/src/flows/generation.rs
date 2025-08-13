@@ -1,6 +1,4 @@
 use std::path::{Path, PathBuf};
-use clap::builder::ValueParserFactory;
-
 use crate::errors::ToolError;
 use crate::layers::io::write_secret_file;
 use crate::models::results::GenResult;
