@@ -1,38 +1,27 @@
 use ed25519_dalek::{Signature, Signer, SigningKey};
 
 use crate::models::results::SignResult;
-use std::convert::TryInto;
-
 use crate::errors::{Result, SignError};
+use crate::adapters::io_adapter::{read_secret_key_file, parse_signing_key_content};
 
-/// Signs a given message with a provided secret key (base58 encoded)
-pub fn execute(message: &str, secret_key_b58: &str) -> Result<SignResult> {
-    // Decode the base58 secret key
-    let secret_bytes = bs58::decode(secret_key_b58)
-        .into_vec()
-        .map_err(|_| SignError::InvalidBase58)?;
 
-    // Convert to [u8; 32] (only the private seed part is needed)
-    let secret_bytes_arr: &[u8; 32] = secret_bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| SignError::InvalidKeyLength)?;
-
-    // Create SigningKey from seed
-    let signing_key = SigningKey::from_bytes(secret_bytes_arr);
+//TODO: 🟡🟠 test new execute
+/// Signs a message using a secret key loaded from a file or stdin ("-").
+pub fn execute(message: &str, secret_key_path: &str) -> Result<SignResult> {
+    // Read secret key text (file or "-") and parse supported formats
+    let key_text = read_secret_key_file(secret_key_path)?;
+    let signing_key = parse_signing_key_content(&key_text)?;
 
     // Sign the message
     let signature: Signature = signing_key.sign(message.as_bytes());
 
-    // Encode the signature in base58
+    // Encode signature and public key in Base58
     let signature_b58 = bs58::encode(signature.to_bytes()).into_string();
     let pubkey_b58 = bs58::encode(signing_key.verifying_key().to_bytes()).into_string();
 
-    let result = SignResult {
+    Ok(SignResult {
         message: message.to_string(),
-        signature_base58: signature_b58.clone(),
+        signature_base58: signature_b58,
         public_key: pubkey_b58,
-    };
-
-    Ok(result)
+    })
 }

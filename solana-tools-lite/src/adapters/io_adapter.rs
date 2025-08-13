@@ -73,10 +73,15 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
 }
 
 pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError> {
-    // Support "-" to read secret key from stdin
+    // For security reasons, reading secret keys from stdin is disabled.
     if path == "-" {
-        let s = read_input(None)?;
-        return Ok(s.trim().to_string());
+        return Err(SignError::IoWithPath {
+            source: std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "reading secret key from stdin is disabled",
+            ),
+            path: Some("-".to_string()),
+        });
     }
 
     let p = Path::new(path);
