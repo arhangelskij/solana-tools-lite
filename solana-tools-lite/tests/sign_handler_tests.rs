@@ -96,3 +96,14 @@ mod tests {
         assert_eq!(exit_code, 1, "verification should fail for mismatched message");
     }
 }
+
+
+//TODO: 🟡 add as bonus sanity test here or in CI
+
+// sign --from-file test_sms.txt --keypair wallet.json
+// bjEZCan8DnQB83HdUx6cf434hnZ1MZoy6Zx97MsHkrra1pBG28qLptLNMceLUzJdSs9bv6oyx1ehEN5eawLHUcc
+
+// sign --message "123456" --keypair wallet.json
+// bjEZCan8DnQB83HdUx6cf434hnZ1MZoy6Zx97MsHkrra1pBG28qLptLNMceLUzJdSs9bv6oyx1ehEN5eawLHUcc
+
+// echo -n "123456" | cargo run -- sign --from-file - --keypair wallet.json
