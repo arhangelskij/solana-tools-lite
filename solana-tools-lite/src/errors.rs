@@ -33,7 +33,10 @@ pub enum ToolError {
     Deserialize(#[from] DeserializeError),
 
     #[error("Save file error (already exists): {path}")]
-    FileExists { path: String }
+    FileExists { path: String },
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String)
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.

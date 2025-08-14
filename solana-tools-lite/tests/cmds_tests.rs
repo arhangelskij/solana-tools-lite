@@ -11,12 +11,9 @@ mod tests {
         let args = vec![
             "solana-lite",
             "gen",
-            "--mnemonic",
-            "test test test", //TODO: 🔴 mnemonic from file, but for test mb can use this variant
-            "--passphrase",
-            "pass",
-            "--output", 
-            "./path"
+            "--mnemonic", "test test test", //TODO: 🔴 mnemonic from file, but for test mb can use this variant
+            "--passphrase", "pass",
+            "--output", "./path"
         ];
 
         let cli = Cli::parse_from(args);
@@ -42,23 +39,47 @@ mod tests {
 
     /// Test parsing the `sign` command with message and optional mnemonic.
     #[test]
-    fn test_parse_sign_command() {
+    fn test_parse_sign_message_command() {
         let args = vec![
             "solana-lite",
             "sign",
-            "--message",
-            "hello",
-            "--secret-key",
-            "4f3edf983ac636a65a842ce7c78d9aa706d3b113b5ad2efc73362be3dfc1ad7a",
+            "--message", "hello",
+            "--keypair", "./tests/fixtures/test_keypair.json",
         ];
         let cli = Cli::parse_from(args);
         match cli.command {
             Commands::Sign {
                 message,
-                secret_key,
+                from_file,
+                keypair,
             } => {
-                assert_eq!(message, "hello");
-                assert_eq!(secret_key, "4f3edf983ac636a65a842ce7c78d9aa706d3b113b5ad2efc73362be3dfc1ad7a");
+                assert_eq!(message.as_deref(), Some("hello"));
+                assert_eq!(from_file, None);
+                assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
+
+    /// Test parsing the `sign` command with message and optional mnemonic.
+    #[test]
+    fn test_parse_sign_from_file_command() {
+        let args = vec![
+            "solana-lite",
+            "sign",
+            "--from-file", "./path/message.txt",
+            "--keypair", "./tests/fixtures/test_keypair.json",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Commands::Sign {
+                message,
+                from_file,
+                keypair
+            } => {
+                assert_eq!(message, None);
+                assert_eq!(from_file.as_deref(), Some("./path/message.txt"));
+                assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -70,12 +91,9 @@ mod tests {
         let args = vec![
             "solana-lite",
             "verify",
-            "--message",
-            "hello",
-            "--signature",
-            "sig",
-            "--pubkey",
-            "pub",
+            "--message", "black swan",
+            "--signature", "sig",
+            "--pubkey", "pub" //TODO: 🟡 check pubkey 'coz could be from also file 
         ];
         let cli = Cli::parse_from(args);
         match cli.command {
@@ -84,7 +102,7 @@ mod tests {
                 signature,
                 pubkey,
             } => {
-                assert_eq!(message, "hello");
+                assert_eq!(message, "black swan");
                 assert_eq!(signature, "sig");
                 assert_eq!(pubkey, "pub");
             }
@@ -135,16 +153,16 @@ mod tests {
             "--json-pretty",          // global pretty flag
             "sign-tx",
             "--input", "in.json",
-            "--secret-key", "mysecretkey",
+            "--keypair", "wallet.json",
             "--output", "out.json",
             "--output-format", "base64",      // explicit output format
         ];
         let cli = Cli::parse_from(args);
         assert!(cli.json_pretty, "global --json-pretty should be set");
         match cli.command {
-            Commands::SignTx { input, secret_key, output, output_format } => {
+            Commands::SignTx { input, keypair, output, output_format } => {
                 assert_eq!(input, "in.json");
-                assert_eq!(secret_key, "mysecretkey");
+                assert_eq!(keypair, "wallet.json");
                 assert_eq!(output.as_deref(), Some("out.json"));
                 assert!(matches!(output_format, Some(OutFmt::Base64)));
             }
@@ -160,19 +178,19 @@ mod tests {
             "sign-tx",
             "--input",
             "in.json",
-            "--secret-key",
-            "mysecretkey",
+            "--keypair",
+            "wallet.json",
         ];
         let cli = Cli::parse_from(args);
         match cli.command {
             Commands::SignTx {
                 input,
-                secret_key,
+                keypair,
                 output,
                 output_format
             } => {
                 assert_eq!(input, "in.json");
-                assert_eq!(secret_key, "mysecretkey");
+                assert_eq!(keypair, "wallet.json");
                 assert_eq!(output, None);
 
                 assert!(matches!(output_format, None));

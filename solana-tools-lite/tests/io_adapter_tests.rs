@@ -70,7 +70,7 @@ fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
 
 // Read and trim secret key from file
 #[test]
-fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> { //TODO: 🟠 why box here?
     let path = "test_secret_key.txt";
     let secret = "mysecretkey";
     // Write secret with trailing newline

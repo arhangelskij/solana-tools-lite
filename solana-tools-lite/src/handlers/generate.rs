@@ -7,11 +7,11 @@ use ed25519_dalek::SigningKey;
 use std::convert::TryInto;
 
 pub fn execute(
-    mnemonic_path: Option<&String>,
-    passphrase: Option<&String>
+    mnemonic_path: Option<&str>,
+    passphrase: Option<&str>
 ) -> Result<GenResult> {
     // Resolve mnemonic: read from file/stdin if provided, otherwise generate a new one.
-    let mnemonic = if let Some(p) = mnemonic_path.map(|s| s.as_str()) {
+    let mnemonic = if let Some(p) = mnemonic_path.map(|s| s) {
         let m = read_mnemonic(p)?; // file or "-" (stdin), with whitespace normalization
         bip39::validate_mnemonic(&m)?;
         m
@@ -19,8 +19,8 @@ pub fn execute(
         bip39::generate_mnemonic()?
     };
 
-    let default_passphrase = String::new();
-    let passphrase = passphrase.unwrap_or(&default_passphrase);
+    let default_passphrase = "";
+    let passphrase = passphrase.unwrap_or(default_passphrase);
 
     let seed = bip39::derive_seed(&mnemonic, &passphrase)?;
     let seed32: [u8; 32] = seed[..32]

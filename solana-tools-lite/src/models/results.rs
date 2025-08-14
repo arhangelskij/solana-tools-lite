@@ -53,5 +53,5 @@ impl GenResult {
 pub struct SignResult {
     pub message: String,
     pub signature_base58: String,
-    pub public_key: String //TODO: add - pub error: Option<String> ?
+    pub public_key: String 
 }

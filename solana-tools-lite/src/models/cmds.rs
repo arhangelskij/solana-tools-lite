@@ -1,4 +1,4 @@
-use clap::Subcommand;
+use clap::{ArgGroup, Subcommand};
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
@@ -14,7 +14,7 @@ pub enum Commands {
         #[arg(long, default_value = "false")]
         show_secret: bool, //TODO: 🟡 rename to unsafe_show_secret
         /// Output path for a wallet
-         #[arg(long, short)]
+        #[arg(long, short)]
         output: Option<String>,
         /// Force save(override) a wallet file
         #[arg(long, short, default_value = "false")]
@@ -22,13 +22,19 @@ pub enum Commands {
     },
 
     /// Sign a message
+    #[command(group(ArgGroup::new("data_source").required(true).args(["message", "from_file"])))]
     Sign {
-        #[arg(short, long)]
-        message: String,
+        /// Message to sign (inline)
+        #[arg(short, long, group = "data_source")]
+        message: Option<String>,
 
-        /// Base58-encoded private key (32 bytes)
-        #[arg(long)]
-        secret_key: String
+        /// Read message from file or stdin ("-")
+        #[arg(long = "from-file", value_name = "FILE", group = "data_source")]
+        from_file: Option<String>,
+
+        /// Path to keypair file (stdin disabled for secrets)
+        #[arg(long, short = 'k')]
+        keypair: String
     },
 
     /// Verify a signature
@@ -40,13 +46,13 @@ pub enum Commands {
         signature: String,
 
         #[arg(long)]
-        pubkey: String
+        pubkey: String,
     },
 
     /// Base58 encode/decode
     Base58 {
         #[command(subcommand)]
-        action: Base58Action
+        action: Base58Action,
     },
 
     /// Sign a transaction JSON file (cold-signer)
@@ -55,9 +61,10 @@ pub enum Commands {
         #[arg(long, short = 'i')]
         input: String,
 
-        /// Base58-encoded private key (32 bytes)
+        //TODO: 🔴 delete comment after checking command Base58-encoded private key (32 bytes)
+        /// Path to keypair file (stdin disabled for secrets) 
         #[arg(long, short = 'k')]
-        secret_key: String,
+        keypair: String,
 
         /// Optional output file (if not set, print to stdout)
         #[arg(long, short = 'o')]
@@ -65,7 +72,7 @@ pub enum Commands {
 
         /// Force output format (json|base64|base58). If not specified, we mirror the input format.
         #[arg(long = "output-format", value_enum, short = 'f')]
-        output_format: Option<OutFmt>
+        output_format: Option<OutFmt>,
     },
 }
 

@@ -16,8 +16,8 @@ fn main() {
             force
         } => {
             // Resolve optional refs for handler
-            let mnemonic_path = mnemonic.as_ref();
-            let passphrase_path = passphrase.as_ref();
+            let mnemonic_path = mnemonic.as_deref();
+            let passphrase_path = passphrase.as_deref();
             let output_path = output.as_deref();
 
             // Call domain handler and handle errors early
@@ -43,9 +43,14 @@ fn main() {
 
         Commands::Sign {
             message,
-            secret_key,//TODO: rename into path
+            from_file,
+            keypair
         } => {
-            if let Err(e) =  flows::sign::execute(message, secret_key, cli.json_pretty) {
+
+            let message = message.as_deref();
+            let file_path = from_file.as_deref();
+
+            if let Err(e) =  flows::sign::execute(message, file_path, keypair, cli.json_pretty) {
                 eprintln!("Flow error: {e}");
                 std::process::exit(1);
             }
@@ -70,16 +75,16 @@ fn main() {
 
         Commands::SignTx {
             input,
-            secret_key,
+            keypair,
             output,
             output_format,
         } => {
             if let Err(e) = handlers::sign_tx::handle_sign_transaction_file(
                 Some(&input.clone()),
-                secret_key,
+                keypair,
                 output.as_ref(),
                 cli.json_pretty,
-                *output_format,
+                *output_format
             ) {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);
