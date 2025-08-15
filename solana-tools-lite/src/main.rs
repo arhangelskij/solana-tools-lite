@@ -61,9 +61,10 @@ fn main() {
             signature,
             pubkey,
         } => {
-            let exit_code =
-                handlers::verify::handle_verify(message, signature, pubkey, cli.json_pretty);
-            std::process::exit(exit_code);
+            //TODO: 🔴🔴 15 aug
+            // let exit_code =
+            //     handlers::verify::handle(message, signature, pubkey);
+            // std::process::exit(exit_code);
         }
 
         Commands::Base58 { action } => {

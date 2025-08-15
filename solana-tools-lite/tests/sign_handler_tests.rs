@@ -17,8 +17,10 @@ mod tests {
         let secret_b58 = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let message = "test-signing";
 
-        // Sign using our handler
-        let sign_result =  sign_message::handle(message, &secret_b58).expect("signature failed");
+        // Write secret to a temp file (raw base58) and sign using the file-based handler
+        let tmp_path = "tmp_sk_roundtrip.txt";
+        std::fs::write(tmp_path, &secret_b58).expect("failed to write temp secret");
+        let sign_result =  sign_message::handle(message, tmp_path).expect("signature failed");
         
         let sig_b58_from_handler = sign_result.signature_base58;
 
@@ -35,13 +37,15 @@ mod tests {
             .expect("signature verification failed");
 
         // Also validate through the public API
-        let exit_code = verify::handle(
-            message,
-            &sig_b58_from_handler,
-            &bs58::encode(pubkey.to_bytes()).into_string(),
+        assert!(
+            verify::handle(
+                message,
+                &sig_b58_from_handler,
+                &bs58::encode(pubkey.to_bytes()).into_string()
+            ).is_ok(),
+            "high-level handler failed to verify"
         );
-
-        assert_eq!(exit_code, 0, "high-level handler failed to verify");
+        let _ = std::fs::remove_file(tmp_path);
     }
 
     /// An invalid Base58 secret key must cause signing to fail.

@@ -26,6 +26,6 @@ pub fn execute(
     if result.valid {
         Ok(())
     } else {
-        Err(ToolError::InvalidInput("signature verification failed".to_string()))
+        Err(ToolError::InvalidInput(result.error.unwrap_or("signature verification failed".to_owned())))
     }
 }
