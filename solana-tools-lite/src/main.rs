@@ -19,9 +19,9 @@ fn main() {
             let mnemonic_path = mnemonic.as_deref();
             let passphrase_path = passphrase.as_deref();
             let output_path = output.as_deref();
-
+//TODO: 🔴 use flow 
             // Call domain handler and handle errors early
-            let result = handlers::generate::execute(mnemonic_path, passphrase_path)
+            let result = handlers::generate::handle(mnemonic_path, passphrase_path)
                 .unwrap_or_else(|e| {
                     eprintln!("Error executing gen command: {e}");
                     std::process::exit(1);

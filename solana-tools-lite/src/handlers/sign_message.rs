@@ -7,7 +7,7 @@ use crate::adapters::io_adapter::{read_secret_key_file, parse_signing_key_conten
 
 //TODO: 🟡🟠 test new execute
 /// Signs a message using a secret key loaded from a file or stdin ("-").
-pub fn execute(message: &str, secret_key_path: &str) -> Result<SignResult> {
+pub fn handle(message: &str, secret_key_path: &str) -> Result<SignResult> {
     // Read secret key text (file or "-") and parse supported formats
     let key_text = read_secret_key_file(secret_key_path)?;
     let signing_key = parse_signing_key_content(&key_text)?;

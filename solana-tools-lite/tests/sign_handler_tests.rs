@@ -62,7 +62,7 @@ mod tests {
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let mut sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         sk.pop();
-        assert!(sign_message::execute("foo", &sk).is_err());
+        assert!(sign_message::handle("foo", &sk).is_err());
     }
 
     /// An empty message should still produce a valid signature of correct length.
@@ -71,7 +71,7 @@ mod tests {
         let seed = [42u8; 64];
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
-        let sig = sign_message::execute("", &sk).unwrap().signature_base58;
+        let sig = sign_message::handle("", &sk).unwrap().signature_base58;
         // Decode the signature and verify its byte length is SIG_LEN
         let bytes = bs58::decode(&sig).into_vec().unwrap();
         assert_eq!(bytes.len(), 64);
@@ -85,8 +85,11 @@ mod tests {
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let pubkey = key.verifying_key();
-        let sig = sign_message::execute("foo", &sk).unwrap().signature_base58;
-        let exit_code = verify::handle_verify(
+        let sig = sign_message::handle("foo", &sk).unwrap().signature_base58;
+        
+        //FIXME: 🔴 after signature changes
+        
+        let exit_code = verify::handle(
             "bar",
             &sig,
             &bs58::encode(pubkey.to_bytes()).into_string(),

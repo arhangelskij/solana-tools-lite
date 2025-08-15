@@ -21,7 +21,7 @@ pub fn execute(
     };
 
     // Domain handler: reads key from file (via adapter), signs, returns SignResult
-    let result = sign_message::execute(&message_content, secret_key_path)?;
+    let result = sign_message::handle(&message_content, secret_key_path)?;
 
     if json {
         // Pretty JSON with message, signature_base58, public_key

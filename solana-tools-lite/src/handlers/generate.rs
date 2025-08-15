@@ -6,10 +6,7 @@ use crate::utils::{hex_encode};
 use ed25519_dalek::SigningKey;
 use std::convert::TryInto;
 
-pub fn execute(
-    mnemonic_path: Option<&str>,
-    passphrase: Option<&str>
-) -> Result<GenResult> {
+pub fn handle(mnemonic_path: Option<&str>, passphrase: Option<&str>) -> Result<GenResult> {
     // Resolve mnemonic: read from file/stdin if provided, otherwise generate a new one.
     let mnemonic = if let Some(p) = mnemonic_path.map(|s| s) {
         let m = read_mnemonic(p)?; // file or "-" (stdin), with whitespace normalization
