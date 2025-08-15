@@ -18,7 +18,7 @@ mod tests {
         let message = "test-signing";
 
         // Sign using our handler
-        let sign_result =  sign_message::execute(message, &secret_b58).expect("signature failed");
+        let sign_result =  sign_message::handle(message, &secret_b58).expect("signature failed");
         
         let sig_b58_from_handler = sign_result.signature_base58;
 
@@ -35,11 +35,10 @@ mod tests {
             .expect("signature verification failed");
 
         // Also validate through the public API
-        let exit_code = verify::handle_verify(
+        let exit_code = verify::handle(
             message,
             &sig_b58_from_handler,
             &bs58::encode(pubkey.to_bytes()).into_string(),
-            false
         );
 
         assert_eq!(exit_code, 0, "high-level handler failed to verify");
@@ -50,7 +49,7 @@ mod tests {
     fn test_sign_invalid_base58_secret_should_fail() {
         let bad = "%%%not_base58%%%";
         
-        let err = sign_message::execute("foo", bad).unwrap_err().to_string();
+        let err = sign_message::handle("foo", bad).unwrap_err().to_string();
         assert!(err.contains("Invalid base58 in secret key"));
     }
 
@@ -86,17 +85,12 @@ mod tests {
         let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let pubkey = key.verifying_key();
         let sig = sign_message::handle("foo", &sk).unwrap().signature_base58;
-        
-        //FIXME: 🔴 after signature changes
-        
-        let exit_code = verify::handle(
+
+        assert!(verify::handle(
             "bar",
             &sig,
-            &bs58::encode(pubkey.to_bytes()).into_string(),
-            false
-        );
-
-        assert_eq!(exit_code, 1, "verification should fail for mismatched message");
+            &bs58::encode(pubkey.to_bytes()).into_string()
+        ).is_err());
     }
 }
 
