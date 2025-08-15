@@ -13,6 +13,8 @@ pub fn hex_encode(data: &[u8]) -> String {
     hex::encode(data)
 }
 
+
+//TODO: 🟡 move into serde
 // utils/codec.rs
 use bincode::{
     config::{standard},
