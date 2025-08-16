@@ -59,8 +59,13 @@ fn main() {
         Commands::Verify {
             message,
             signature,
-            pubkey,
+            pubkey
         } => {
+            if let Err(e) = flows::verify::execute(message, signature, pubkey, cli.json_pretty) {
+                eprintln!("Flow error: {e}");
+                std::process::exit(1);
+            }
+
             //TODO: 🔴🔴 15 aug
             // let exit_code =
             //     handlers::verify::handle(message, signature, pubkey);
