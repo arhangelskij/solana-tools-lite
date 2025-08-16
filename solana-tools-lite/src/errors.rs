@@ -90,7 +90,7 @@ pub const PUBKEY_LEN: usize = 32;
 #[derive(Error, Debug)]
 pub enum VerifyError {
     #[error("Base58 decode error: {0}")]
-    Base58Decode(#[from] bs58::decode::Error), //TODO: check if needed
+    Base58Decode(#[from] bs58::decode::Error),
     #[error("Invalid signature length: expected {SIG_LEN}, got {0}")]
     InvalidSignatureLength(usize),
     #[error("Invalid public key length: expected {PUBKEY_LEN}, got {0}")]

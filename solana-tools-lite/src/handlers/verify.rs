@@ -5,11 +5,17 @@ use crate::models::results::VerifyResult;
 pub fn handle(message: &str, signature_b58: &str, pubkey_b58: &str) -> Result<VerifyResult> {
     let result = ed25519::verify_signature_raw(message, signature_b58, pubkey_b58);
     
+    if let Err(ref e) = result {
+        if !matches!(e, crate::errors::VerifyError::VerificationFailed) {
+            return Err(crate::errors::ToolError::InvalidInput(e.to_string()));
+        }
+    }
+    
     Ok(VerifyResult {
         message: message.to_string(),
         pubkey: pubkey_b58.to_string(),
         signature: signature_b58.to_string(),
         valid: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
+        error: result.err().map(|e| e.to_string())
     })
 }
