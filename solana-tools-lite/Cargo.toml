@@ -34,5 +34,5 @@ codegen-units = 1
 panic = "abort"
 
 [dev-dependencies]
-rayon = "1.10.0"
+rayon = "1.11.0"
 criterion = "0.7.0"

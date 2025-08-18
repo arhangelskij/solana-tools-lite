@@ -1,10 +1,8 @@
 #[cfg(test)]
 mod deserialize_tests {
-    use ed25519_dalek::Signature;
-    use solana_tools_lite::deserializer::*;
-    use std::convert::TryFrom;
+
     use data_encoding::BASE64;
-    use solana_tools_lite::models::input_transaction::UiTransaction;
+    use solana_tools_lite::deserializer::*;
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
 
     use solana_tools_lite::crypto::ed25519;
@@ -32,33 +30,38 @@ mod deserialize_tests {
         assert_eq!(offset, 2);
     }
 
-    // -------------------------------
-    // Section: ed25519 signature parsing
-    // -------------------------------
-
-    // Parse a valid 64-byte ed25519 signature
+    // Granular shortvec edge tests (easier to read + localize failures)
     #[test]
-    fn test_signature_from_bytes() {
-        let bytes = [1u8; 64];
-        let sig = Signature::try_from(&bytes[..]).expect("valid signature bytes must parse");
-        assert_eq!(sig.to_bytes(), bytes);
+    fn shortvec_decodes_0() {
+        let (v, off) = read_shortvec_len(&[0]).unwrap();
+        assert_eq!((v, off), (0, 1));
     }
 
-    // Error on invalid signature length (not 64 bytes)
     #[test]
-    fn test_signature_from_bytes_invalid_length() {
-        let bytes = [1u8; 63];
-        let result = Signature::try_from(bytes.as_slice());
-        assert!(result.is_err());
+    fn shortvec_decodes_127_single_byte() {
+        let (v, off) = read_shortvec_len(&[127]).unwrap();
+        assert_eq!((v, off), (127, 1));
     }
 
-    // Zeroed signature bytes still produce a valid Signature struct
     #[test]
-    fn test_empty_signature() {
-        let bytes = [0u8; 64];
-        let sig = Signature::try_from(&bytes[..])
-            .expect("zeroed signature bytes should still parse as a struct");
-        assert_eq!(sig.to_bytes(), bytes);
+    fn shortvec_decodes_128_two_bytes() {
+        // 128 -> 0x80 0x01 (first two-byte form)
+        let (v, off) = read_shortvec_len(&[0x80, 0x01]).unwrap();
+        assert_eq!((v, off), (128, 2));
+    }
+
+    #[test]
+    fn shortvec_decodes_16383_two_bytes() {
+        // 16_383 -> 0xFF 0x7F (max two-byte)
+        let (v, off) = read_shortvec_len(&[0xFF, 0x7F]).unwrap();
+        assert_eq!((v, off), (16_383, 2));
+    }
+
+    #[test]
+    fn shortvec_decodes_16384_three_bytes() {
+        // 16_384 -> 0x80 0x80 0x01 (first three-byte form)
+        let (v, off) = read_shortvec_len(&[0x80, 0x80, 0x01]).unwrap();
+        assert_eq!((v, off), (16_384, 3));
     }
 
     // -------------------------------
@@ -68,7 +71,7 @@ mod deserialize_tests {
     // Error when transaction byte slice is too short for declared signature count
     #[test]
     fn test_insufficient_data() {
-        let data = vec![1u8]; // 1 signature, но нет самих байтов
+        let data = vec![1u8];
         let result = deserialize_transaction(&data);
         assert!(result.is_err());
     }
@@ -131,35 +134,6 @@ mod deserialize_tests {
         assert_eq!(message.instructions.len(), 1);
     }
 
-    // Edge-case shortvec decoding: boundary values 0,127,128,16383,16384
-    #[test]
-    fn test_shortvec_edge_cases() {
-        // 0
-        let (val, offset) = read_shortvec_len(&[0]).unwrap();
-        assert_eq!(val, 0);
-        assert_eq!(offset, 1);
-
-        // 127 (max 1-byte)
-        let (val, offset) = read_shortvec_len(&[127]).unwrap();
-        assert_eq!(val, 127);
-        assert_eq!(offset, 1);
-
-        // 128 (first 2-byte) -> 0x80 0x01
-        let (val, offset) = read_shortvec_len(&[0x80, 0x01]).unwrap();
-        assert_eq!(val, 128);
-        assert_eq!(offset, 2);
-
-        // 16_383 (max 2-byte) -> 0xFF 0x7F
-        let (val, offset) = read_shortvec_len(&[0xFF, 0x7F]).unwrap();
-        assert_eq!(val, 16_383);
-        assert_eq!(offset, 2);
-
-        // 16_384 (first 3-byte) -> 0x80 0x80 0x01
-        let (val, offset) = read_shortvec_len(&[0x80, 0x80, 0x01]).unwrap();
-        assert_eq!(val, 16_384);
-        assert_eq!(offset, 3);
-    }
-
     // Error on truncated shortvec encoding (missing continuation byte)
     #[test]
     fn test_shortvec_not_enough_bytes() {
@@ -189,7 +163,10 @@ mod deserialize_tests {
         data.push(0);
 
         let res = deserialize_message(&data);
-        assert!(res.is_err(), "expected error due to program_id_index out of bounds");
+        assert!(
+            res.is_err(),
+            "expected error due to program_id_index out of bounds"
+        );
     }
 
     // Error on account index out of bounds within instruction
@@ -216,7 +193,10 @@ mod deserialize_tests {
         data.push(0);
 
         let res = deserialize_message(&data);
-        assert!(res.is_err(), "expected error due to account index out of bounds");
+        assert!(
+            res.is_err(),
+            "expected error due to account index out of bounds"
+        );
     }
 
     // -------------------------------
@@ -227,7 +207,10 @@ mod deserialize_tests {
     fn test_shortvec_too_long_encoding_err() {
         // 4-byte continuation should be rejected by solana-short-vec (u16 max, up to 3 bytes)
         let res = read_shortvec_len(&[0x80, 0x80, 0x80, 0x01]);
-        assert!(res.is_err(), "expected error for length encoded with >3 bytes");
+        assert!(
+            res.is_err(),
+            "expected error for length encoded with >3 bytes"
+        );
     }
 
     // -------------------------------
@@ -301,7 +284,10 @@ mod deserialize_tests {
         data.push(0xAA);
 
         let res = deserialize_message(&data);
-        assert!(res.is_err(), "expected error due to truncated instruction data");
+        assert!(
+            res.is_err(),
+            "expected error due to truncated instruction data"
+        );
     }
 
     // ----------------------------------------
@@ -311,20 +297,20 @@ mod deserialize_tests {
     fn test_deserialize_provided_base64_tx() {
         // Unsigned Tx from the Solana SDK
         let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAED4viKcSXOZTHLc68aIq0QRoeJ7pPCtJIumjEv636+oX/NLoC2Z66TEsGaE4CkHQIC/XLT0yZ7mSg2EtNl+5KzsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgIAAQwCAAAAQEIPAAAAAAA=";
-        let raw = BASE64.decode(b64.as_bytes()).expect("failed to decode base64 transaction");
+        let raw = BASE64
+            .decode(b64.as_bytes())
+            .expect("failed to decode base64 transaction");
         let tx = deserialize_transaction(&raw).expect("failed to deserialize transaction");
         // Sanity checks
         assert!(!tx.signatures.is_empty(), "expected at least one signature");
-        assert!(!tx.message.account_keys.is_empty(), "expected at least one account key");
-        assert!(!tx.message.instructions.is_empty(), "expected at least one instruction");
-
-        println!("------- tx: {:?}", tx);
-
-        // Additional
-        let ui_tx = UiTransaction::from(&tx); 
-
-        println!("------- 🥂 TX: {:?}", ui_tx);
-       
+        assert!(
+            !tx.message.account_keys.is_empty(),
+            "expected at least one account key"
+        );
+        assert!(
+            !tx.message.instructions.is_empty(),
+            "expected at least one instruction"
+        );
     }
     // ----------------------------------------
     // Utility test: generate signed transaction Base64
@@ -338,7 +324,8 @@ mod deserialize_tests {
         // Use provided Base64-encoded unsigned tx fixture
         let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
         let raw = BASE64.decode(b64.as_bytes()).expect("decode unsigned tx");
-        let mut tx: solana_tools_lite::models::transaction::Transaction = deserialize_transaction(&raw).expect("failed to deserialize transaction");
+        let mut tx: solana_tools_lite::models::transaction::Transaction =
+            deserialize_transaction(&raw).expect("failed to deserialize transaction");
 
         let tx_raw_again = serialize_transaction(&tx);
         let bs64_back = BASE64.encode(&tx_raw_again);
@@ -350,9 +337,12 @@ mod deserialize_tests {
         sign_transaction_by_key(&mut tx, &keypair).unwrap();
 
         let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
-        
+
         println!("sig_bytes: {:?}", sig_bytes);
 
-        assert_eq!(sig_bytes, "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb");
+        assert_eq!(
+            sig_bytes,
+            "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb"
+        );
     }
 }
