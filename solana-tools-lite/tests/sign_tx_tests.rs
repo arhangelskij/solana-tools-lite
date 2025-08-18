@@ -99,6 +99,7 @@ mod tests_sign_tx {
         // Reload and verify signature
         let sig_bytes = &tx2.signatures[0].to_bytes();
         let signature = ed25519::signature_from_bytes(&sig_bytes);
+        //TODO: after moving into serde use it
         let msg_bytes = utils::serialize(&tx2.message).unwrap();
 
         let is_valid = ed25519::verify_signature(&verifying_key, &msg_bytes, &signature);

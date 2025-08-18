@@ -8,7 +8,7 @@ pub fn execute(
     message: &str,
     signature_b58: &str,
     pubkey_b58: &str,
-    json: bool,
+    json: bool
 ) -> Result<(), ToolError> {
     let result = verify::handle(message, signature_b58, pubkey_b58)?;
 

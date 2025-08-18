@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod deserialize_tests {
     use ed25519_dalek::Signature;
     use solana_tools_lite::deserializer::*;
     use std::convert::TryFrom;
@@ -320,6 +320,7 @@ mod tests {
 
         println!("------- tx: {:?}", tx);
 
+        // Additional
         let ui_tx = UiTransaction::from(&tx); 
 
         println!("------- 🥂 TX: {:?}", ui_tx);
@@ -329,15 +330,10 @@ mod tests {
     // Utility test: generate signed transaction Base64
     // ----------------------------------------
     #[test]
-    fn test_generate_signed_base64_tx() {
+    fn test_roundtrip_serde_base64_tx() {
         // Derive deterministic keypair from a fixed secret (all ones)
         let seed = [1u8; 32];
         let keypair = ed25519::keypair_from_seed(&seed).unwrap();
-        
-        /////////////////TODO: remove secret – just for test
-      let sk = bs58::encode(keypair.to_bytes()[..32].to_vec()).into_string();
- 
-        println!("S key: {:?}", sk);
 
         // Use provided Base64-encoded unsigned tx fixture
         let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
@@ -358,12 +354,5 @@ mod tests {
         println!("sig_bytes: {:?}", sig_bytes);
 
         assert_eq!(sig_bytes, "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb");
-
-        ///////// Additional 
-        let tx_raw_again = serialize_transaction(&tx);
-        let signed_base64 = BASE64.encode(&tx_raw_again);
-
-        println!("signed_base64:   {}", signed_base64);
-
     }
 }
