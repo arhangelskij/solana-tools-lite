@@ -20,15 +20,6 @@ mod deserialize_tests {
         assert_eq!(offset, 1);
     }
 
-    // Two-byte shortvec decode: 128 encoded as [0x80,0x01]
-    #[test]
-    fn test_read_shortvec_len_two_bytes_128() {
-        // short-vec two-byte encoding for 128 is 0x80 0x01
-        let data = [0x80u8, 0x01];
-        let (value, offset) = read_shortvec_len(&data).unwrap();
-        assert_eq!(value, 128);
-        assert_eq!(offset, 2);
-    }
 
     // Granular shortvec edge tests (easier to read + localize failures)
     #[test]
