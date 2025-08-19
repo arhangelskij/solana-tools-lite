@@ -166,6 +166,8 @@ use crate::models::keypair_json::KeypairJson;
 use ed25519_dalek::SigningKey;
 use std::convert::TryInto;
 
+//TODO: 20aug 🔴 mb move into another layer?
+
 /// Build SigningKey from decoded bytes: accept 32-byte seed or 64-byte keypair bytes.
 fn signing_key_from_decoded(bytes: Vec<u8>) -> Result<SigningKey, SignError> {
     match bytes.len() {

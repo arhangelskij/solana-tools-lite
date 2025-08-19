@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod deserialize_tests {
-
     use data_encoding::BASE64;
     use solana_tools_lite::deserializer::*;
     use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
@@ -10,16 +9,6 @@ mod deserialize_tests {
     // -------------------------------
     // Section: shortvec decoding – basic cases
     // -------------------------------
-
-    // Basic case: decode single-byte shortvec (<128)
-    #[test]
-    fn test_read_shortvec_len_small() {
-        let data = [5u8];
-        let (value, offset) = read_shortvec_len(&data).unwrap();
-        assert_eq!(value, 5);
-        assert_eq!(offset, 1);
-    }
-
 
     // Granular shortvec edge tests (easier to read + localize failures)
     #[test]
@@ -284,6 +273,7 @@ mod deserialize_tests {
     // ----------------------------------------
     // Main test: deserialize provided Base64 transaction fixture
     // ----------------------------------------
+    // Note: static Base64 fixture originally exported from Solana SDK (no SDK dependency here)
     #[test]
     fn test_deserialize_provided_base64_tx() {
         // Unsigned Tx from the Solana SDK
@@ -319,18 +309,12 @@ mod deserialize_tests {
             deserialize_transaction(&raw).expect("failed to deserialize transaction");
 
         let tx_raw_again = serialize_transaction(&tx);
-        let bs64_back = BASE64.encode(&tx_raw_again);
-
-        println!("😼 bs64_back: {}", bs64_back);
-
         assert_eq!(raw, tx_raw_again);
 
         sign_transaction_by_key(&mut tx, &keypair).unwrap();
 
         let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
-
-        println!("sig_bytes: {:?}", sig_bytes);
-
+        
         assert_eq!(
             sig_bytes,
             "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb"

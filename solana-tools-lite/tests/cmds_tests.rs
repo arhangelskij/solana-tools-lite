@@ -85,29 +85,98 @@ mod tests {
         }
     }
 
-    /// Test parsing the `verify` command with message, signature, and public key.
+    /// Test parsing the `verify` command with inline message, signature, and pubkey.
     #[test]
-    fn test_parse_verify_command() {
+    fn test_parse_verify_command_inline() {
         let args = vec![
             "solana-lite",
             "verify",
             "--message", "black swan",
             "--signature", "sig",
-            "--pubkey", "pub" //TODO: 🟡 check pubkey 'coz could be from also file 
+            "--pubkey", "pub",
         ];
         let cli = Cli::parse_from(args);
         match cli.command {
             Commands::Verify {
                 message,
+                from_file,
                 signature,
+                signature_file,
                 pubkey,
+                pubkey_file,
             } => {
-                assert_eq!(message, "black swan");
-                assert_eq!(signature, "sig");
-                assert_eq!(pubkey, "pub");
+                assert_eq!(message.as_deref(), Some("black swan"));
+                assert!(from_file.is_none());
+
+                assert_eq!(signature.as_deref(), Some("sig"));
+                assert!(signature_file.is_none());
+
+                assert_eq!(pubkey.as_deref(), Some("pub"));
+                assert!(pubkey_file.is_none());
             }
             _ => panic!("Parsed into wrong command variant"),
         }
+    }
+
+    /// Test parsing the `verify` command with message/signature/pubkey from files.
+    #[test]
+    fn test_parse_verify_command_from_files() {
+        let args = vec![
+            "solana-lite",
+            "verify",
+            "--message-file", "./path/message.txt",
+            "--signature-file", "./path/sig.bin",
+            "--pubkey-file", "./path/pubkey.txt",
+        ];
+
+        let cli = Cli::parse_from(args);
+
+        match cli.command {
+            Commands::Verify {
+                message,
+                from_file,
+                signature,
+                signature_file,
+                pubkey,
+                pubkey_file,
+            } => {
+                assert!(message.is_none());
+                assert_eq!(from_file.as_deref(), Some("./path/message.txt"));
+
+                assert!(signature.is_none());
+                assert_eq!(signature_file.as_deref(), Some("./path/sig.bin"));
+
+                assert!(pubkey.is_none());
+                assert_eq!(pubkey_file.as_deref(), Some("./path/pubkey.txt"));
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
+
+    /// Test that `verify` fails to parse when one of the required groups is missing.
+    #[test]
+    fn test_parse_verify_command_missing_group_errors() {
+        // No pubkey/pubkey-file → should fail
+        let args = vec![
+            "solana-lite",
+            "verify",
+            "--message", "hi",
+            "--signature", "sig",
+        ];
+        let res = Cli::try_parse_from(args);
+        assert!(res.is_err(), "expected clap to error when pk_src is missing");
+
+        // Both options of the same group (message and message-file) → should fail (mutually exclusive)
+        let args2 = vec![
+            "solana-lite",
+            "verify",
+            "--message", "hi",
+            "--message-file", "m.txt",
+            "--signature", "sig",
+            "--pubkey", "pub",
+        ];
+        let res2 = Cli::try_parse_from(args2);
+        assert!(res2.is_err(), "expected clap to error when both msg_src options are present");
     }
 
     /// Test parsing the `base58 encode` subcommand with input.
