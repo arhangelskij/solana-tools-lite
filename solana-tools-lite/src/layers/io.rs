@@ -32,7 +32,7 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
 
     match path {
         Some(p) if p != "-" => {
-            println!("📖 Reading file: {}", p);
+            eprintln!("Reading file: {}", p);
 
             // Check file size first
             let metadata = fs::metadata(p).map_err(|e| SignError::IoWithPath {
@@ -41,7 +41,7 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
             })?;
 
             let file_size = metadata.len();
-            println!("📏 File size: {} bytes", file_size);
+            eprintln!("File size: {} bytes", file_size);
 
             // // TODO: remove debug things
             // if file_size > 50_000_000 {
@@ -57,15 +57,17 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
                 path: Some(p.to_owned()),
             })?;
 
-            println!(
-                "✅ File read successfully, content length: {} chars",
+            eprintln!(
+                "File read successfully, content length: {} chars",
                 content.len()
             );
 
             Ok(content)
         }
         _ => {
-            println!("📥 Reading from stdin...");
+            //TODO: 🟡 in stderror
+            eprintln!("Reading from stdin...");
+
             let mut buf = String::new();
             io::stdin()
                 .read_to_string(&mut buf)
@@ -73,7 +75,7 @@ pub fn read_input(path: Option<&str>) -> Result<String, SignError> {
                     source: e,
                     path: None,
                 })?;
-            println!("✅ Stdin read, length: {} chars", buf.len());
+            eprintln!("Stdin read, length: {} chars", buf.len());
             Ok(buf)
         }
     }
