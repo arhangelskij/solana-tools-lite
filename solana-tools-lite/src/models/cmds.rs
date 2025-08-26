@@ -34,7 +34,7 @@ pub enum Commands {
 
         /// Path to keypair file (stdin disabled for secrets)
         #[arg(long, short = 'k')]
-        keypair: String
+        keypair: String //TODO: 🟡 think additionally about name 
     },
 
     /// Verify a signature
@@ -64,7 +64,15 @@ pub enum Commands {
 
         /// Read public key from file or stdin ("-")
         #[arg(long = "pubkey-file", value_name = "FILE", group = "pk_src")]
-        pubkey_file: Option<String>
+        pubkey_file: Option<String>,
+
+        /// Optional output file (if not set, print to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Force save(override) a file
+        #[arg(long, short, default_value = "false")]
+        force: bool,
     },
 
     /// Base58 encode/decode

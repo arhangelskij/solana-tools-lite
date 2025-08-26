@@ -44,7 +44,7 @@ pub fn execute(
     signature_file: Option<&str>,
     pubkey: Option<&str>,
     pubkey_file: Option<&str>,
-    json: bool
+    json: bool //TODO: 26aug 🔴 add new fields
 ) -> Result<(), ToolError> {
     // For message: do not trim to preserve exact bytes
     let msg = read_text_source(message, message_file, true)?;

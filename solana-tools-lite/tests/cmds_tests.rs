@@ -104,6 +104,8 @@ mod tests {
                 signature_file,
                 pubkey,
                 pubkey_file,
+                output,
+                force,
             } => {
                 assert_eq!(message.as_deref(), Some("black swan"));
                 assert!(from_file.is_none());
@@ -113,6 +115,32 @@ mod tests {
 
                 assert_eq!(pubkey.as_deref(), Some("pub"));
                 assert!(pubkey_file.is_none());
+
+                assert!(output.is_none());
+                assert_eq!(force, false);
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+
+        // Additional test with --output and --force flags
+        let args_with_output_force = vec![
+            "solana-lite",
+            "verify",
+            "--message", "black swan",
+            "--signature", "sig",
+            "--pubkey", "pub",
+            "--output", "./out.json",
+            "--force",
+        ];
+        let cli = Cli::parse_from(args_with_output_force);
+        match cli.command {
+            Commands::Verify {
+                output,
+                force,
+                ..
+            } => {
+                assert_eq!(output.as_deref(), Some("./out.json"));
+                assert_eq!(force, true);
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -139,6 +167,8 @@ mod tests {
                 signature_file,
                 pubkey,
                 pubkey_file,
+                output,
+                force,
             } => {
                 assert!(message.is_none());
                 assert_eq!(from_file.as_deref(), Some("./path/message.txt"));
@@ -148,6 +178,9 @@ mod tests {
 
                 assert!(pubkey.is_none());
                 assert_eq!(pubkey_file.as_deref(), Some("./path/pubkey.txt"));
+
+                assert!(output.is_none());
+                assert_eq!(force, false);
             }
             _ => panic!("Parsed into wrong command variant"),
         }

@@ -62,7 +62,9 @@ fn main() {
             signature,
             signature_file,
             pubkey,
-            pubkey_file
+            pubkey_file,
+            output,
+            force //TODO: use fields
         } => {
             if let Err(e) = flows::verify::execute(
                 message.as_deref(),
