@@ -18,7 +18,7 @@ pub fn handle_sign_transaction_file(
     secret_key_b58: &str,
     output: Option<&String>,
     json_pretty: bool,
-    out_override: Option<OutFmt>,
+    out_override: Option<OutFmt>, //TODO: 🟡 rename to force or make it everywhere as out_override
 ) -> Result<()> {
     // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
     let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;

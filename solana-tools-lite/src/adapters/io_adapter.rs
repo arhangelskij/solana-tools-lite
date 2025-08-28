@@ -1,20 +1,75 @@
-use crate::errors::{Result, SignError, TransactionParseError};
-use crate::layers::io::*;
+use crate::errors::{Result, SignError, TransactionParseError, ToolError};
+use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use serde_json;
-use std::io;
+use std::io as std_io;
 use std::path::Path;
 
 pub enum InputFormat {
     Json,
     Base64,
-    Base58
+    Base58,
 }
 
 pub enum OutputFormat {
     Json { pretty: bool },
     Base64,
-    Base58
+    Base58,
+}
+/// Read from a file or stdin ("-") based on `path`.
+pub fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
+    match path {
+        Some(p) if p != "-" => io::read_from_file(Path::new(p)).map_err(|e| SignError::IoWithPath {
+            source: e,
+            path: Some(p.to_string()),
+        }),
+        _ => io::read_from_stdin().map_err(|e| SignError::IoWithPath { source: e, path: None }),
+    }
+}
+
+/// Resolve text either from an inline value or from a file/stdin ("-").
+/// Returns raw text exactly as read (no trimming applied).
+/// Caller is responsible for trimming when appropriate (e.g. Base58/Base64 inputs).
+///
+/// Contract:
+/// - Exactly one of `inline` or `file` must be `Some`.
+/// - If `file == Some("-")`: reads from stdin when `allow_stdin == true`, otherwise returns an error.
+/// - If `file == Some(path)`: reads the whole file as UTF-8 text via `read_input(Some(path))`.
+/// - If `inline == Some(s)`: returns `s` as-owned `String`.
+pub fn read_text_source(
+    inline: Option<&str>,
+    file: Option<&str>,
+    allow_stdin: bool,
+) -> Result<String> {
+    match (inline, file) {
+        (Some(s), None) => Ok(s.to_owned()),
+
+        //TODO: check comments
+        // Stdin 
+        (None, Some("-")) => {
+            if !allow_stdin {
+                return Err(ToolError::InvalidInput("reading from stdin is disabled".to_string()));
+            }
+            read_input(None).map_err(ToolError::from)
+        }
+        // From path
+        (None, Some(path)) => read_input(Some(path)).map_err(ToolError::from),
+        
+        // Errors
+        (Some(_), Some(_)) => Err(ToolError::InvalidInput(
+            "provide either inline value or --from-file (not both)".to_string(),
+        )),
+        
+        (None, None) => Err(ToolError::InvalidInput(
+            "missing input: pass inline value or --from-file".to_string(),
+        )),
+    }
+}
+
+/// Write data to a file or stdout; stdout is written as-is; file uses 0o644 perms and overwrites.
+pub fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignError> {
+    // Public output: stdout allowed, 0644, always overwrite
+    write_bytes_with_opts(path, data.as_bytes(), 0o644, true, true)
 }
 //TODO: 🟡 why sign error?
 fn read_raw_input(input: Option<&str>) -> std::result::Result<String, SignError> {
@@ -26,22 +81,30 @@ fn read_raw_input(input: Option<&str>) -> std::result::Result<String, SignError>
 
             if path.exists() {
                 println!("🟡 path is exist!");
+                
                 if path.is_file() {
                     return read_input(Some(p));
                 } else {
                     println!(" it isnt file 🤷🏾‍♂️");
                     // path exists but is not a file (e.g. a directory)
                     return Err(SignError::IoWithPath {
-                        source: io::Error::new(
-                            io::ErrorKind::InvalidInput,
+                        source: std_io::Error::new(
+                            std_io::ErrorKind::InvalidInput,
                             "input path is not a file",
                         ),
                         path: Some(p.to_string()),
                     });
                 }
             } else {
-                // literal input string
-                return Ok(p.to_string());
+//TODO: 1sept 🔴 check inline inputs 
+                 // path does not exist -> treat as an error, not as inline
+                return Err(SignError::IoWithPath {
+                    source: std_io::Error::new(
+                        std_io::ErrorKind::NotFound,
+                        "input path not found",
+                    ),
+                    path: Some(p.to_string()),
+                });
             }
         }
     }
@@ -133,7 +196,7 @@ pub fn is_base58(s: &str) -> bool {
 pub fn write_output_transaction(
     transaction: &UiTransaction,
     format: OutputFormat,
-    output: Option<&str>
+    output: Option<&str>,
 ) -> Result<()> {
     // First, serialize to JSON (for both JSON and encoded formats)
     let json_str = serde_json::to_string(transaction)
@@ -193,6 +256,7 @@ fn signing_key_from_decoded(bytes: Vec<u8>) -> Result<SigningKey, SignError> {
 /// 2) Keypair JSON: {"publicKey": "...", "secretKey": "<base58>"}
 /// 3) Raw Base58 string (32-byte seed or 64-byte keypair bytes)
 pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError> {
+    //TODO: mb move into separate file
     let text = content.trim();
 
     // 1) JSON array of bytes (supports 64-byte keypair or 32-byte seed)
@@ -201,16 +265,16 @@ pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError>
             64 => {
                 let mut seed = [0u8; 32];
                 seed.copy_from_slice(&arr[..32]);
-                
+
                 Ok(SigningKey::from_bytes(&seed))
             }
             32 => {
                 let mut seed = [0u8; 32];
                 seed.copy_from_slice(&arr[..32]);
-                
+
                 Ok(SigningKey::from_bytes(&seed))
             }
-            _ => Err(SignError::InvalidKeyLength)
+            _ => Err(SignError::InvalidKeyLength),
         };
     }
 
@@ -230,8 +294,7 @@ pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError>
     signing_key_from_decoded(decoded)
 }
 
-
-/// Mnemonic 
+/// Mnemonic
 
 /// Read mnemonic from file or stdin (`-`) and normalize whitespace.
 pub fn read_mnemonic(input: &str) -> Result<String, SignError> {
@@ -239,9 +302,123 @@ pub fn read_mnemonic(input: &str) -> Result<String, SignError> {
     Ok(raw.split_whitespace().collect::<Vec<_>>().join(" "))
 }
 
+/// Write secret material to a file path, never to stdout.
+/// - `path` must be a filesystem path ("-" is rejected)
+/// - if the file exists and `force == false`, returns an AlreadyExists error
+/// - on Unix, sets permissions to 0o600 (rw-------)
+pub fn write_secret_file(path: &Path, data: &str, force: bool) -> std::result::Result<(), SignError> {
+    // Secrets: stdout forbidden, 0600, respect force
+    if path == Path::new("-") {
+        return Err(SignError::IoWithPath {
+            source: std_io::Error::new(
+                std_io::ErrorKind::InvalidInput,
+                "refusing to write secrets to stdout (-)",
+            ),
+            path: Some(path.display().to_string()),
+        });
+    }
+//TODO: 🟡 1sept use const for perms
+    write_bytes_file_with_opts(path, data.as_bytes(), 0o600, force)
+}
+
 //TODO: 🟡 unused?
 /// Read a single-line secret-like text (file or stdin), trimmed.
-pub fn read_text(input: &str) -> Result<String, SignError> {
-    let raw = read_input(if input == "-" { None } else { Some(input) })?;
-    Ok(raw.trim().to_string())
+// pub fn read_text(input: &str) -> Result<String, SignError> {
+//     let raw = read_input(if input == "-" { None } else { Some(input) })?;
+//     Ok(raw.trim().to_string())
+// }
+
+//TODO: 27 aug 🔴 new write func
+
+use std::fs::OpenOptions;
+use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
+
+// Private low-level writer with explicit policy knobs
+fn write_bytes_with_opts(
+    path: Option<&str>,
+    bytes: &[u8],
+    perms: u32,
+    allow_stdout: bool,
+    force: bool,
+) -> std::result::Result<(), SignError> {
+    match path {
+        Some(p) => {
+            if p == "-" {
+                if !allow_stdout {
+                    return Err(SignError::IoWithPath {
+                        source: std_io::Error::new(
+                            std_io::ErrorKind::InvalidInput,
+                            "stdout output is disabled for this operation",
+                        ),
+                        path: None,
+                    });
+                }
+                let mut stdout = std_io::stdout();
+                stdout.write_all(bytes).map_err(|e| SignError::IoWithPath {
+                    source: e,
+                    path: None,
+                })?;
+                stdout.flush().map_err(|e| SignError::IoWithPath {
+                    source: e,
+                    path: None,
+                })?;
+                Ok(())
+            } else {
+                write_bytes_file_with_opts(Path::new(p), bytes, perms, force)
+            }
+        }
+        None => {
+            if !allow_stdout {
+                return Err(SignError::IoWithPath {
+                    source: std_io::Error::new(
+                        std_io::ErrorKind::InvalidInput,
+                        "stdout output is disabled for this operation",
+                    ),
+                    path: None,
+                });
+            }
+            let mut stdout = std_io::stdout();
+            stdout.write_all(bytes).map_err(|e| SignError::IoWithPath {
+                source: e,
+                path: None,
+            })?;
+            stdout.flush().map_err(|e| SignError::IoWithPath {
+                source: e,
+                path: None,
+            })?;
+            Ok(())
+        }
+    }
+}
+
+/// Private
+fn write_bytes_file_with_opts(
+    path: &Path,
+    bytes: &[u8],
+    perms: u32,
+    force: bool,
+) -> std::result::Result<(), SignError> {
+    let mut opts = OpenOptions::new();
+    opts.write(true);
+    if force {
+        opts.create(true).truncate(true);
+    } else {
+        opts.create_new(true);
+    }
+    #[cfg(unix)]
+    {
+        opts.mode(perms);
+    }
+
+    let mut file = opts.open(path).map_err(|e| SignError::IoWithPath {
+        source: e,
+        path: Some(path.display().to_string()),
+    })?;
+    file.write_all(bytes).map_err(|e| SignError::IoWithPath {
+        source: e,
+        path: Some(path.display().to_string()),
+    })?;
+    Ok(())
 }

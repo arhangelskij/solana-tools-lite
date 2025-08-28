@@ -52,10 +52,13 @@ mod tests {
                 message,
                 from_file,
                 keypair,
+                output,
+                force
             } => {
                 assert_eq!(message.as_deref(), Some("hello"));
                 assert_eq!(from_file, None);
                 assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
+                //TODO: add test for with `output`(+ without) and `force`(true and false in another test)
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -75,7 +78,9 @@ mod tests {
             Commands::Sign {
                 message,
                 from_file,
-                keypair
+                keypair,
+                output,
+                force //TODO: add asserts in the test
             } => {
                 assert_eq!(message, None);
                 assert_eq!(from_file.as_deref(), Some("./path/message.txt"));
