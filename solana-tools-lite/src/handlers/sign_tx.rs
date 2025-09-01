@@ -1,7 +1,8 @@
-use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file, parse_signing_key_content};
+use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file};
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
+    crypto::helpers::{parse_signing_key_content},
     errors::{Result, SignError},
     models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,

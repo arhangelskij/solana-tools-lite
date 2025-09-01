@@ -1,5 +1,5 @@
 use ed25519_dalek::SigningKey;
-use solana_tools_lite::adapters::io_adapter::parse_signing_key_content;
+use solana_tools_lite::crypto::helpers::parse_signing_key_content;
 use std::fs;
 use std::error::Error;
 
@@ -7,7 +7,8 @@ use bs58;
 use data_encoding::BASE64;
 
 
-use solana_tools_lite::adapters::io_adapter::{is_base58, read_input_transaction, read_secret_key_file};
+use solana_tools_lite::adapters::io_adapter::{read_input_transaction, read_secret_key_file};
+use solana_tools_lite::serde::input_tx::{is_base58};
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
 use solana_tools_lite::errors::SignError;
@@ -310,8 +311,8 @@ fn test_read_input_transaction_invalid_path_errors() {
     // Non-existent path should be treated as an error (no inline fallback)
     let err = read_input_transaction(Some(&"no_such_file_123456.json".to_string())).unwrap_err();
     match err {
-        ToolError::TransactionParse(TransactionParseError::InvalidFormat(_)) => {}
-        other => panic!("Expected TransactionParse::InvalidFormat, got {other:?}"),
+        ToolError::Sign(SignError::IoWithPath { .. }) => {}
+        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
@@ -354,10 +355,8 @@ fn test_read_input_transaction_nonexistent_path_looks_like_base58_should_error()
     let fake_path = "11111111111111111111111111111111".to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::TransactionParse(TransactionParseError::InvalidFormat(msg)) => {
-            assert!(msg.contains("I/O error"))
-        }
-        other => panic!("Expected TransactionParse::InvalidFormat(I/O error ..), got {other:?}"),
+        ToolError::Sign(SignError::IoWithPath { .. }) => {}
+        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
@@ -367,10 +366,8 @@ fn test_read_input_transaction_nonexistent_path_looks_like_base64_should_error()
     let fake_path = "QUJD".to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::TransactionParse(TransactionParseError::InvalidFormat(msg)) => {
-            assert!(msg.contains("I/O error"))
-        }
-        other => panic!("Expected TransactionParse::InvalidFormat(I/O error ..), got {other:?}"),
+        ToolError::Sign(SignError::IoWithPath { .. }) => {}
+        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
@@ -380,10 +377,8 @@ fn test_read_input_transaction_nonexistent_path_looks_like_json_should_error() {
     let fake_path = r#"{\"signatures\":[],\"message\":{\"header\":{\"num_required_signatures\":1,\"num_readonly_signed_accounts\":0,\"num_readonly_unsigned_accounts\":1},\"account_keys\":[\"11111111111111111111111111111111\",\"11111111111111111111111111111111\"],\"recent_blockhash\":\"11111111111111111111111111111111\",\"instructions\":[]}}"#.to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::TransactionParse(TransactionParseError::InvalidFormat(msg)) => {
-            assert!(msg.contains("I/O error"))
-        }
-        other => panic!("Expected TransactionParse::InvalidFormat(I/O error ..), got {other:?}"),
+        ToolError::Sign(SignError::IoWithPath { .. }) => {}
+        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 

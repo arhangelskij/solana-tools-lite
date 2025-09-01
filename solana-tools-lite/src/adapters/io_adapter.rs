@@ -4,6 +4,7 @@ use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use serde_json;
 use std::io as std_io;
 use std::path::Path;
+use data_encoding::BASE64;
 
 pub enum InputFormat {
     Json,
@@ -68,69 +69,18 @@ pub fn read_text_source(
 
 /// Write data to a file or stdout; stdout is written as-is; file uses 0o644 perms and overwrites.
 pub fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignError> {
-    // Public output: stdout allowed, 0644, always overwrite
-    write_bytes_with_opts(path, data.as_bytes(), 0o644, true, true)
-}
-//TODO: 🟡 why sign error?
-fn read_raw_input(input: Option<&str>) -> std::result::Result<String, SignError> {
-    if let Some(p) = input {
-        let p = p.trim();
-
-        if p != "-" {
-            let path = Path::new(p);
-
-            if path.exists() {
-                println!("🟡 path is exist!");
-                
-                if path.is_file() {
-                    return read_input(Some(p));
-                } else {
-                    println!(" it isnt file 🤷🏾‍♂️");
-                    // path exists but is not a file (e.g. a directory)
-                    return Err(SignError::IoWithPath {
-                        source: std_io::Error::new(
-                            std_io::ErrorKind::InvalidInput,
-                            "input path is not a file",
-                        ),
-                        path: Some(p.to_string()),
-                    });
-                }
-            } else {
-//TODO: 1sept 🔴 check inline inputs 
-                 // path does not exist -> treat as an error, not as inline
-                return Err(SignError::IoWithPath {
-                    source: std_io::Error::new(
-                        std_io::ErrorKind::NotFound,
-                        "input path not found",
-                    ),
-                    path: Some(p.to_string()),
-                });
-            }
-        }
-    }
-    // None or "-" => read from stdin
-    read_input(None)
+    // Public output: stdout allowed, 0644 permissions, always overwrite
+    let target = match path {
+        Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
+        _ => OutputTarget::Stdout,
+    };
+    write_bytes_with_opts(target, data.as_bytes(), 0o644, true)
 }
 
 pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
-    let input_str = read_raw_input(input)
-        .map_err(|e| TransactionParseError::InvalidFormat(format!("I/O error: {}", e)))?;
-
-    let trimmed_input = input_str.trim();
-
-    if let Ok(json_tx) = serde_json::from_str::<UiTransaction>(&trimmed_input) {
-        return Ok(InputTransaction::Json(json_tx));
-    }
-
-    if is_base64(&input_str) {
-        return Ok(InputTransaction::Base64(input_str));
-    }
-
-    if is_base58(&input_str) {
-        return Ok(InputTransaction::Base58(input_str));
-    }
-
-    Err(TransactionParseError::InvalidFormat("Unknown input format".into()).into())
+    // Read raw text via IO layer first (file or stdin), then detect format
+    let raw = read_input(input)?;
+    crate::serde::input_tx::parse_input_transaction(Some(&raw)).map_err(ToolError::from)
 }
 
 pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError> {
@@ -169,29 +119,6 @@ pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError
     Ok(s.trim().to_string())
 }
 
-use bs58;
-use data_encoding::BASE64;
-
-fn is_base64(s: &str) -> bool {
-    // check safety
-    if s.len() % 4 != 0 {
-        return false;
-    }
-
-    if !s
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
-    {
-        return false;
-    }
-
-    BASE64.decode(s.as_bytes()).is_ok()
-}
-
-pub fn is_base58(s: &str) -> bool {
-    bs58::decode(s).into_vec().is_ok()
-}
-
 /// Serialize a `UiTransaction` into the specified `OutputFormat` and write it out.
 pub fn write_output_transaction(
     transaction: &UiTransaction,
@@ -220,78 +147,6 @@ pub fn write_output_transaction(
     write_output(output, &out_str).map_err(|e| e)?;
 
     Ok(())
-}
-
-/////////////
-use crate::models::keypair_json::KeypairJson;
-use ed25519_dalek::SigningKey;
-use std::convert::TryInto;
-
-//TODO: 20aug 🔴 mb move into another layer?
-
-/// Build SigningKey from decoded bytes: accept 32-byte seed or 64-byte keypair bytes.
-fn signing_key_from_decoded(bytes: Vec<u8>) -> Result<SigningKey, SignError> {
-    match bytes.len() {
-        64 => {
-            // keypair bytes => take first 32 as seed
-            let mut seed = [0u8; 32];
-            seed.copy_from_slice(&bytes[..32]);
-            Ok(SigningKey::from_bytes(&seed))
-        }
-        32 => {
-            // raw 32-byte seed
-            let arr: [u8; 32] = bytes
-                .as_slice()
-                .try_into()
-                .map_err(|_| SignError::InvalidKeyLength)?;
-            Ok(SigningKey::from_bytes(&arr))
-        }
-        _ => Err(SignError::InvalidKeyLength),
-    }
-}
-
-/// Parse signing key from *content* (no I/O here).
-/// Supported formats:
-/// 1) JSON array of 64 bytes: [u8; 64]
-/// 2) Keypair JSON: {"publicKey": "...", "secretKey": "<base58>"}
-/// 3) Raw Base58 string (32-byte seed or 64-byte keypair bytes)
-pub fn parse_signing_key_content(content: &str) -> Result<SigningKey, SignError> {
-    //TODO: mb move into separate file
-    let text = content.trim();
-
-    // 1) JSON array of bytes (supports 64-byte keypair or 32-byte seed)
-    if let Ok(arr) = serde_json::from_str::<Vec<u8>>(text) {
-        return match arr.len() {
-            64 => {
-                let mut seed = [0u8; 32];
-                seed.copy_from_slice(&arr[..32]);
-
-                Ok(SigningKey::from_bytes(&seed))
-            }
-            32 => {
-                let mut seed = [0u8; 32];
-                seed.copy_from_slice(&arr[..32]);
-
-                Ok(SigningKey::from_bytes(&seed))
-            }
-            _ => Err(SignError::InvalidKeyLength),
-        };
-    }
-
-    // 2) Keypair JSON with Base58 secretKey
-    if let Ok(kp_json) = serde_json::from_str::<KeypairJson>(text) {
-        let sec = kp_json.secret_key.trim();
-        let bytes = bs58::decode(sec)
-            .into_vec()
-            .map_err(|_| SignError::InvalidBase58)?;
-        return signing_key_from_decoded(bytes);
-    }
-
-    // 3) Raw Base58 string
-    let decoded = bs58::decode(text)
-        .into_vec()
-        .map_err(|_| SignError::InvalidBase58)?;
-    signing_key_from_decoded(decoded)
 }
 
 /// Mnemonic
@@ -341,50 +196,31 @@ use std::io::Write;
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 
-// Private low-level writer with explicit policy knobs
+/// Output target for low-level writers.
+///
+/// - `Stdout`: write bytes to standard output (no permission or overwrite semantics apply).
+/// - `File(&Path)`: write bytes to the given filesystem path.
+enum OutputTarget<'a> {
+    Stdout,
+    File(&'a Path),
+}
+
+/// Low-level writer: writes to either stdout or a file depending on `target`.
+///
+/// - For `OutputTarget::Stdout`, writes bytes as-is to stdout and flushes.
+/// - For `OutputTarget::File`, delegates to `write_bytes_file_with_opts` with the provided
+///   permissions (`perms`) and overwrite policy (`force`).
+///
+/// This helper centralizes the “stdout vs file” branching so upper layers can express intent
+/// clearly by constructing the appropriate `OutputTarget`.
 fn write_bytes_with_opts(
-    path: Option<&str>,
+    target: OutputTarget,
     bytes: &[u8],
     perms: u32,
-    allow_stdout: bool,
     force: bool,
 ) -> std::result::Result<(), SignError> {
-    match path {
-        Some(p) => {
-            if p == "-" {
-                if !allow_stdout {
-                    return Err(SignError::IoWithPath {
-                        source: std_io::Error::new(
-                            std_io::ErrorKind::InvalidInput,
-                            "stdout output is disabled for this operation",
-                        ),
-                        path: None,
-                    });
-                }
-                let mut stdout = std_io::stdout();
-                stdout.write_all(bytes).map_err(|e| SignError::IoWithPath {
-                    source: e,
-                    path: None,
-                })?;
-                stdout.flush().map_err(|e| SignError::IoWithPath {
-                    source: e,
-                    path: None,
-                })?;
-                Ok(())
-            } else {
-                write_bytes_file_with_opts(Path::new(p), bytes, perms, force)
-            }
-        }
-        None => {
-            if !allow_stdout {
-                return Err(SignError::IoWithPath {
-                    source: std_io::Error::new(
-                        std_io::ErrorKind::InvalidInput,
-                        "stdout output is disabled for this operation",
-                    ),
-                    path: None,
-                });
-            }
+    match target {
+        OutputTarget::Stdout => {
             let mut stdout = std_io::stdout();
             stdout.write_all(bytes).map_err(|e| SignError::IoWithPath {
                 source: e,
@@ -396,10 +232,16 @@ fn write_bytes_with_opts(
             })?;
             Ok(())
         }
+        OutputTarget::File(p) => write_bytes_file_with_opts(p, bytes, perms, force),
     }
 }
 
-/// Private
+/// File-only writer: safely writes bytes to a filesystem path.
+///
+/// - Honors `force`: when `false`, uses `create_new(true)` to atomically fail if the file exists;
+///   when `true`, truncates or creates the file.
+/// - On Unix, sets the file mode to `perms` (e.g., 0o600 for secrets, 0o644 for public data).
+/// - Never writes to stdout — use `write_bytes_with_opts(OutputTarget::Stdout, ...)` instead.
 fn write_bytes_file_with_opts(
     path: &Path,
     bytes: &[u8],
@@ -408,11 +250,13 @@ fn write_bytes_file_with_opts(
 ) -> std::result::Result<(), SignError> {
     let mut opts = OpenOptions::new();
     opts.write(true);
+    
     if force {
         opts.create(true).truncate(true);
     } else {
         opts.create_new(true);
     }
+
     #[cfg(unix)]
     {
         opts.mode(perms);
@@ -422,9 +266,11 @@ fn write_bytes_file_with_opts(
         source: e,
         path: Some(path.display().to_string()),
     })?;
+
     file.write_all(bytes).map_err(|e| SignError::IoWithPath {
         source: e,
         path: Some(path.display().to_string()),
     })?;
+
     Ok(())
 }

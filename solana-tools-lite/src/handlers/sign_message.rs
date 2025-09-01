@@ -2,7 +2,8 @@ use ed25519_dalek::{Signature, Signer};
 
 use crate::models::results::SignResult;
 use crate::errors::{Result};
-use crate::adapters::io_adapter::{read_secret_key_file, parse_signing_key_content};
+use crate::adapters::io_adapter::{read_secret_key_file};
+use crate::crypto::helpers::{parse_signing_key_content};
 
 
 //TODO: 🟡🟠 test new execute

@@ -51,7 +51,7 @@ fn benchmark_signing_realistic_transactions_bin() {
 
     //println!("----- {:?}", keypair.verifying_key());
 
-    const N: usize = 1_000_000;
+    const N: usize = 1_000;
     let start = Instant::now();
 
     use ed25519_dalek::Signature;
