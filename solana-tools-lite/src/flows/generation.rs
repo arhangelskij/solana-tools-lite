@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use crate::errors::ToolError;
-use crate::layers::io::write_secret_file;
+use crate::adapters::io_adapter::write_secret_file;
 use crate::models::results::GenResult;
 use crate::utils::pretty_print_json;
 
@@ -34,6 +34,9 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
     Ok(target)
 }
 
+
+//TODO: 28 aug 🟡 move into utils or something else
+
 /// Resolve the final wallet path:
 /// - if `output_path_str` points to a directory, append `wallet.json`
 /// - otherwise treat it as a file path
@@ -57,6 +60,6 @@ fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &
         (false, false) | (true, false) => println!("{}", result.to_public_display())
     }
     // Always inform where the wallet was saved
-    println!("Saved: {}", saved_path.display());
+    eprintln!("Saved: {}", saved_path.display());
     Ok(())
 }

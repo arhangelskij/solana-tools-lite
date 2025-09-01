@@ -34,7 +34,15 @@ pub enum Commands {
 
         /// Path to keypair file (stdin disabled for secrets)
         #[arg(long, short = 'k')]
-        keypair: String //TODO: 🟡 think additionally about name 
+        keypair: String, //TODO: 🟡 think additionally about name 
+
+          /// Optional output file (if not set, print to stdout)
+        #[arg(long, short)]
+        output: Option<String>,
+
+        /// Force save(override) a file
+        #[arg(long, short, default_value = "false")]
+        force: bool
     },
 
     /// Verify a signature
@@ -47,7 +55,8 @@ pub enum Commands {
         message: Option<String>,
 
         /// Read message from file or stdin ("-")
-        #[arg(long = "from-file", value_name = "FILE", group = "msg_src")]
+        /// Accepts both `--from-file` and `--message-file` for convenience.
+        #[arg(long = "from-file", alias = "message-file", value_name = "FILE", group = "msg_src")]
         from_file: Option<String>,
 
         /// Signature to verify (Base58, inline)
@@ -71,8 +80,8 @@ pub enum Commands {
         output: Option<String>,
 
         /// Force save(override) a file
-        #[arg(long, short, default_value = "false")]
-        force: bool,
+        #[arg(long, short, default_value = "false")] //TODO: 27 aug 🔴 hz if we need it here
+        force: bool
     },
 
     /// Base58 encode/decode

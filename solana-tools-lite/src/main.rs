@@ -13,16 +13,16 @@ fn main() {
             passphrase,
             show_secret,
             output,
-            force
+            force,
         } => {
             // Resolve optional refs for handler
             let mnemonic_path = mnemonic.as_deref();
             let passphrase_path = passphrase.as_deref();
             let output_path = output.as_deref();
-//TODO: 🔴 use flow 
+            //TODO: 🔴 27aug(refresh) use flow
             // Call domain handler and handle errors early
-            let result = handlers::generate::handle(mnemonic_path, passphrase_path)
-                .unwrap_or_else(|e| {
+            let result =
+                handlers::generate::handle(mnemonic_path, passphrase_path).unwrap_or_else(|e| {
                     eprintln!("Error executing gen command: {e}");
                     std::process::exit(1);
                 });
@@ -44,14 +44,22 @@ fn main() {
         Commands::Sign {
             message,
             from_file,
-            keypair
+            keypair,
+            output,
+            force,
         } => {
-
             let message = message.as_deref();
             let file_path = from_file.as_deref();
 
-            if let Err(e) =  flows::sign::execute(message, file_path, keypair, cli.json_pretty) {
-                eprintln!("Flow error: {e}");
+            if let Err(e) = flows::sign::execute(
+                message,
+                file_path,
+                keypair,
+                output.as_deref(),
+                *force,
+                cli.json_pretty,
+            ) {
+                eprintln!("Sign flow error: {e}");
                 std::process::exit(1);
             }
         }
@@ -64,7 +72,7 @@ fn main() {
             pubkey,
             pubkey_file,
             output,
-            force //TODO: use fields
+            force, //TODO: use fields
         } => {
             if let Err(e) = flows::verify::execute(
                 message.as_deref(),
@@ -98,7 +106,7 @@ fn main() {
                 keypair,
                 output.as_ref(),
                 cli.json_pretty,
-                *output_format
+                *output_format,
             ) {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);

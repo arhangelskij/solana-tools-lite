@@ -1,6 +1,6 @@
 use crate::errors::ToolError;
 use crate::handlers::verify;
-use crate::layers::io::read_text_source;
+use crate::adapters::io_adapter::read_text_source;
 use crate::utils::pretty_print_json;
 
 /// Verify flow: calls domain handler and prints result.

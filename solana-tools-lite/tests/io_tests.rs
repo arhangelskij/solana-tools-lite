@@ -1,6 +1,6 @@
 
 use std::fs;
-use solana_tools_lite::layers::io::{read_input, write_output};
+use solana_tools_lite::adapters::io_adapter::{read_input, write_output};
 
 #[test]
 fn test_read_input_from_file() -> Result<(), Box<dyn std::error::Error>> {

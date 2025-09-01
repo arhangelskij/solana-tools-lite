@@ -1,7 +1,8 @@
-use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file, parse_signing_key_content};
+use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file};
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
+    crypto::helpers::{parse_signing_key_content},
     errors::{Result, SignError},
     models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,
@@ -18,7 +19,7 @@ pub fn handle_sign_transaction_file(
     secret_key_b58: &str,
     output: Option<&String>,
     json_pretty: bool,
-    out_override: Option<OutFmt>,
+    out_override: Option<OutFmt>, //TODO: 🟡 rename to force or make it everywhere as out_override
 ) -> Result<()> {
     // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
     let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
