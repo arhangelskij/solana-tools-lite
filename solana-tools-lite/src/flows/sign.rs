@@ -31,16 +31,21 @@ pub fn execute(
     // Domain handler: reads key from file (via adapter), signs, returns SignResult
     let result = sign_message::handle(&message_content, secret_key_path)?;
 
-    if json {
-        // Pretty JSON with message, signature_base58, public_key
+    let saving_to_file = output.is_some();
+
+    if saving_to_file {
+        // When saving to a file, keep stdout clean; show signature on stderr only
+        eprintln!("{}", result.signature_base58);
+    } else if json {
+        // Pretty JSON to stdout when not saving to file
         pretty_print_json(&result);
     } else {
-        // Plain output: only the Base58 signature to stdout
+        // Plain signature to stdout when not saving to file
         println!("{}", result.signature_base58);
     }
 
-    // Persist full JSON artifact to file if requested (independent of `json`)
-    save_to_file(&result, output, force);
+    // Persist full JSON artifact to file only if requested (independent of `json`)
+    let _ = save_to_file(&result, output, force)?;
     // if let Some(path) = output {
 
     // }
@@ -53,18 +58,24 @@ fn save_to_file(
     result: &SignResult,
     out_path: Option<&str>,
     force: bool,
-) -> Result<PathBuf, ToolError> {
-    // Always write the full JSON result; use pretty JSON for readability
-    let json_str =
-        serde_json::to_string_pretty(&result).map_err(|e| SignError::JsonSerialize(e))?;
+) -> Result<Option<PathBuf>, ToolError> {
+    // Prepare pretty JSON
+    let json_str = serde_json::to_string_pretty(&result)
+        .map_err(|e| SignError::JsonSerialize(e))?;
 
-    io::write_output(out_path, &json_str)?;
-    eprintln!("Saved: {}", out_path.unwrap_or("result.json"));
+    // Write only when an explicit output path is provided
+    let saved_path = match out_path {
+        Some(path_str) => {
+            let target = get_final_path(path_str);
+            io::write_public_file(&target, &json_str, force)?;
+            eprintln!("Saved: {}", target.display());
+            
+            Some(target)
+        }
+        None => None,
+    };
 
-    // Resolve final target path (directory -> append wallet.json; None -> wallet.json)
-    let target: PathBuf = get_final_path(out_path.unwrap_or("result.json"));
-
-    Ok(target)
+    Ok(saved_path)
 }
 
 //TODO: 28 aug 🟡 move into utils or something else

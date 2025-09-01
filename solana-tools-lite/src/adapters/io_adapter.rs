@@ -321,6 +321,12 @@ pub fn write_secret_file(path: &Path, data: &str, force: bool) -> std::result::R
     write_bytes_file_with_opts(path, data.as_bytes(), 0o600, force)
 }
 
+/// Write non-secret public artifact to a file path, respecting `force` and using 0o644 perms.
+/// Stdout is not allowed here (use `write_output` for stdout writes).
+pub fn write_public_file(path: &Path, data: &str, force: bool) -> std::result::Result<(), SignError> {
+    write_bytes_file_with_opts(path, data.as_bytes(), 0o644, force)
+}
+
 //TODO: 🟡 unused?
 /// Read a single-line secret-like text (file or stdin), trimmed.
 // pub fn read_text(input: &str) -> Result<String, SignError> {
