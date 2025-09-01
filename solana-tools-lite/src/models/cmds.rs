@@ -55,7 +55,8 @@ pub enum Commands {
         message: Option<String>,
 
         /// Read message from file or stdin ("-")
-        #[arg(long = "from-file", value_name = "FILE", group = "msg_src")]
+        /// Accepts both `--from-file` and `--message-file` for convenience.
+        #[arg(long = "from-file", alias = "message-file", value_name = "FILE", group = "msg_src")]
         from_file: Option<String>,
 
         /// Signature to verify (Base58, inline)
