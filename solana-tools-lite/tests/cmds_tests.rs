@@ -298,7 +298,7 @@ mod tests {
     fn test_parse_sign_tx_full() {
         let args = vec![
             "solana-lite",
-            "--json-pretty",          // global pretty flag
+            "--json-pretty",          // global pretty flag //TODO: 1/09 🔴 check in the project
             "sign-tx",
             "--input", "in.json",
             "--keypair", "wallet.json",
