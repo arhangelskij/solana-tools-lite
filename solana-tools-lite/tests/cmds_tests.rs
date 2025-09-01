@@ -58,7 +58,9 @@ mod tests {
                 assert_eq!(message.as_deref(), Some("hello"));
                 assert_eq!(from_file, None);
                 assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
-                //TODO: add test for with `output`(+ without) and `force`(true and false in another test)
+                // Defaults for optional flags
+                assert_eq!(output, None);
+                assert_eq!(force, false);
             }
             _ => panic!("Parsed into wrong command variant"),
         }
@@ -80,14 +82,54 @@ mod tests {
                 from_file,
                 keypair,
                 output,
-                force //TODO: add asserts in the test
+                force
             } => {
                 assert_eq!(message, None);
                 assert_eq!(from_file.as_deref(), Some("./path/message.txt"));
                 assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
+                assert_eq!(output, None);
+                assert_eq!(force, false);
             }
             _ => panic!("Parsed into wrong command variant"),
         }
+    }
+
+    /// Test parsing the `sign` command with output path and --force set.
+    #[test]
+    fn test_parse_sign_with_output_and_force() {
+        let args = vec![
+            "solana-lite",
+            "sign",
+            "--message", "hello",
+            "--keypair", "./tests/fixtures/test_keypair.json",
+            "--output", "./out/result.json",
+            "--force",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Commands::Sign { message, from_file, keypair, output, force } => {
+                assert_eq!(message.as_deref(), Some("hello"));
+                assert!(from_file.is_none());
+                assert_eq!(keypair, "./tests/fixtures/test_keypair.json");
+                assert_eq!(output.as_deref(), Some("./out/result.json"));
+                assert!(force);
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
+
+    /// Test that `sign` fails to parse when both message and from-file are provided.
+    #[test]
+    fn test_parse_sign_mutually_exclusive_sources() {
+        let args = vec![
+            "solana-lite",
+            "sign",
+            "--message", "hello",
+            "--from-file", "msg.txt",
+            "--keypair", "./tests/fixtures/test_keypair.json",
+        ];
+        let res = Cli::try_parse_from(args);
+        assert!(res.is_err(), "expected clap to error when both msg sources are provided");
     }
 
     /// Test parsing the `verify` command with inline message, signature, and pubkey.
@@ -150,7 +192,7 @@ mod tests {
             _ => panic!("Parsed into wrong command variant"),
         }
     }
-
+//fixme: 🟡
     /// Test parsing the `verify` command with message/signature/pubkey from files.
     #[test]
     fn test_parse_verify_command_from_files() {
@@ -253,7 +295,6 @@ mod tests {
 
     /// Test parsing the `sign-tx` command with all options provided.
     #[test]
-
     fn test_parse_sign_tx_full() {
         let args = vec![
             "solana-lite",
