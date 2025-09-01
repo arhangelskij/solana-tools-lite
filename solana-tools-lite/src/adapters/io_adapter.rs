@@ -6,17 +6,12 @@ use std::io as std_io;
 use std::path::Path;
 use data_encoding::BASE64;
 
-pub enum InputFormat {
-    Json,
-    Base64,
-    Base58,
-}
-
 pub enum OutputFormat {
     Json { pretty: bool },
     Base64,
-    Base58,
+    Base58
 }
+
 /// Read from a file or stdin ("-") based on `path`.
 fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
     match path {
