@@ -18,15 +18,9 @@ pub fn execute(
     force: bool,
     json: bool,
 ) -> Result<(), ToolError> {
-    let message_content = match (message, message_file) {
-        (Some(msg), _) => msg.to_string(),
-        (None, Some(file_path)) => io::read_input(Some(file_path))?,
-        (None, None) => {
-            return Err(ToolError::InvalidInput(
-                "No message or message file provided".into(),
-            ));
-        }
-    };
+    //TODO: 1/09 🟡 mb use universal reader instead / check it
+    // Resolve message from inline or file/stdin via adapter helper
+    let message_content = io::read_text_source(message, message_file, true)?;
 
     // Domain handler: reads key from file (via adapter), signs, returns SignResult
     let result = sign_message::handle(&message_content, secret_key_path)?;

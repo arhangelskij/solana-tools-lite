@@ -1,19 +1,20 @@
 use ed25519_dalek::SigningKey;
 use solana_tools_lite::crypto::helpers::parse_signing_key_content;
-use std::fs;
 use std::error::Error;
+use std::fs;
 
 use bs58;
 use data_encoding::BASE64;
 
-
-use solana_tools_lite::adapters::io_adapter::{read_input_transaction, read_secret_key_file};
-use solana_tools_lite::serde::input_tx::{is_base58};
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
+use solana_tools_lite::adapters::io_adapter::{
+    read_input_transaction, read_secret_key_file, write_output,
+};
 use solana_tools_lite::errors::SignError;
 use solana_tools_lite::errors::{ToolError, TransactionParseError};
 use solana_tools_lite::models::input_transaction::InputTransaction;
+use solana_tools_lite::serde::input_tx::is_base58;
 
 // Validate that is_base58 accepts a correct Base58 string
 #[test]
@@ -37,9 +38,9 @@ fn test_read_input_transaction_base58() -> Result<(), Box<dyn Error>> {
     let path = "test_io_adapter_bs58.txt";
     let plain = "adapter test";
     let encoded = bs58::encode(plain.as_bytes()).into_string();
-    
+
     fs::write(path, &encoded)?;
-    
+
     let variant = read_input_transaction(Some(&path.to_string()))?;
     match variant {
         InputTransaction::Base58(s) => assert_eq!(s, encoded),
@@ -57,9 +58,9 @@ fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
     let path = "test_io_adapter_b64.txt";
     let plain = "adapter test";
     let encoded = BASE64.encode(plain.as_bytes());
-    
+
     fs::write(path, &encoded)?;
-    
+
     let variant = read_input_transaction(Some(&path.to_string()))?;
     match variant {
         InputTransaction::Base64(s) => assert_eq!(s, encoded),
@@ -73,7 +74,8 @@ fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
 
 // Read and trim secret key from file
 #[test]
-fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> { //TODO: 🟠 why box here?
+fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+    //TODO: 🟠 why box here?
     let path = "test_secret_key.txt";
     let secret = "mysecretkey";
     // Write secret with trailing newline
@@ -115,7 +117,13 @@ fn test_read_secret_key_file_not_a_file() -> Result<(), Box<dyn std::error::Erro
 fn test_parse_signing_key_content_json_array_64() {
     let seed = build_seed32();
     let kp = keypair_bytes_from_seed(&seed);
-    let json = format!("[{}]", kp.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let json = format!(
+        "[{}]",
+        kp.iter()
+            .map(|b| b.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
     let sk = parse_signing_key_content(&json).expect("parse array64");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 }
@@ -124,7 +132,13 @@ fn test_parse_signing_key_content_json_array_64() {
 #[test]
 fn test_parse_signing_key_content_json_array_32() {
     let seed = build_seed32();
-    let json = format!("[{}]", seed.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let json = format!(
+        "[{}]",
+        seed.iter()
+            .map(|b| b.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
     let sk = parse_signing_key_content(&json).expect("parse array32");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 }
@@ -197,7 +211,9 @@ fn test_parse_signing_key_content_invalid_length_array() {
 
 fn build_seed32() -> [u8; 32] {
     let mut seed = [0u8; 32];
-    for i in 0..32 { seed[i] = i as u8; }
+    for i in 0..32 {
+        seed[i] = i as u8;
+    }
     seed
 }
 
@@ -262,7 +278,13 @@ fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<(), Box<dyn s
 fn test_read_secret_key_file_and_parse_json_array_64() -> Result<(), Box<dyn std::error::Error>> {
     let seed = build_seed32();
     let kp = keypair_bytes_from_seed(&seed);
-    let json = format!("[{}]", kp.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let json = format!(
+        "[{}]",
+        kp.iter()
+            .map(|b| b.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
     let path = "test_secret_key_arr64.json";
     fs::write(path, &json)?;
 
@@ -278,7 +300,13 @@ fn test_read_secret_key_file_and_parse_json_array_64() -> Result<(), Box<dyn std
 #[test]
 fn test_read_secret_key_file_and_parse_json_array_32() -> Result<(), Box<dyn std::error::Error>> {
     let seed = build_seed32();
-    let json = format!("[{}]", seed.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+    let json = format!(
+        "[{}]",
+        seed.iter()
+            .map(|b| b.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
     let path = "test_secret_key_arr32.json";
     fs::write(path, &json)?;
 
@@ -424,4 +452,19 @@ fn test_read_text_source_stdin_disallowed() {
         ToolError::InvalidInput(msg) => assert!(msg.contains("stdin is disabled")),
         other => panic!("Expected InvalidInput, got {other:?}"),
     }
+}
+
+// Adapter: write_output writes to file (0644) and overwrites
+#[test]
+fn test_write_output_to_file_adapter() -> Result<(), Box<dyn std::error::Error>> {
+    let path = "test_write_adapter.txt";
+    let data = "Adapter Output Data";
+
+    write_output(Some(path), data)?;
+
+    let content = std::fs::read_to_string(path)?;
+    assert_eq!(content, data);
+
+    std::fs::remove_file(path)?;
+    Ok(())
 }

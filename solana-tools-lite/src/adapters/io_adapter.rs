@@ -18,7 +18,7 @@ pub enum OutputFormat {
     Base58,
 }
 /// Read from a file or stdin ("-") based on `path`.
-pub fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
+fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
     match path {
         Some(p) if p != "-" => io::read_from_file(Path::new(p)).map_err(|e| SignError::IoWithPath {
             source: e,
@@ -67,6 +67,7 @@ pub fn read_text_source(
     }
 }
 
+//TODO: 1/09 🔴(tomorrow first) mb make it private too
 /// Write data to a file or stdout; stdout is written as-is; file uses 0o644 perms and overwrites.
 pub fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignError> {
     // Public output: stdout allowed, 0644 permissions, always overwrite
