@@ -3,6 +3,7 @@ use crate::errors::ToolError;
 use crate::adapters::io_adapter::write_secret_file;
 use crate::models::results::GenResult;
 use crate::utils::pretty_print_json;
+use crate::constants::DEFAULT_WALLET_FILENAME;
 
 /// Present `GenResult` according to CLI flags and save full wallet.
 ///
@@ -43,7 +44,7 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
 fn get_final_path(output_path_str: &str) -> PathBuf {
     let p = Path::new(output_path_str);
     if p.is_dir() {
-        p.join("wallet.json")
+        p.join(DEFAULT_WALLET_FILENAME)
     } else {
         p.to_path_buf()
     }

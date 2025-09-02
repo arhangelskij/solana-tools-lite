@@ -7,7 +7,7 @@ use crate::models::keypair_json::KeypairJson;
 /// Build SigningKey from decoded bytes: accept 32-byte seed or 64-byte keypair bytes.
 pub fn signing_key_from_decoded(bytes: Vec<u8>) -> Result<SigningKey, SignError> {
     match bytes.len() {
-        64 => {
+        64 => { //TODO: 🟠 magic numbers
             let mut seed = [0u8; 32];
             seed.copy_from_slice(&bytes[..32]);
             Ok(SigningKey::from_bytes(&seed))

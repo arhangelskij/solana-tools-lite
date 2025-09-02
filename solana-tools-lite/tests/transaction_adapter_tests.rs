@@ -20,7 +20,7 @@ fn test_adapter_with_generated_data() {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("tests/data/tx_template.json");
     let template = fs::read_to_string(path).expect("Template not found");
-
+//TODO: 🟠 02.09 check where it can be used too or mb we do need and just generate json
     let json = template
         .replace("$PK1", &pubkey1)
         .replace("$PK2", &pubkey2)

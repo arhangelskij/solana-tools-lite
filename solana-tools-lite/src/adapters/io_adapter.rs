@@ -1,21 +1,24 @@
-use crate::errors::{Result, SignError, TransactionParseError, ToolError};
+use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
+use crate::errors::{Result, SignError, ToolError};
 use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
-use serde_json;
+use crate::serde::fmt::{self as serde_fmt, OutputFormat};
 use std::io as std_io;
 use std::path::Path;
-use data_encoding::BASE64;
-use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
-use crate::serde::fmt::OutputFormat;
 
 /// Read from a file or stdin ("-") based on `path`.
 fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
     match path {
-        Some(p) if p != "-" => io::read_from_file(Path::new(p)).map_err(|e| SignError::IoWithPath {
+        Some(p) if p != "-" => {
+            io::read_from_file(Path::new(p)).map_err(|e| SignError::IoWithPath {
+                source: e,
+                path: Some(p.to_string()),
+            })
+        }
+        _ => io::read_from_stdin().map_err(|e| SignError::IoWithPath {
             source: e,
-            path: Some(p.to_string()),
+            path: None,
         }),
-        _ => io::read_from_stdin().map_err(|e| SignError::IoWithPath { source: e, path: None }),
     }
 }
 
@@ -37,28 +40,29 @@ pub fn read_text_source(
         (Some(s), None) => Ok(s.to_owned()),
 
         //TODO: check comments
-        // Stdin 
+        // Stdin
         (None, Some("-")) => {
             if !allow_stdin {
-                return Err(ToolError::InvalidInput("reading from stdin is disabled".to_string()));
+                return Err(ToolError::InvalidInput(
+                    "reading from stdin is disabled".to_string(),
+                ));
             }
             read_input(None).map_err(ToolError::from)
         }
         // From path
         (None, Some(path)) => read_input(Some(path)).map_err(ToolError::from),
-        
+
         // Errors
         (Some(_), Some(_)) => Err(ToolError::InvalidInput(
             "provide either inline value or --from-file (not both)".to_string(),
         )),
-        
+
         (None, None) => Err(ToolError::InvalidInput(
             "missing input: pass inline value or --from-file".to_string(),
         )),
     }
 }
 
-//TODO: 1/09 🔴(tomorrow first) mb make it private too
 /// Writes public data either to stdout or to a file.
 ///
 /// - When `path` is `None` or `Some("-")`, writes to stdout as-is.
@@ -117,48 +121,48 @@ pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError
 }
 
 /// Serialize a `UiTransaction` into the specified `OutputFormat` and write it out.
+///
+/// Behavior
+/// - Uses `serde::fmt::encode_ui_transaction` to build the output string
+///   (JSON pretty/plain, Base64(JSON), or Base58(JSON)).
+/// - Writes to stdout when `output` is `None` or `Some("-")`.
+/// - Writes to file with 0o644 and always overwrites when `output = Some(path)`.
 pub fn write_output_transaction(
     transaction: &UiTransaction,
     format: OutputFormat,
     output: Option<&str>,
 ) -> Result<()> {
-    // First, serialize to JSON (for both JSON and encoded formats)
-    let json_str = serde_json::to_string(transaction)
-        .map_err(|e| TransactionParseError::Serialization(e.to_string()))?;
-
-    // Build the output string based on desired format
-    let out_str = match format {
-        OutputFormat::Json { pretty } => {
-            if pretty {
-                serde_json::to_string_pretty(transaction)
-                    .map_err(|e| TransactionParseError::Serialization(e.to_string()))?
-            } else {
-                json_str.clone()
-            }
-        }
-        OutputFormat::Base64 => BASE64.encode(&json_str.as_bytes()),
-        OutputFormat::Base58 => bs58::encode(&json_str).into_string(),
-    };
+    // Encode UI Tx
+    let out_str = serde_fmt::encode_ui_transaction(transaction, format)?;
 
     // Write to file or stdout
-    write_output(output, &out_str).map_err(|e| e)?;
+    write_output(output, &out_str)?;
 
     Ok(())
 }
 
-/// Mnemonic
-
 /// Read mnemonic from file or stdin (`-`) and normalize whitespace.
+///
+/// This helper is intended for CLI flows that accept a mnemonic from a file or stdin.
+/// It collapses any whitespace (spaces, tabs, newlines) into single spaces.
 pub fn read_mnemonic(input: &str) -> Result<String, SignError> {
-    let raw = read_input(if input == "-" { None } else { Some(input) })?;
-    Ok(raw.split_whitespace().collect::<Vec<_>>().join(" "))
+    let path = match input {
+        "-" => None,
+        _ => Some(input),
+    };
+    let raw = read_input(path)?;
+    Ok(raw.split_whitespace().collect::<Vec<_>>().join(" ")) //TODO: 🟠 magic whitespace!
 }
 
 /// Write secret material to a file path, never to stdout.
 /// - `path` must be a filesystem path ("-" is rejected)
-/// - if the file exists and `force == false`, returns an AlreadyExists error
-/// - on Unix, sets permissions to 0o600 (rw-------)
-pub fn write_secret_file(path: &Path, data: &str, force: bool) -> std::result::Result<(), SignError> {
+/// - If the file exists and `force == false`, returns AlreadyExists (atomic via create_new)
+/// - On Unix, sets permissions to 0o600 (rw-------)
+pub fn write_secret_file(
+    path: &Path,
+    data: &str,
+    force: bool,
+) -> std::result::Result<(), SignError> {
     // Secrets: stdout forbidden, 0600, respect force
     if path == Path::new("-") {
         return Err(SignError::IoWithPath {
@@ -173,12 +177,14 @@ pub fn write_secret_file(path: &Path, data: &str, force: bool) -> std::result::R
 }
 
 /// Write non-secret public artifact to a file path, respecting `force` and using 0o644 perms.
-/// Stdout is not allowed here (use `write_output` for stdout writes).
-pub fn write_public_file(path: &Path, data: &str, force: bool) -> std::result::Result<(), SignError> {
+/// - Stdout is NOT allowed here (use `write_output` for stdout writes).
+pub fn write_public_file(
+    path: &Path,
+    data: &str,
+    force: bool,
+) -> std::result::Result<(), SignError> {
     write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_PUBLIC, force)
 }
-
-//TODO: 27 aug 🔴 new write func
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -239,7 +245,7 @@ fn write_bytes_file_with_opts(
 ) -> std::result::Result<(), SignError> {
     let mut opts = OpenOptions::new();
     opts.write(true);
-    
+
     if force {
         opts.create(true).truncate(true);
     } else {

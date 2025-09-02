@@ -1,3 +1,4 @@
+use crate::constants::crypto::{PUBKEY_LEN, SIG_LEN};
 use std::io;
 use thiserror::Error;
 
@@ -10,7 +11,7 @@ pub enum ToolError {
     #[error("BIP-39 error: {0}")]
     Bip39(#[from] Bip39Error),
 
-     #[error(transparent)]
+    #[error(transparent)]
     Base58(#[from] bs58::decode::Error),
 
     // Handlers
@@ -29,14 +30,14 @@ pub enum ToolError {
     #[error("Transaction parse error: {0}")]
     TransactionParse(#[from] TransactionParseError),
 
-    #[error ("Deserialization error: {0}")]
+    #[error("Deserialization error: {0}")]
     Deserialize(#[from] DeserializeError),
 
     #[error("Save file error (already exists): {path}")]
     FileExists { path: String },
 
     #[error("Invalid input: {0}")]
-    InvalidInput(String)
+    InvalidInput(String),
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -47,7 +48,7 @@ pub enum Bip39Error {
     #[error("PBKDF2 failed: {0}")]
     Pbkdf2(&'static str),
     #[error("Validation failed: {0}")]
-    Validation(bip39::Error)
+    Validation(bip39::Error),
 }
 
 #[derive(Error, Debug)]
@@ -72,20 +73,17 @@ pub enum SignError {
 
     #[error("I/O error {path:?}: {source}")]
     IoWithPath {
-        #[source] source: std::io::Error,
-        path: Option<String>
+        #[source]
+        source: std::io::Error,
+        path: Option<String>,
     },
 
     #[error("Failed to parse input JSON: {0}")]
     JsonParse(#[source] serde_json::Error),
 
     #[error("Failed to serialize JSON for output: {0}")]
-    JsonSerialize(#[source] serde_json::Error)
+    JsonSerialize(#[source] serde_json::Error),
 }
-
-// VerifyError constants
-pub const SIG_LEN: usize = 64;
-pub const PUBKEY_LEN: usize = 32;
 
 #[derive(Error, Debug)]
 pub enum VerifyError {
@@ -100,7 +98,7 @@ pub enum VerifyError {
     #[error("Invalid public key format")]
     InvalidPubkeyFormat,
     #[error("Signature verification failed")]
-    VerificationFailed
+    VerificationFailed,
 }
 
 #[derive(Error, Debug)]
@@ -108,13 +106,13 @@ pub enum KeypairError {
     #[error("Seed must be at least 32 bytes, got {0}")]
     SeedTooShort(usize),
     #[error("Invalid seed slice length: {0}")]
-    SeedSlice(&'static str)          // from TryInto
+    SeedSlice(&'static str), // from TryInto
 }
 
 #[derive(Error, Debug)]
 pub enum GenError {
     #[error("Invalid Seed Length: ")]
-    InvalidSeedLength
+    InvalidSeedLength,
 }
 
 #[derive(Debug, Error)]
@@ -142,11 +140,11 @@ pub enum TransactionParseError {
     #[error("Invalid input format: {0}")]
     InvalidFormat(String),
     #[error("Serialization error: {0}")]
-    Serialization(String)//TODO: 🟡 serde error?
+    Serialization(String), //TODO: 🟡 serde error?
 }
 
 #[derive(Debug, Error)]
 pub enum DeserializeError {
     #[error("Deserialization error: {0}")]
-    Deserialization(String)
+    Deserialization(String),
 }

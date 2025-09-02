@@ -6,7 +6,7 @@ use data_encoding::BASE64;
 pub enum OutputFormat {
     Json { pretty: bool },
     Base64,
-    Base58,
+    Base58
 }
 
 /// Serialize a `UiTransaction` according to the specified `OutputFormat`.

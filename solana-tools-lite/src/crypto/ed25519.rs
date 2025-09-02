@@ -1,5 +1,6 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use crate::errors::{KeypairError, VerifyError, SIG_LEN, PUBKEY_LEN};
+use crate::constants::crypto::{PUBKEY_LEN, SIG_LEN};
+use crate::errors::{KeypairError, VerifyError};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 
 /// Create key (first 32 bytes as seed)
 pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey, KeypairError> {
@@ -8,8 +9,8 @@ pub fn keypair_from_seed(seed: &[u8]) -> Result<SigningKey, KeypairError> {
     }
 
     let slice: [u8; 32] = seed[..32]
-    .try_into()
-    .map_err(|_| KeypairError::SeedSlice("expected 32-byte slice"))?;
+        .try_into()
+        .map_err(|_| KeypairError::SeedSlice("expected 32-byte slice"))?;
 
     Ok(SigningKey::from_bytes(&slice))
 }
@@ -24,7 +25,11 @@ pub fn verify_signature(pubkey: &VerifyingKey, message: &[u8], signature: &Signa
     pubkey.verify(message, signature).is_ok()
 }
 
-pub fn verify_signature_raw(message: &str, signature_b58: &str, pubkey_b58: &str,) -> Result<(), VerifyError> {
+pub fn verify_signature_raw(
+    message: &str,
+    signature_b58: &str,
+    pubkey_b58: &str,
+) -> Result<(), VerifyError> {
     let sig_bytes = bs58::decode(signature_b58).into_vec()?;
     let pubkey_bytes = bs58::decode(pubkey_b58).into_vec()?;
 
