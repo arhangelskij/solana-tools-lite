@@ -41,6 +41,10 @@ pub enum ToolError {
     #[error("Deserialization error: {0}")]
     Deserialize(#[from] DeserializeError),
 
+    /// File/stdin/stdout I/O errors at adapter/CLI boundaries
+    #[error("I/O error: {0}")]
+    Io(#[from] IoError),
+
     #[error("Save file error (already exists): {path}")]
     FileExists { path: String },
 
@@ -78,16 +82,7 @@ pub enum SignError {
     #[error("Provided signer is not within required signers")]
     SigningNotRequiredForKey,
 
-    #[error("I/O error: {0}")]
-    Io(#[from] io::Error),
-
-    /// I/O error with optional path context; `path=None` denotes stdin/stdout.
-    #[error("I/O error {path:?}: {source}")]
-    IoWithPath {
-        #[source]
-        source: std::io::Error,
-        path: Option<String>,
-    },
+    // I/O errors are tracked via `IoError` at adapter/CLI level
 
     #[error("Failed to parse input JSON: {0}")]
     JsonParse(#[source] serde_json::Error),
@@ -163,4 +158,19 @@ pub enum TransactionParseError {
 pub enum DeserializeError {
     #[error("Deserialization error: {0}")]
     Deserialization(String),
+}
+
+/// Adapter-level I/O errors (files, stdin/stdout) with optional path context.
+#[derive(Debug, Error)]
+pub enum IoError {
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
+
+    /// `path=None` denotes stdin/stdout
+    #[error("I/O error {path:?}: {source}")]
+    IoWithPath {
+        #[source]
+        source: std::io::Error,
+        path: Option<String>,
+    },
 }
