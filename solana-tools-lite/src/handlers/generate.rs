@@ -4,7 +4,6 @@ use crate::errors::{GenError, Result};
 use crate::models::results::GenResult;
 use crate::utils::{hex_encode};
 use ed25519_dalek::SigningKey;
-use std::convert::TryInto;
 
 pub fn handle(mnemonic_path: Option<&str>, passphrase: Option<&str>) -> Result<GenResult> {
     // Resolve mnemonic: read from file/stdin if provided, otherwise generate a new one.

@@ -1,6 +1,6 @@
 use ed25519_dalek::SigningKey;
 use solana_tools_lite::crypto::helpers::parse_signing_key_content;
-use std::error::Error;
+use anyhow::Result;
 use std::fs;
 
 use bs58;
@@ -13,8 +13,7 @@ use solana_tools_lite::adapters::io_adapter::{
 };
 #[path = "utils.rs"]
 mod test_utils;
-use solana_tools_lite::errors::SignError;
-use solana_tools_lite::errors::{ToolError};
+use solana_tools_lite::errors::{ToolError, IoError, SignError};
 use solana_tools_lite::models::input_transaction::InputTransaction;
 use solana_tools_lite::serde::input_tx::is_base58;
 use solana_tools_lite::serde::fmt::OutputFormat;
@@ -37,7 +36,7 @@ fn test_is_base58_invalid() {
 
 // Read Base58-encoded transaction from file
 #[test]
-fn test_read_input_transaction_base58() -> Result<(), Box<dyn Error>> {
+fn test_read_input_transaction_base58() -> Result<()> {
     let path = "test_io_adapter_bs58.txt";
     let plain = "adapter test";
     let encoded = bs58::encode(plain.as_bytes()).into_string();
@@ -57,7 +56,7 @@ fn test_read_input_transaction_base58() -> Result<(), Box<dyn Error>> {
 
 // Read Base64-encoded transaction from file
 #[test]
-fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
+fn test_read_input_transaction_base64() -> Result<()> {
     let path = "test_io_adapter_b64.txt";
     let plain = "adapter test";
     let encoded = BASE64.encode(plain.as_bytes());
@@ -77,12 +76,14 @@ fn test_read_input_transaction_base64() -> Result<(), Box<dyn Error>> {
 
 // Read and trim secret key from file
 #[test]
-fn test_read_secret_key_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_ok() -> Result<()> {
     //TODO: 🟠 why box here?
     let path = "test_secret_key.txt";
     let secret = "mysecretkey";
+    
     // Write secret with trailing newline
     fs::write(path, format!("{}\n", secret))?;
+    
     // Should read and trim newline
     let s = read_secret_key_file(path)?;
     assert_eq!(s, secret);
@@ -96,20 +97,20 @@ fn test_read_secret_key_file_not_found() {
     let path = "nonexistent_secret.txt";
     let err = read_secret_key_file(path).unwrap_err();
     match err {
-        SignError::IoWithPath { path: Some(p), .. } => assert_eq!(p, path.to_string()),
-        _ => panic!("Expected IoWithPath error for missing file, got {:?}", err),
+        ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => assert_eq!(p, path.to_string()),
+        _ => panic!("Expected Io(IoWithPath) for missing file, got {:?}", err),
     }
 }
 
 // Error when secret key path is a directory
 #[test]
-fn test_read_secret_key_file_not_a_file() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_not_a_file() -> Result<()> {
     let dir = "test_secret_dir";
     fs::create_dir(dir)?;
     let err = read_secret_key_file(dir).unwrap_err();
     match err {
-        SignError::IoWithPath { path: Some(p), .. } => assert_eq!(p, dir.to_string()),
-        _ => panic!("Expected IoWithPath error for directory, got {:?}", err),
+        ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => assert_eq!(p, dir.to_string()),
+        _ => panic!("Expected Io(IoWithPath) for directory, got {:?}", err),
     }
     fs::remove_dir(dir)?;
     Ok(())
@@ -235,7 +236,7 @@ fn keypair_bytes_from_seed(seed: &[u8; 32]) -> [u8; 64] {
 
 // Read key JSON object (secretKey Base58 of 64-byte keypair) and parse
 #[test]
-fn test_read_secret_key_file_and_parse_keypair_json_64() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_and_parse_keypair_json_64() -> Result<()> {
     let seed = build_seed32();
     let kp = keypair_bytes_from_seed(&seed);
     let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
@@ -257,7 +258,7 @@ fn test_read_secret_key_file_and_parse_keypair_json_64() -> Result<(), Box<dyn s
 
 // Read key JSON object (secretKey Base58 of 32-byte seed) and parse
 #[test]
-fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<()> {
     let seed = build_seed32();
     let pk_b58 = bs58::encode(seed_pk_bytes(&seed)).into_string();
     let sec_b58 = bs58::encode(seed).into_string();
@@ -278,7 +279,7 @@ fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<(), Box<dyn s
 
 // Read key as JSON array of 64 bytes and parse
 #[test]
-fn test_read_secret_key_file_and_parse_json_array_64() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_and_parse_json_array_64() -> Result<()> {
     let seed = build_seed32();
     let kp = keypair_bytes_from_seed(&seed);
     let json = format!(
@@ -301,7 +302,7 @@ fn test_read_secret_key_file_and_parse_json_array_64() -> Result<(), Box<dyn std
 
 // Read key as JSON array of 32 bytes and parse
 #[test]
-fn test_read_secret_key_file_and_parse_json_array_32() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_secret_key_file_and_parse_json_array_32() -> Result<()> {
     let seed = build_seed32();
     let json = format!(
         "[{}]",
@@ -323,7 +324,7 @@ fn test_read_secret_key_file_and_parse_json_array_32() -> Result<(), Box<dyn std
 
 // Read mnemonic from file and normalize whitespace
 #[test]
-fn test_read_mnemonic_file_normalize() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_mnemonic_file_normalize() -> Result<()> {
     let path = "test_mnemonic.txt";
     // Write mnemonic with varied whitespace and newlines
     let content = "word1  word2\nword3\tword4  ";
@@ -342,13 +343,13 @@ fn test_read_input_transaction_invalid_path_errors() {
     // Non-existent path should be treated as an error (no inline fallback)
     let err = read_input_transaction(Some(&"no_such_file_123456.json".to_string())).unwrap_err();
     match err {
-        ToolError::Sign(SignError::IoWithPath { .. }) => {}
-        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
+        ToolError::Io(IoError::IoWithPath { .. }) => {}
+        other => panic!("Expected Io(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
 #[test]
-fn test_read_input_transaction_json_from_file() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_input_transaction_json_from_file() -> Result<()> {
     // Minimal valid UiTransaction JSON
     let json = r#"{
         "signatures": [],
@@ -386,8 +387,8 @@ fn test_read_input_transaction_nonexistent_path_looks_like_base58_should_error()
     let fake_path = "11111111111111111111111111111111".to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::Sign(SignError::IoWithPath { .. }) => {}
-        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
+        ToolError::Io(IoError::IoWithPath { .. }) => {}
+        other => panic!("Expected Io(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
@@ -397,8 +398,8 @@ fn test_read_input_transaction_nonexistent_path_looks_like_base64_should_error()
     let fake_path = "QUJD".to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::Sign(SignError::IoWithPath { .. }) => {}
-        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
+        ToolError::Io(IoError::IoWithPath { .. }) => {}
+        other => panic!("Expected Io(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
@@ -408,20 +409,20 @@ fn test_read_input_transaction_nonexistent_path_looks_like_json_should_error() {
     let fake_path = r#"{\"signatures\":[],\"message\":{\"header\":{\"num_required_signatures\":1,\"num_readonly_signed_accounts\":0,\"num_readonly_unsigned_accounts\":1},\"account_keys\":[\"11111111111111111111111111111111\",\"11111111111111111111111111111111\"],\"recent_blockhash\":\"11111111111111111111111111111111\",\"instructions\":[]}}"#.to_string();
     let err = read_input_transaction(Some(&fake_path)).unwrap_err();
     match err {
-        ToolError::Sign(SignError::IoWithPath { .. }) => {}
-        other => panic!("Expected Sign(IoWithPath) for nonexistent path, got {other:?}"),
+        ToolError::Io(IoError::IoWithPath { .. }) => {}
+        other => panic!("Expected Io(IoWithPath) for nonexistent path, got {other:?}"),
     }
 }
 
 #[test]
-fn test_read_text_source_inline_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_text_source_inline_ok() -> Result<()> {
     let s = read_text_source(Some("hello"), None, true)?;
     assert_eq!(s, "hello");
     Ok(())
 }
 
 #[test]
-fn test_read_text_source_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_text_source_file_ok() -> Result<()> {
     let path = "test_rts.txt";
     fs::write(path, "abc")?;
     let s = read_text_source(None, Some(path), true)?;
@@ -459,7 +460,7 @@ fn test_read_text_source_stdin_disallowed() {
 
 // Adapter: write_output_transaction writes via write_output (0644) and overwrites
 #[test]
-fn test_write_output_to_file_adapter() -> Result<(), Box<dyn std::error::Error>> {
+fn test_write_output_to_file_adapter() -> Result<()> {
     // Minimal valid UiTransaction via helper
     let ui = test_utils::generate_ui_transaction(
         1,

@@ -69,7 +69,8 @@ fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), ToolE
         Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
         _ => OutputTarget::Stdout,
     };
-    write_bytes_with_opts(target, data.as_bytes(), FILE_PERMS_PUBLIC, true)
+
+    write_bytes_with_opts(&target, data.as_bytes(), FILE_PERMS_PUBLIC, true)
         .map_err(|e| match target {
             OutputTarget::Stdout => ToolError::Io(IoError::IoWithPath { source: e, path: None }),
             OutputTarget::File(p) => ToolError::Io(IoError::IoWithPath {
@@ -215,7 +216,7 @@ enum OutputTarget<'a> {
 /// This helper centralizes the “stdout vs file” branching so upper layers can express intent
 /// clearly by constructing the appropriate `OutputTarget`.
 fn write_bytes_with_opts(
-    target: OutputTarget,
+    target: &OutputTarget,
     bytes: &[u8],
     perms: u32,
     force: bool,

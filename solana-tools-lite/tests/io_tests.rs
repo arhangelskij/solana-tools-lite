@@ -3,9 +3,10 @@ use std::fs;
 use std::path::Path;
 use solana_tools_lite::layers::io::{read_from_file, write_to_file};
 use solana_tools_lite::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
+use anyhow::Result;
 
 #[test]
-fn test_read_from_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_from_file_ok() -> Result<()> {
     // Prepare a temporary file with known content
     let path = "test_read.txt";
     let data = "Hello, IO!";
@@ -28,7 +29,7 @@ fn test_read_input_invalid_path() {
 }
 
 #[test]
-fn test_write_to_file_ok() -> Result<(), Box<dyn std::error::Error>> {
+fn test_write_to_file_ok() -> Result<()> {
     // Write data to a temporary file
     let path = "test_write.txt";
     let data = "Output Data";
@@ -44,7 +45,7 @@ fn test_write_to_file_ok() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn test_write_to_file_no_force_should_fail_on_existing() -> Result<(), Box<dyn std::error::Error>> {
+fn test_write_to_file_no_force_should_fail_on_existing() -> Result<()> {
     let path = "test_write_exists.txt";
     fs::write(path, "initial")?;
 
@@ -57,7 +58,7 @@ fn test_write_to_file_no_force_should_fail_on_existing() -> Result<(), Box<dyn s
 }
 
 #[test]
-fn test_read_from_file_directory_should_error() -> Result<(), Box<dyn std::error::Error>> {
+fn test_read_from_file_directory_should_error() -> Result<()> {
     let dir = "test_io_dir_read";
     fs::create_dir(dir)?;
     let res = read_from_file(Path::new(dir));
@@ -68,7 +69,7 @@ fn test_read_from_file_directory_should_error() -> Result<(), Box<dyn std::error
 }
 
 #[test]
-fn test_write_to_file_directory_should_error() -> Result<(), Box<dyn std::error::Error>> {
+fn test_write_to_file_directory_should_error() -> Result<()> {
     let dir = "test_io_dir_write";
     fs::create_dir(dir)?;
     
@@ -81,7 +82,7 @@ fn test_write_to_file_directory_should_error() -> Result<(), Box<dyn std::error:
 
 #[cfg(unix)]
 #[test]
-fn test_write_to_file_sets_permissions_unix() -> Result<(), Box<dyn std::error::Error>> {
+fn test_write_to_file_sets_permissions_unix() -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let path = "test_io_perms.txt";
     write_to_file(Path::new(path), "data", FILE_PERMS_SECRET, true)?;

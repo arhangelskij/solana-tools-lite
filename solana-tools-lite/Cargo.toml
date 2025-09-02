@@ -12,7 +12,7 @@ bs58 = "0.5.1"
 data-encoding = "2.9.0"
 thiserror = "2.0.15"
 anyhow = "1.0.99"
-#log = "0.4.27"
+#log = "0.4.27" #TODO: do we need it?
 
 # manual cryptography
 hmac = "0.12.1"
