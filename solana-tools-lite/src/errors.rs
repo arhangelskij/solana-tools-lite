@@ -2,9 +2,17 @@ use crate::constants::crypto::{PUBKEY_LEN, SIG_LEN};
 use std::io;
 use thiserror::Error;
 
+/// Crate-wide result type alias that bubbles up `ToolError` by default.
 pub type Result<T, E = ToolError> = std::result::Result<T, E>;
 
 /// Top-level error every command bubbles up.
+///
+/// Routing rules
+/// - `Sign` – I/O with context (IoWithPath), key parsing/format/length, signing domain errors
+/// - `TransactionParse` – user input/output format issues (JSON/Base64/Base58, blockhash, etc.)
+/// - `Deserialize` – internal raw transaction deserialization (binary → domain)
+/// - `Bip39`, `Bincode`, `Base58` – wrapped library errors
+/// - `InvalidInput` – CLI-level validation (mutually exclusive args, stdin forbidden, etc.)
 #[derive(Debug, Error)]
 pub enum ToolError {
     // Crypto / key stuff
@@ -41,6 +49,7 @@ pub enum ToolError {
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
+/// Errors that can arise when working with BIP‑39 helpers.
 #[derive(Error, Debug)]
 pub enum Bip39Error {
     #[error("failed to generate mnemonic: {0}")]
@@ -51,6 +60,7 @@ pub enum Bip39Error {
     Validation(bip39::Error),
 }
 
+/// Signing-related errors (keys, I/O for secrets, signature placement).
 #[derive(Error, Debug)]
 pub enum SignError {
     #[error("Invalid base58 in secret key")]
@@ -71,6 +81,7 @@ pub enum SignError {
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
 
+    /// I/O error with optional path context; `path=None` denotes stdin/stdout.
     #[error("I/O error {path:?}: {source}")]
     IoWithPath {
         #[source]
@@ -85,6 +96,7 @@ pub enum SignError {
     JsonSerialize(#[source] serde_json::Error),
 }
 
+/// Signature verification domain errors.
 #[derive(Error, Debug)]
 pub enum VerifyError {
     #[error("Base58 decode error: {0}")]
@@ -101,6 +113,7 @@ pub enum VerifyError {
     VerificationFailed,
 }
 
+/// Keypair construction errors (seed handling).
 #[derive(Error, Debug)]
 pub enum KeypairError {
     #[error("Seed must be at least 32 bytes, got {0}")]
@@ -109,12 +122,14 @@ pub enum KeypairError {
     SeedSlice(&'static str), // from TryInto
 }
 
+/// Wallet generation errors.
 #[derive(Error, Debug)]
 pub enum GenError {
     #[error("Invalid Seed Length: ")]
     InvalidSeedLength,
 }
 
+/// High-level transaction parsing errors (UI formats, textual fields).
 #[derive(Debug, Error)]
 pub enum TransactionParseError {
     #[error("Invalid base64: {0}")]
@@ -143,6 +158,7 @@ pub enum TransactionParseError {
     Serialization(String), //TODO: 🟡 serde error?
 }
 
+/// Low-level deserialization errors (binary transaction decoding).
 #[derive(Debug, Error)]
 pub enum DeserializeError {
     #[error("Deserialization error: {0}")]
