@@ -58,7 +58,12 @@ pub fn read_text_source(
 }
 
 //TODO: 1/09 🔴(tomorrow first) mb make it private too
-/// Write data to a file or stdout; stdout is written as-is; file uses 0o644 perms and overwrites.
+/// Writes public data either to stdout or to a file.
+///
+/// - When `path` is `None` or `Some("-")`, writes to stdout as-is.
+/// - When `path` is `Some(p)`, writes to file `p` with permissions 0o644.
+/// - Always overwrites existing files (does not respect `--force`).
+/// - Not intended for secrets; use `write_secret_file` for secret material.
 fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignError> {
     // Public output: stdout allowed, 0644 permissions, always overwrite
     let target = match path {

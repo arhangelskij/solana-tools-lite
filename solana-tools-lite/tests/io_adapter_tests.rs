@@ -9,12 +9,15 @@ use data_encoding::BASE64;
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
 use solana_tools_lite::adapters::io_adapter::{
-    read_input_transaction, read_secret_key_file, write_output,
+    read_input_transaction, read_secret_key_file, write_output_transaction
 };
+#[path = "utils.rs"]
+mod test_utils;
 use solana_tools_lite::errors::SignError;
-use solana_tools_lite::errors::{ToolError, TransactionParseError};
+use solana_tools_lite::errors::{ToolError};
 use solana_tools_lite::models::input_transaction::InputTransaction;
 use solana_tools_lite::serde::input_tx::is_base58;
+use solana_tools_lite::serde::fmt::OutputFormat;
 
 // Validate that is_base58 accepts a correct Base58 string
 #[test]
@@ -454,16 +457,45 @@ fn test_read_text_source_stdin_disallowed() {
     }
 }
 
-// Adapter: write_output writes to file (0644) and overwrites
+// Adapter: write_output_transaction writes via write_output (0644) and overwrites
 #[test]
 fn test_write_output_to_file_adapter() -> Result<(), Box<dyn std::error::Error>> {
-    let path = "test_write_adapter.txt";
-    let data = "Adapter Output Data";
-//TODO: 🟡 fixme – write_output is private
-    write_output(Some(path), data)?;
+    // Minimal valid UiTransaction via helper
+    let ui = test_utils::generate_ui_transaction(
+        1,
+        vec![
+            "11111111111111111111111111111111",
+            "11111111111111111111111111111111",
+        ],
+        "11111111111111111111111111111111",
+        0,
+        vec![],
+        "",
+    );
 
-    let content = std::fs::read_to_string(path)?;
-    assert_eq!(content, data);
+    let path = "test_write_adapter.json";
+
+    // First write (create)
+    write_output_transaction(&ui, OutputFormat::Json { pretty: false }, Some(path))?;
+    let content1 = std::fs::read_to_string(path)?;
+    assert_eq!(content1, serde_json::to_string(&ui)?);
+
+    // Second write (overwrite) with different content
+    let ui2 = test_utils::generate_ui_transaction(
+        2,
+        vec![
+            "11111111111111111111111111111111",
+            "11111111111111111111111111111111",
+        ],
+        "11111111111111111111111111111111",
+        0,
+        vec![],
+        "",
+    );
+    write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path))?;
+    
+    let content2 = std::fs::read_to_string(path)?;
+    assert_eq!(content2, serde_json::to_string(&ui2)?);
 
     std::fs::remove_file(path)?;
     Ok(())
