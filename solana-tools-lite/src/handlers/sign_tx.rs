@@ -1,4 +1,4 @@
-use crate::adapters::io_adapter::{OutputFormat, read_input_transaction, write_output_transaction, read_secret_key_file};
+use crate::adapters::io_adapter::{read_input_transaction, write_output_transaction, read_secret_key_file};
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
@@ -7,6 +7,7 @@ use crate::{
     models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
+    serde::fmt::OutputFormat,
     utils::serialize
 };
 

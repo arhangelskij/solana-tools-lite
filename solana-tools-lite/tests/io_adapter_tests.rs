@@ -459,7 +459,7 @@ fn test_read_text_source_stdin_disallowed() {
 fn test_write_output_to_file_adapter() -> Result<(), Box<dyn std::error::Error>> {
     let path = "test_write_adapter.txt";
     let data = "Adapter Output Data";
-
+//TODO: 🟡 fixme – write_output is private
     write_output(Some(path), data)?;
 
     let content = std::fs::read_to_string(path)?;
