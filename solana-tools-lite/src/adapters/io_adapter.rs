@@ -1,5 +1,5 @@
 use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
-use crate::errors::{Result, SignError, ToolError};
+use crate::errors::{IoError, Result, ToolError};
 use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::serde::fmt::{self as serde_fmt, OutputFormat};
@@ -7,18 +7,12 @@ use std::io as std_io;
 use std::path::Path;
 
 /// Read from a file or stdin ("-") based on `path`.
-fn read_input(path: Option<&str>) -> std::result::Result<String, SignError> {
+/// Returns adapter-level IoError with optional path context.
+fn read_input(path: Option<&str>) -> std::result::Result<String, IoError> {
     match path {
-        Some(p) if p != "-" => {
-            io::read_from_file(Path::new(p)).map_err(|e| SignError::IoWithPath {
-                source: e,
-                path: Some(p.to_string()),
-            })
-        }
-        _ => io::read_from_stdin().map_err(|e| SignError::IoWithPath {
-            source: e,
-            path: None,
-        }),
+        Some(p) if p != "-" => io::read_from_file(Path::new(p))
+            .map_err(|e| IoError::IoWithPath { source: e, path: Some(p.to_string()) }),
+        _ => io::read_from_stdin().map_err(|e| IoError::IoWithPath { source: e, path: None }),
     }
 }
 
@@ -47,10 +41,10 @@ pub fn read_text_source(
                     "reading from stdin is disabled".to_string(),
                 ));
             }
-            read_input(None).map_err(ToolError::from)
+            read_input(None).map_err(ToolError::Io)
         }
         // From path
-        (None, Some(path)) => read_input(Some(path)).map_err(ToolError::from),
+        (None, Some(path)) => read_input(Some(path)).map_err(ToolError::Io),
 
         // Errors
         (Some(_), Some(_)) => Err(ToolError::InvalidInput(
@@ -69,53 +63,63 @@ pub fn read_text_source(
 /// - When `path` is `Some(p)`, writes to file `p` with permissions 0o644.
 /// - Always overwrites existing files (does not respect `--force`).
 /// - Not intended for secrets; use `write_secret_file` for secret material.
-fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignError> {
+fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), ToolError> {
     // Public output: stdout allowed, 0644 permissions, always overwrite
     let target = match path {
         Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
         _ => OutputTarget::Stdout,
     };
     write_bytes_with_opts(target, data.as_bytes(), FILE_PERMS_PUBLIC, true)
+        .map_err(|e| match target {
+            OutputTarget::Stdout => ToolError::Io(IoError::IoWithPath { source: e, path: None }),
+            OutputTarget::File(p) => ToolError::Io(IoError::IoWithPath {
+                source: e,
+                path: Some(p.display().to_string()),
+            }),
+        })
 }
 
 pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     // Read raw text via IO layer first (file or stdin), then detect format
-    let raw = read_input(input)?;
+    let raw = match input {
+        Some(p) => read_input(Some(p))?,
+        None => read_input(None)?,
+    };
     crate::serde::input_tx::parse_input_transaction(Some(&raw)).map_err(ToolError::from)
 }
 
-pub fn read_secret_key_file(path: &str) -> std::result::Result<String, SignError> {
+pub fn read_secret_key_file(path: &str) -> std::result::Result<String, ToolError> {
     // For security reasons, reading secret keys from stdin is disabled.
     if path == "-" {
-        return Err(SignError::IoWithPath {
+        return Err(ToolError::Io(IoError::IoWithPath {
             source: std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "reading secret key from stdin is disabled",
             ),
             path: Some("-".to_string()),
-        });
+        }));
     }
 
     let p = Path::new(path);
 
     if !p.exists() {
-        return Err(SignError::IoWithPath {
+        return Err(ToolError::Io(IoError::IoWithPath {
             source: std::io::Error::new(std::io::ErrorKind::NotFound, "secret key file not found"),
             path: Some(path.to_string()),
-        });
+        }));
     }
 
     if !p.is_file() {
-        return Err(SignError::IoWithPath {
+        return Err(ToolError::Io(IoError::IoWithPath {
             source: std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "secret key path is not a file",
             ),
             path: Some(path.to_string()),
-        });
+        }));
     }
 
-    let s = read_input(Some(path))?;
+    let s = read_input(Some(path)).map_err(ToolError::Io)?;
 
     Ok(s.trim().to_string())
 }
@@ -145,12 +149,12 @@ pub fn write_output_transaction(
 ///
 /// This helper is intended for CLI flows that accept a mnemonic from a file or stdin.
 /// It collapses any whitespace (spaces, tabs, newlines) into single spaces.
-pub fn read_mnemonic(input: &str) -> Result<String, SignError> {
+pub fn read_mnemonic(input: &str) -> Result<String> {
     let path = match input {
         "-" => None,
         _ => Some(input),
     };
-    let raw = read_input(path)?;
+    let raw = read_input(path).map_err(ToolError::Io)?;
     Ok(raw.split_whitespace().collect::<Vec<_>>().join(" ")) //TODO: 🟠 magic whitespace!
 }
 
@@ -162,18 +166,19 @@ pub fn write_secret_file(
     path: &Path,
     data: &str,
     force: bool,
-) -> std::result::Result<(), SignError> {
+) -> std::result::Result<(), ToolError> {
     // Secrets: stdout forbidden, 0600, respect force
     if path == Path::new("-") {
-        return Err(SignError::IoWithPath {
+        return Err(ToolError::Io(IoError::IoWithPath {
             source: std_io::Error::new(
                 std_io::ErrorKind::InvalidInput,
                 "refusing to write secrets to stdout (-)",
             ),
             path: Some(path.display().to_string()),
-        });
+        }));
     }
     write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_SECRET, force)
+        .map_err(|e| ToolError::Io(IoError::IoWithPath { source: e, path: Some(path.display().to_string()) }))
 }
 
 /// Write non-secret public artifact to a file path, respecting `force` and using 0o644 perms.
@@ -182,8 +187,9 @@ pub fn write_public_file(
     path: &Path,
     data: &str,
     force: bool,
-) -> std::result::Result<(), SignError> {
+) -> std::result::Result<(), ToolError> {
     write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_PUBLIC, force)
+        .map_err(|e| ToolError::Io(IoError::IoWithPath { source: e, path: Some(path.display().to_string()) }))
 }
 
 use std::fs::OpenOptions;
@@ -213,18 +219,12 @@ fn write_bytes_with_opts(
     bytes: &[u8],
     perms: u32,
     force: bool,
-) -> std::result::Result<(), SignError> {
+) -> std::result::Result<(), std::io::Error> {
     match target {
         OutputTarget::Stdout => {
             let mut stdout = std_io::stdout();
-            stdout.write_all(bytes).map_err(|e| SignError::IoWithPath {
-                source: e,
-                path: None,
-            })?;
-            stdout.flush().map_err(|e| SignError::IoWithPath {
-                source: e,
-                path: None,
-            })?;
+            stdout.write_all(bytes)?;
+            stdout.flush()?;
             Ok(())
         }
         OutputTarget::File(p) => write_bytes_file_with_opts(p, bytes, perms, force),
@@ -242,7 +242,7 @@ fn write_bytes_file_with_opts(
     bytes: &[u8],
     perms: u32,
     force: bool,
-) -> std::result::Result<(), SignError> {
+) -> std::result::Result<(), std::io::Error> {
     let mut opts = OpenOptions::new();
     opts.write(true);
 
@@ -257,15 +257,9 @@ fn write_bytes_file_with_opts(
         opts.mode(perms);
     }
 
-    let mut file = opts.open(path).map_err(|e| SignError::IoWithPath {
-        source: e,
-        path: Some(path.display().to_string()),
-    })?;
+    let mut file = opts.open(path)?;
 
-    file.write_all(bytes).map_err(|e| SignError::IoWithPath {
-        source: e,
-        path: Some(path.display().to_string()),
-    })?;
+    file.write_all(bytes)?;
 
     Ok(())
 }
