@@ -5,6 +5,7 @@ use serde_json;
 use std::io as std_io;
 use std::path::Path;
 use data_encoding::BASE64;
+use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
 use crate::serde::fmt::OutputFormat;
 
 /// Read from a file or stdin ("-") based on `path`.
@@ -70,7 +71,7 @@ fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), SignE
         Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
         _ => OutputTarget::Stdout,
     };
-    write_bytes_with_opts(target, data.as_bytes(), 0o644, true)
+    write_bytes_with_opts(target, data.as_bytes(), FILE_PERMS_PUBLIC, true)
 }
 
 pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
@@ -168,22 +169,14 @@ pub fn write_secret_file(path: &Path, data: &str, force: bool) -> std::result::R
             path: Some(path.display().to_string()),
         });
     }
-//TODO: 🟡 1sept use const for perms
-    write_bytes_file_with_opts(path, data.as_bytes(), 0o600, force)
+    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_SECRET, force)
 }
 
 /// Write non-secret public artifact to a file path, respecting `force` and using 0o644 perms.
 /// Stdout is not allowed here (use `write_output` for stdout writes).
 pub fn write_public_file(path: &Path, data: &str, force: bool) -> std::result::Result<(), SignError> {
-    write_bytes_file_with_opts(path, data.as_bytes(), 0o644, force)
+    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_PUBLIC, force)
 }
-
-//TODO: 🟡 unused?
-/// Read a single-line secret-like text (file or stdin), trimmed.
-// pub fn read_text(input: &str) -> Result<String, SignError> {
-//     let raw = read_input(if input == "-" { None } else { Some(input) })?;
-//     Ok(raw.trim().to_string())
-// }
 
 //TODO: 27 aug 🔴 new write func
 

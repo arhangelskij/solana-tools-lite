@@ -2,6 +2,7 @@
 use std::fs;
 use std::path::Path;
 use solana_tools_lite::layers::io::{read_from_file, write_to_file};
+use solana_tools_lite::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
 
 #[test]
 fn test_read_from_file_ok() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +32,7 @@ fn test_write_to_file_ok() -> Result<(), Box<dyn std::error::Error>> {
     // Write data to a temporary file
     let path = "test_write.txt";
     let data = "Output Data";
-    write_to_file(Path::new(path), data, 0o644, true)?;
+    write_to_file(Path::new(path), data, FILE_PERMS_PUBLIC, true)?;
 
     // Verify the file content
     let content = fs::read_to_string(path)?;
@@ -47,7 +48,7 @@ fn test_write_to_file_no_force_should_fail_on_existing() -> Result<(), Box<dyn s
     let path = "test_write_exists.txt";
     fs::write(path, "initial")?;
 
-    let err = write_to_file(Path::new(path), "new", 0o644, false)
+    let err = write_to_file(Path::new(path), "new", FILE_PERMS_PUBLIC, false)
         .expect_err("expected AlreadyExists error when force=false");
     assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
 
@@ -83,7 +84,7 @@ fn test_write_to_file_directory_should_error() -> Result<(), Box<dyn std::error:
 fn test_write_to_file_sets_permissions_unix() -> Result<(), Box<dyn std::error::Error>> {
     use std::os::unix::fs::PermissionsExt;
     let path = "test_io_perms.txt";
-    write_to_file(Path::new(path), "data", 0o600, true)?;
+    write_to_file(Path::new(path), "data", FILE_PERMS_SECRET, true)?;
 
     let meta = fs::metadata(path)?;
     let mode = meta.permissions().mode() & 0o777;
