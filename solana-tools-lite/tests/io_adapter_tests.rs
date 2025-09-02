@@ -1,6 +1,6 @@
 use ed25519_dalek::SigningKey;
 use solana_tools_lite::crypto::helpers::parse_signing_key_content;
-use anyhow::Result;
+use solana_tools_lite::errors::{Result, ToolError, IoError, SignError};
 use std::fs;
 
 use bs58;
@@ -13,7 +13,6 @@ use solana_tools_lite::adapters::io_adapter::{
 };
 #[path = "utils.rs"]
 mod test_utils;
-use solana_tools_lite::errors::{ToolError, IoError, SignError};
 use solana_tools_lite::models::input_transaction::InputTransaction;
 use solana_tools_lite::serde::input_tx::is_base58;
 use solana_tools_lite::serde::fmt::OutputFormat;
@@ -41,7 +40,7 @@ fn test_read_input_transaction_base58() -> Result<()> {
     let plain = "adapter test";
     let encoded = bs58::encode(plain.as_bytes()).into_string();
 
-    fs::write(path, &encoded)?;
+    fs::write(path, &encoded).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let variant = read_input_transaction(Some(&path.to_string()))?;
     match variant {
@@ -50,7 +49,7 @@ fn test_read_input_transaction_base58() -> Result<()> {
             panic!("Expected Base58 variant")
         }
     }
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -61,7 +60,7 @@ fn test_read_input_transaction_base64() -> Result<()> {
     let plain = "adapter test";
     let encoded = BASE64.encode(plain.as_bytes());
 
-    fs::write(path, &encoded)?;
+    fs::write(path, &encoded).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let variant = read_input_transaction(Some(&path.to_string()))?;
     match variant {
@@ -70,7 +69,7 @@ fn test_read_input_transaction_base64() -> Result<()> {
             panic!("Expected Base64 variant")
         }
     }
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -82,12 +81,13 @@ fn test_read_secret_key_file_ok() -> Result<()> {
     let secret = "mysecretkey";
     
     // Write secret with trailing newline
-    fs::write(path, format!("{}\n", secret))?;
+    fs::write(path, format!("{}\n", secret)).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     
     // Should read and trim newline
     let s = read_secret_key_file(path)?;
     assert_eq!(s, secret);
-    fs::remove_file(path)?;
+    
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -106,13 +106,13 @@ fn test_read_secret_key_file_not_found() {
 #[test]
 fn test_read_secret_key_file_not_a_file() -> Result<()> {
     let dir = "test_secret_dir";
-    fs::create_dir(dir)?;
+    fs::create_dir(dir).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     let err = read_secret_key_file(dir).unwrap_err();
     match err {
         ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => assert_eq!(p, dir.to_string()),
         _ => panic!("Expected Io(IoWithPath) for directory, got {:?}", err),
     }
-    fs::remove_dir(dir)?;
+    fs::remove_dir(dir).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -194,7 +194,7 @@ fn test_parse_signing_key_content_raw_base58_32() {
     let sk = parse_signing_key_content(&s).expect("parse raw b58 32");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 }
-
+//TODO: 🟠 do we need in the place test_parse_signing_key_content_invalid_base58?
 // Error on invalid Base58 input
 #[test]
 fn test_parse_signing_key_content_invalid_base58() {
@@ -246,13 +246,13 @@ fn test_read_secret_key_file_and_parse_keypair_json_64() -> Result<()> {
         pk_b58, sec_b58
     );
     let path = "test_secret_key_obj64.json";
-    fs::write(path, &json)?;
+    fs::write(path, &json).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let text = read_secret_key_file(path)?;
     let sk = parse_signing_key_content(&text).expect("parse keypair json 64 from file");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -267,13 +267,13 @@ fn test_read_secret_key_file_and_parse_keypair_json_32() -> Result<()> {
         pk_b58, sec_b58
     );
     let path = "test_secret_key_obj32.json";
-    fs::write(path, &json)?;
+    fs::write(path, &json).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let text = read_secret_key_file(path)?;
     let sk = parse_signing_key_content(&text).expect("parse keypair json 32 from file");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -290,13 +290,13 @@ fn test_read_secret_key_file_and_parse_json_array_64() -> Result<()> {
             .join(",")
     );
     let path = "test_secret_key_arr64.json";
-    fs::write(path, &json)?;
+    fs::write(path, &json).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let text = read_secret_key_file(path)?;
     let sk = parse_signing_key_content(&text).expect("parse array64 from file");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -312,13 +312,13 @@ fn test_read_secret_key_file_and_parse_json_array_32() -> Result<()> {
             .join(",")
     );
     let path = "test_secret_key_arr32.json";
-    fs::write(path, &json)?;
+    fs::write(path, &json).map_err(|e| ToolError::Io(IoError::Io(e)))?;
 
     let text = read_secret_key_file(path)?;
     let sk = parse_signing_key_content(&text).expect("parse array32 from file");
     assert_eq!(sk.verifying_key().as_bytes(), &seed_pk_bytes(&seed));
 
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -328,11 +328,11 @@ fn test_read_mnemonic_file_normalize() -> Result<()> {
     let path = "test_mnemonic.txt";
     // Write mnemonic with varied whitespace and newlines
     let content = "word1  word2\nword3\tword4  ";
-    fs::write(path, content)?;
+    fs::write(path, content).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     // Should collapse whitespace into single spaces
     let normalized = read_mnemonic(path)?;
     assert_eq!(normalized, "word1 word2 word3 word4");
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -368,13 +368,13 @@ fn test_read_input_transaction_json_from_file() -> Result<()> {
         }
     }"#;
     let path = "test_ui_tx.json";
-    fs::write(path, json)?;
+    fs::write(path, json).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     let variant = read_input_transaction(Some(&path.to_string()))?;
     match variant {
         InputTransaction::Json(_) => {}
         other => panic!("Expected Json variant, got {other:?}"),
     }
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -424,10 +424,10 @@ fn test_read_text_source_inline_ok() -> Result<()> {
 #[test]
 fn test_read_text_source_file_ok() -> Result<()> {
     let path = "test_rts.txt";
-    fs::write(path, "abc")?;
+    fs::write(path, "abc").map_err(|e| ToolError::Io(IoError::Io(e)))?;
     let s = read_text_source(None, Some(path), true)?;
     assert_eq!(s, "abc");
-    fs::remove_file(path)?;
+    fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
 
@@ -478,8 +478,8 @@ fn test_write_output_to_file_adapter() -> Result<()> {
 
     // First write (create)
     write_output_transaction(&ui, OutputFormat::Json { pretty: false }, Some(path))?;
-    let content1 = std::fs::read_to_string(path)?;
-    assert_eq!(content1, serde_json::to_string(&ui)?);
+    let content1 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    assert_eq!(content1, serde_json::to_string(&ui).unwrap());
 
     // Second write (overwrite) with different content
     let ui2 = test_utils::generate_ui_transaction(
@@ -495,9 +495,9 @@ fn test_write_output_to_file_adapter() -> Result<()> {
     );
     write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path))?;
     
-    let content2 = std::fs::read_to_string(path)?;
-    assert_eq!(content2, serde_json::to_string(&ui2)?);
+    let content2 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    assert_eq!(content2, serde_json::to_string(&ui2).unwrap());
 
-    std::fs::remove_file(path)?;
+    std::fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
