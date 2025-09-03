@@ -1,6 +1,6 @@
 use ed25519_dalek::SigningKey;
 use solana_tools_lite::crypto::helpers::parse_signing_key_content;
-use solana_tools_lite::errors::{Result, ToolError, IoError, SignError};
+use solana_tools_lite::errors::{IoError, Result, SignError, ToolError};
 use std::fs;
 
 use bs58;
@@ -8,15 +8,15 @@ use data_encoding::BASE64;
 
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
-use solana_tools_lite::adapters::io_adapter::{read_message, read_pubkey, read_signature};
 use solana_tools_lite::adapters::io_adapter::{
-    read_input_transaction, read_secret_key_file, write_output_transaction
+    read_input_transaction, read_secret_key_file, write_output_transaction,
 };
+use solana_tools_lite::adapters::io_adapter::{read_message, read_pubkey, read_signature};
 #[path = "utils.rs"]
 mod test_utils;
 use solana_tools_lite::models::input_transaction::InputTransaction;
-use solana_tools_lite::serde::input_tx::is_base58;
 use solana_tools_lite::serde::fmt::OutputFormat;
+use solana_tools_lite::serde::input_tx::is_base58;
 
 // Validate that is_base58 accepts a correct Base58 string
 #[test]
@@ -80,14 +80,14 @@ fn test_read_secret_key_file_ok() -> Result<()> {
     //TODO: 🟠 why box here?
     let path = "test_secret_key.txt";
     let secret = "mysecretkey";
-    
+
     // Write secret with trailing newline
     fs::write(path, format!("{}\n", secret)).map_err(|e| ToolError::Io(IoError::Io(e)))?;
-    
+
     // Should read and trim newline
     let s = read_secret_key_file(path)?;
     assert_eq!(s, secret);
-    
+
     fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())
 }
@@ -337,7 +337,7 @@ fn test_read_mnemonic_file_normalize() -> Result<()> {
     Ok(())
 }
 
-// New tests: inline handling and read_text_source behavior
+// Inline handling and read_text_source behavior
 
 #[test]
 fn test_read_input_transaction_invalid_path_errors() {
@@ -512,6 +512,95 @@ fn test_read_pubkey_inline_trims() -> Result<()> {
     Ok(())
 }
 
+// New helpers: error matrix and path propagation
+
+#[test]
+fn test_read_message_both_should_error() {
+    let err = read_message(Some("a"), Some("b")).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("either inline value or --from-file")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_message_none_should_error() {
+    let err = read_message(None, None).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("missing input")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_signature_both_should_error() {
+    let err = read_signature(Some("a"), Some("b")).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("either inline value or --from-file")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_signature_none_should_error() {
+    let err = read_signature(None, None).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("missing input")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_pubkey_both_should_error() {
+    let err = read_pubkey(Some("a"), Some("b")).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("either inline value or --from-file")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_pubkey_none_should_error() {
+    let err = read_pubkey(None, None).unwrap_err();
+    match err {
+        ToolError::InvalidInput(msg) => assert!(msg.contains("missing input")),
+        other => panic!("Expected InvalidInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_message_nonexistent_file_has_path_context() {
+    let err = read_message(None, Some("no_such_file_abc.txt")).unwrap_err();
+    match err {
+        ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => {
+            assert!(p.ends_with("no_such_file_abc.txt"))
+        }
+        other => panic!("Expected IoWithPath, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_signature_nonexistent_file_has_path_context() {
+    let err = read_signature(None, Some("no_sig_file_abc.txt")).unwrap_err();
+    match err {
+        ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => {
+            assert!(p.ends_with("no_sig_file_abc.txt"))
+        }
+        other => panic!("Expected IoWithPath, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_read_pubkey_nonexistent_file_has_path_context() {
+    let err = read_pubkey(None, Some("no_pk_file_abc.txt")).unwrap_err();
+    match err {
+        ToolError::Io(IoError::IoWithPath { path: Some(p), .. }) => {
+            assert!(p.ends_with("no_pk_file_abc.txt"))
+        }
+        other => panic!("Expected IoWithPath, got {other:?}"),
+    }
+}
+
 // Adapter: write_output_transaction writes via write_output (0644) and overwrites
 #[test]
 fn test_write_output_to_file_adapter() -> Result<()> {
@@ -548,7 +637,7 @@ fn test_write_output_to_file_adapter() -> Result<()> {
         "",
     );
     write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path))?;
-    
+
     let content2 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     assert_eq!(content2, serde_json::to_string(&ui2).unwrap());
 
