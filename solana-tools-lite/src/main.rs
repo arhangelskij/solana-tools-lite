@@ -15,22 +15,14 @@ fn main() {
             output,
             force,
         } => {
-            // Resolve optional refs for handler
+            // Resolve optional refs and delegate to the flow only
             let mnemonic_path = mnemonic.as_deref();
             let passphrase_path = passphrase.as_deref();
             let output_path = output.as_deref();
-            //TODO: 🔴 27aug(refresh) use flow
-            // Call domain handler and handle errors early
-            let result =
-                handlers::generate::handle(mnemonic_path, passphrase_path).unwrap_or_else(|e| {
-                    eprintln!("Error executing gen command: {e}");
-                    std::process::exit(1);
-                });
 
-            // Present the result and save wallet file.
-            // If flow fails we exit with error.
             if let Err(e) = flows::generation::execute(
-                &result,
+                mnemonic_path,
+                passphrase_path,
                 cli.json_pretty,
                 *show_secret,
                 output_path,

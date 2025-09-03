@@ -4,23 +4,29 @@ use crate::adapters::io_adapter::write_secret_file;
 use crate::models::results::GenResult;
 use crate::flows::presenter::Presentable;
 use crate::constants::DEFAULT_WALLET_FILENAME;
+use crate::handlers::generate;
 
-/// Present `GenResult` according to CLI flags and save full wallet.
+/// High-level generation flow: orchestrates handler call, file saving, and presentation.
 ///
-/// * `result`       – data returned by the domain layer
-/// * `json`         – pretty JSON requested (`--json-pretty`)
-/// * `show_secret`  – print private part to stdout (`--show-secret`)
-/// * `out_path`     – where to save the full wallet
-/// * `force`        – override the wallet file
+/// Parameters
+/// * `mnemonic_path`  – read mnemonic from file or stdin ("-"); when `None`, a new mnemonic is generated
+/// * `passphrase_path` – read BIP‑39 passphrase from file or stdin ("-"); when `None`, uses empty passphrase
+/// * `json`           – pretty JSON requested (`--json-pretty`)
+/// * `show_secret`    – print private part to stdout (`--show-secret`)
+/// * `out_path`       – target path (file or directory) to save the full wallet JSON
+/// * `force`          – override the wallet file if it exists
 pub fn execute(
-    result: &GenResult,
+    mnemonic_path: Option<&str>,
+    passphrase_path: Option<&str>,
     json: bool,
     show_secret: bool,
     out_path: Option<&str>,
     force: bool
 ) -> Result<(), ToolError> {
-    let saved_path = save_to_file(result, out_path, force)?;
-    print_result(result, json, show_secret, &saved_path)?;
+    let result = generate::handle(mnemonic_path, passphrase_path)?;
+    let saved_path = save_to_file(&result, out_path, force)?;
+    
+    print_result(&result, json, show_secret, &saved_path)?;
 
     Ok(())
 }
@@ -57,5 +63,6 @@ fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &
     result.present(json, show_secret);
     // Always inform where the wallet was saved
     eprintln!("Saved: {}", saved_path.display());
+
     Ok(())
 }
