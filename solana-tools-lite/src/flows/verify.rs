@@ -1,7 +1,7 @@
 use crate::errors::ToolError;
 use crate::handlers::verify;
 use crate::adapters::io_adapter::{read_message, read_pubkey, read_signature};
-use crate::utils::pretty_print_json;
+use crate::flows::presenter::Presentable;
 
 /// Verify flow: calls domain handler and prints result.
 /// Returns Ok(()) on valid signature; returns an error to trigger non-zero exit on invalid.
@@ -19,18 +19,10 @@ pub fn execute(
     let sig = read_signature(signature, signature_file)?;
     let pk = read_pubkey(pubkey, pubkey_file)?;
 
-    let result = crate::handlers::verify::handle(&msg, &sig, &pk)?;
+    let result = verify::handle(&msg, &sig, &pk)?;
 
-    if json {
-        pretty_print_json(&result);
-    } else if result.valid {
-        println!("[✓] Signature is valid");
-    } else {
-        eprintln!(
-            "[✗] Signature is invalid: {}",
-            result.error.as_deref().unwrap_or("unknown error")
-        );
-    }
+    // Delegate printing to Presentable
+    result.present(json, false);
 
     if result.valid {
         Ok(())

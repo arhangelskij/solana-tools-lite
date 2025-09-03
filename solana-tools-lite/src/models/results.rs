@@ -23,7 +23,7 @@ pub struct GenResult {
     pub seed_hex: String
 }
 
-//TODO: 🔴 check if needed / looks like not
+//TODO: 🔴 check if needed / looks like dont
 impl fmt::Display for GenResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

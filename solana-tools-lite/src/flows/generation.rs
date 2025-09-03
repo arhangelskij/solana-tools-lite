@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use crate::errors::ToolError;
 use crate::adapters::io_adapter::write_secret_file;
 use crate::models::results::GenResult;
-use crate::utils::pretty_print_json;
+use crate::flows::presenter::Presentable;
 use crate::constants::DEFAULT_WALLET_FILENAME;
 
 /// Present `GenResult` according to CLI flags and save full wallet.
@@ -43,6 +43,7 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
 /// - otherwise treat it as a file path
 fn get_final_path(output_path_str: &str) -> PathBuf {
     let p = Path::new(output_path_str);
+    
     if p.is_dir() {
         p.join(DEFAULT_WALLET_FILENAME)
     } else {
@@ -52,14 +53,8 @@ fn get_final_path(output_path_str: &str) -> PathBuf {
 
 /// Print output of a generation
 fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &Path) -> Result<(), ToolError> {
-    match (json, show_secret) {
-        // Pretty JSON with secrets
-        (true, true ) => pretty_print_json(result),
-        // With secrets
-        (false, true ) => println!("{}", result),
-        // Public key only
-        (false, false) | (true, false) => println!("{}", result.to_public_display())
-    }
+    // Delegate printing to Presentable; secrets and JSON handling stay the same
+    result.present(json, show_secret);
     // Always inform where the wallet was saved
     eprintln!("Saved: {}", saved_path.display());
     Ok(())
