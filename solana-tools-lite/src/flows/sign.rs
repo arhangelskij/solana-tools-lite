@@ -18,9 +18,8 @@ pub fn execute(
     force: bool,
     json: bool,
 ) -> Result<(), ToolError> {
-    //TODO: 1/09 🟡 mb use universal reader instead / check it
     // Resolve message from inline or file/stdin via adapter helper
-    let message_content = io::read_text_source(message, message_file, true)?;
+    let message_content = io::read_message(message, message_file)?;
 
     // Domain handler: reads key from file (via adapter), signs, returns SignResult
     let result = sign_message::handle(&message_content, secret_key_path)?;

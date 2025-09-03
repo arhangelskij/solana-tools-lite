@@ -10,7 +10,7 @@ use std::path::Path;
 enum TextSource<'a> {
     Inline(&'a str),
     File(&'a str),
-    Stdin,
+    Stdin
 }
 
 /// Read from a file or stdin ("-") based on `path`.

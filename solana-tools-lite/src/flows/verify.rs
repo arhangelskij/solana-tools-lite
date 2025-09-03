@@ -1,6 +1,6 @@
 use crate::errors::ToolError;
 use crate::handlers::verify;
-use crate::adapters::io_adapter::read_text_source;
+use crate::adapters::io_adapter::{read_message, read_pubkey, read_signature};
 use crate::utils::pretty_print_json;
 
 /// Verify flow: calls domain handler and prints result.
@@ -14,14 +14,10 @@ pub fn execute(
     pubkey_file: Option<&str>,
     json: bool //TODO: 26aug 🔴 add new fields
 ) -> Result<(), ToolError> {
-    // For message: do not trim to preserve exact bytes
-    let msg = read_text_source(message, message_file, true)?;
-
-    // For signature: trim to remove any trailing newlines or spaces
-    let sig = read_text_source(signature, signature_file, true)?.trim().to_string();
-
-    // For pubkey: trim to remove any trailing newlines or spaces
-    let pk = read_text_source(pubkey, pubkey_file, true)?.trim().to_string();
+    // Resolve inputs using IO helpers
+    let msg = read_message(message, message_file)?;
+    let sig = read_signature(signature, signature_file)?;
+    let pk = read_pubkey(pubkey, pubkey_file)?;
 
     let result = crate::handlers::verify::handle(&msg, &sig, &pk)?;
 
