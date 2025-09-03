@@ -6,6 +6,13 @@ use crate::serde::fmt::{self as serde_fmt, OutputFormat};
 use std::io as std_io;
 use std::path::Path;
 
+// Private source enum: used internally to model a single text input source
+enum TextSource<'a> {
+    Inline(&'a str),
+    File(&'a str),
+    Stdin,
+}
+
 /// Read from a file or stdin ("-") based on `path`.
 /// Returns adapter-level IoError with optional path context.
 fn read_input(path: Option<&str>) -> std::result::Result<String, IoError> {
@@ -30,31 +37,8 @@ pub fn read_text_source(
     file: Option<&str>,
     allow_stdin: bool,
 ) -> Result<String> {
-    match (inline, file) {
-        (Some(s), None) => Ok(s.to_owned()),
-
-        //TODO: check comments
-        // Stdin
-        (None, Some("-")) => {
-            if !allow_stdin {
-                return Err(ToolError::InvalidInput(
-                    "reading from stdin is disabled".to_string(),
-                ));
-            }
-            read_input(None).map_err(ToolError::Io)
-        }
-        // From path
-        (None, Some(path)) => read_input(Some(path)).map_err(ToolError::Io),
-
-        // Errors
-        (Some(_), Some(_)) => Err(ToolError::InvalidInput(
-            "provide either inline value or --from-file (not both)".to_string(),
-        )),
-
-        (None, None) => Err(ToolError::InvalidInput(
-            "missing input: pass inline value or --from-file".to_string(),
-        )),
-    }
+    let src = to_text_source(inline, file)?;
+    resolve_text_source(src, allow_stdin)
 }
 
 /// Writes public data either to stdout or to a file.
@@ -197,6 +181,57 @@ use std::fs::OpenOptions;
 use std::io::Write;
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
+
+// --- Internal helpers for source resolution ---
+
+fn to_text_source<'a>(inline: Option<&'a str>, file: Option<&'a str>) -> Result<TextSource<'a>> {
+    match (inline, file) {
+        (Some(s), None) => Ok(TextSource::Inline(s)),
+        (None, Some("-")) => Ok(TextSource::Stdin),
+        (None, Some(path)) => Ok(TextSource::File(path)),
+        (Some(_), Some(_)) => Err(ToolError::InvalidInput(
+            "provide either inline value or --from-file (not both)".to_string(),
+        )),
+        (None, None) => Err(ToolError::InvalidInput(
+            "missing input: pass inline value or --from-file".to_string(),
+        )),
+    }
+}
+
+fn resolve_text_source(src: TextSource<'_>, allow_stdin: bool) -> Result<String> {
+    match src {
+        TextSource::Inline(s) => Ok(s.to_owned()),
+        TextSource::File(p) => read_input(Some(p)).map_err(ToolError::Io),
+        TextSource::Stdin => {
+            if !allow_stdin {
+                return Err(ToolError::InvalidInput(
+                    "reading from stdin is disabled".to_string(),
+                ));
+            }
+            read_input(None).map_err(ToolError::Io)
+        }
+    }
+}
+
+// --- Public small helpers for flows ---
+
+/// Read message from inline/file/stdin without trimming (preserves exact bytes)
+pub fn read_message(inline: Option<&str>, file: Option<&str>) -> Result<String> {
+    let src = to_text_source(inline, file)?;
+    resolve_text_source(src, true)
+}
+
+/// Read signature from inline/file/stdin and trim trailing whitespace/newlines
+pub fn read_signature(inline: Option<&str>, file: Option<&str>) -> Result<String> {
+    let src = to_text_source(inline, file)?;
+    Ok(resolve_text_source(src, true)?.trim().to_string())
+}
+
+/// Read public key from inline/file/stdin and trim trailing whitespace/newlines
+pub fn read_pubkey(inline: Option<&str>, file: Option<&str>) -> Result<String> {
+    let src = to_text_source(inline, file)?;
+    Ok(resolve_text_source(src, true)?.trim().to_string())
+}
 
 /// Output target for low-level writers.
 ///

@@ -105,7 +105,7 @@ pub enum VerifyError {
     #[error("Invalid public key format")]
     InvalidPubkeyFormat,
     #[error("Signature verification failed")]
-    VerificationFailed,
+    VerificationFailed, //TODO: 🟡 use it or delete!
 }
 
 /// Keypair construction errors (seed handling).
