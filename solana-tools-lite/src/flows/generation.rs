@@ -23,6 +23,7 @@ pub fn execute(
     out_path: Option<&str>,
     force: bool
 ) -> Result<(), ToolError> {
+    // Delegate passphrase resolution to the handler layer for consistency
     let result = generate::handle(mnemonic_path, passphrase_path)?;
     let saved_path = save_to_file(&result, out_path, force)?;
     

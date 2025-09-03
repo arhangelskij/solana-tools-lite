@@ -148,6 +148,17 @@ pub fn read_mnemonic(input: &str) -> Result<String> {
     Ok(raw.split_whitespace().collect::<Vec<_>>().join(" ")) //TODO: 🟠 magic whitespace!
 }
 
+/// Read passphrase from file or stdin ("-") without altering internal whitespace.
+/// Trims only trailing newlines ("\n"/"\r\n").
+pub fn read_passphrase(input: &str) -> Result<String> {
+    let path = match input {
+        "-" => None,
+        _ => Some(input),
+    };
+    let raw = read_input(path).map_err(ToolError::Io)?;
+    Ok(raw.trim_end_matches(['\r', '\n']).to_string())
+}
+
 /// Write secret material to a file path, never to stdout.
 /// - `path` must be a filesystem path ("-" is rejected)
 /// - If the file exists and `force == false`, returns AlreadyExists (atomic via create_new)
