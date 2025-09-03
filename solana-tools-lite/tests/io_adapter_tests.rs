@@ -8,6 +8,7 @@ use data_encoding::BASE64;
 
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
+use solana_tools_lite::adapters::io_adapter::{read_message, read_pubkey, read_signature};
 use solana_tools_lite::adapters::io_adapter::{
     read_input_transaction, read_secret_key_file, write_output_transaction
 };
@@ -456,6 +457,59 @@ fn test_read_text_source_stdin_disallowed() {
         ToolError::InvalidInput(msg) => assert!(msg.contains("stdin is disabled")),
         other => panic!("Expected InvalidInput, got {other:?}"),
     }
+}
+
+// New helpers semantics: message preserves bytes, signature/pubkey are trimmed
+
+#[test]
+fn test_read_message_preserves_newline_from_file() -> Result<()> {
+    let path = "test_read_message_bytes.txt";
+    std::fs::write(path, "hello\n").map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    let s = read_message(None, Some(path))?;
+    assert_eq!(s, "hello\n");
+    std::fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    Ok(())
+}
+
+#[test]
+fn test_read_signature_trims_from_file() -> Result<()> {
+    let path = "test_read_signature_trim.txt";
+    std::fs::write(path, "SIG\n").map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    let s = read_signature(None, Some(path))?;
+    assert_eq!(s, "SIG");
+    std::fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    Ok(())
+}
+
+#[test]
+fn test_read_pubkey_trims_from_file() -> Result<()> {
+    let path = "test_read_pubkey_trim.txt";
+    std::fs::write(path, "PK \n").map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    let s = read_pubkey(None, Some(path))?;
+    assert_eq!(s, "PK");
+    std::fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
+    Ok(())
+}
+
+#[test]
+fn test_read_message_inline_preserves() -> Result<()> {
+    let s = read_message(Some("abc\n"), None)?;
+    assert_eq!(s, "abc\n");
+    Ok(())
+}
+
+#[test]
+fn test_read_signature_inline_trims() -> Result<()> {
+    let s = read_signature(Some("sig \n"), None)?;
+    assert_eq!(s, "sig");
+    Ok(())
+}
+
+#[test]
+fn test_read_pubkey_inline_trims() -> Result<()> {
+    let s = read_pubkey(Some("pk \n"), None)?;
+    assert_eq!(s, "pk");
+    Ok(())
 }
 
 // Adapter: write_output_transaction writes via write_output (0644) and overwrites

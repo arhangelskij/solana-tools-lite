@@ -25,7 +25,12 @@ fn read_input(path: Option<&str>) -> std::result::Result<String, IoError> {
 
 /// Resolve text either from an inline value or from a file/stdin ("-").
 /// Returns raw text exactly as read (no trimming applied).
-/// Caller is responsible for trimming when appropriate (e.g. Base58/Base64 inputs).
+/// Caller is responsible for trimming when appropriate (e.g., Base58/Base64 inputs).
+///
+/// Prefer using higher-level helpers when possible:
+/// - `read_message(...)` — preserves bytes as-is (no trim)
+/// - `read_signature(...)` — trims trailing whitespace/newlines
+/// - `read_pubkey(...)` — trims trailing whitespace/newlines
 ///
 /// Contract:
 /// - Exactly one of `inline` or `file` must be `Some`.
