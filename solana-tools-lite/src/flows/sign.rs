@@ -1,8 +1,8 @@
 use crate::adapters::io_adapter as io;
 use crate::errors::{SignError, ToolError};
+use crate::flows::presenter::Presentable;
 use crate::handlers::sign_message;
 use crate::models::results::SignResult;
-use crate::utils::pretty_print_json;
 use std::path::{Path, PathBuf};
 
 /// Execute the sign flow:
@@ -24,24 +24,11 @@ pub fn execute(
     // Domain handler: reads key from file (via adapter), signs, returns SignResult
     let result = sign_message::handle(&message_content, secret_key_path)?;
 
-    let saving_to_file = output.is_some();
-
-    if saving_to_file {
-        // When saving to a file, keep stdout clean; show signature on stderr only
-        eprintln!("{}", result.signature_base58);
-    } else if json {
-        // Pretty JSON to stdout when not saving to file
-        pretty_print_json(&result);
-    } else {
-        // Plain signature to stdout when not saving to file
-        println!("{}", result.signature_base58);
-    }
-
     // Persist full JSON artifact to file only if requested (independent of `json`)
-    let _ = save_to_file(&result, output, force)?;
-    // if let Some(path) = output {
+    let saved_path = save_to_file(&result, output, force)?;
 
-    // }
+    // Print result similarly to generation flow, delegating to Presentable
+    print_result(&result, json, saved_path.as_deref())?;
 
     Ok(())
 }
@@ -53,16 +40,14 @@ fn save_to_file(
     force: bool,
 ) -> Result<Option<PathBuf>, ToolError> {
     // Prepare pretty JSON
-    let json_str = serde_json::to_string_pretty(&result)
-        .map_err(|e| SignError::JsonSerialize(e))?;
+    let json_str =
+        serde_json::to_string_pretty(&result).map_err(|e| SignError::JsonSerialize(e))?;
 
     // Write only when an explicit output path is provided
     let saved_path = match out_path {
         Some(path_str) => {
             let target = get_final_path(path_str);
             io::write_public_file(&target, &json_str, force)?;
-            eprintln!("Saved: {}", target.display());
-            
             Some(target)
         }
         None => None,
@@ -83,4 +68,24 @@ fn get_final_path(output_path_str: &str) -> PathBuf {
     } else {
         p.to_path_buf()
     }
+}
+
+/// Print output of a signing flow
+fn print_result(
+    result: &SignResult,
+    json: bool,
+    saved_path: Option<&Path>,
+) -> Result<(), ToolError> {
+    match saved_path {
+        // When saving to a file, keep stdout clean; show signature and saved path on stderr
+        Some(path) => {
+            eprintln!("{}", result.signature_base58);
+            eprintln!("Saved: {}", path.display());
+        }
+        None => {
+            // Delegate to Presentable for stdout formatting
+            result.present(json, false);
+        }
+    }
+    Ok(())
 }
