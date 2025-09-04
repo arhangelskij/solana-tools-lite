@@ -1,5 +1,5 @@
 use crate::adapters::io_adapter as io;
-use crate::errors::{SignError, ToolError};
+use crate::errors::ToolError;
 use crate::flows::presenter::Presentable;
 use crate::handlers::sign_message;
 use crate::models::results::SignResult;
@@ -39,21 +39,7 @@ fn save_to_file(
     out_path: Option<&str>,
     force: bool,
 ) -> Result<Option<PathBuf>, ToolError> {
-    // Prepare pretty JSON
-    let json_str =
-        serde_json::to_string_pretty(&result).map_err(|e| SignError::JsonSerialize(e))?;
-
-    // Write only when an explicit output path is provided
-    let saved_path = match out_path {
-        Some(path_str) => {
-            let target = get_final_path(path_str);
-            io::write_public_file(&target, &json_str, force)?;
-            Some(target)
-        }
-        None => None,
-    };
-
-    Ok(saved_path)
+    io::save_pretty_json(result, out_path, force, "sign.json")
 }
 
 //TODO: 28 aug 🟡 move into utils or something else
@@ -61,14 +47,7 @@ fn save_to_file(
 /// Resolve the final wallet path:
 /// - if `output_path_str` points to a directory, append `wallet.json`
 /// - otherwise treat it as a file path
-fn get_final_path(output_path_str: &str) -> PathBuf {
-    let p = Path::new(output_path_str);
-    if p.is_dir() {
-        p.join("sign.json") //TODO: 🟡
-    } else {
-        p.to_path_buf()
-    }
-}
+// path resolution moved to shared adapter helper
 
 /// Print output of a signing flow
 fn print_result(result: &SignResult, json: bool, saved_path: Option<&Path>) {
