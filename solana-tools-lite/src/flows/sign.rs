@@ -3,7 +3,7 @@ use crate::errors::ToolError;
 use crate::flows::presenter::Presentable;
 use crate::handlers::sign_message;
 use crate::models::results::SignResult;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Execute the sign flow:
 /// - `message`: optional message to sign (as provided by CLI layer)
@@ -25,29 +25,13 @@ pub fn execute(
     let result = sign_message::handle(&message_content, secret_key_path)?;
 
     // Persist full JSON artifact to file only if requested (independent of `json`)
-    let saved_path = save_to_file(&result, output, force)?;
+    let saved_path = io::save_pretty_json(&result, output, force, "sign.json")?;
 
     // Print result similarly to generation flow, delegating to Presentable
     print_result(&result, json, saved_path.as_deref());
 
     Ok(())
 }
-
-// TODO: 🔴 think about trait `Saveable` or similar to group generic saving of results if its simple
-fn save_to_file(
-    result: &SignResult,
-    out_path: Option<&str>,
-    force: bool,
-) -> Result<Option<PathBuf>, ToolError> {
-    io::save_pretty_json(result, out_path, force, "sign.json")
-}
-
-//TODO: 28 aug 🟡 move into utils or something else
-
-/// Resolve the final wallet path:
-/// - if `output_path_str` points to a directory, append `wallet.json`
-/// - otherwise treat it as a file path
-// path resolution moved to shared adapter helper
 
 /// Print output of a signing flow
 fn print_result(result: &SignResult, json: bool, saved_path: Option<&Path>) {
