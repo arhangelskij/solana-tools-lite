@@ -10,16 +10,21 @@ use std::path::{Path, PathBuf};
 enum TextSource<'a> {
     Inline(&'a str),
     File(&'a str),
-    Stdin
+    Stdin,
 }
 
 /// Read from a file or stdin ("-") based on `path`.
 /// Returns adapter-level IoError with optional path context.
 fn read_input(path: Option<&str>) -> std::result::Result<String, IoError> {
     match path {
-        Some(p) if p != "-" => io::read_from_file(Path::new(p))
-            .map_err(|e| IoError::IoWithPath { source: e, path: Some(p.to_string()) }),
-        _ => io::read_from_stdin().map_err(|e| IoError::IoWithPath { source: e, path: None }),
+        Some(p) if p != "-" => io::read_from_file(Path::new(p)).map_err(|e| IoError::IoWithPath {
+            source: e,
+            path: Some(p.to_string()),
+        }),
+        _ => io::read_from_stdin().map_err(|e| IoError::IoWithPath {
+            source: e,
+            path: None,
+        }),
     }
 }
 
@@ -59,14 +64,18 @@ fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), ToolE
         _ => OutputTarget::Stdout,
     };
 
-    write_bytes_with_opts(&target, data.as_bytes(), FILE_PERMS_PUBLIC, true)
-        .map_err(|e| match target {
-            OutputTarget::Stdout => ToolError::Io(IoError::IoWithPath { source: e, path: None }),
+    write_bytes_with_opts(&target, data.as_bytes(), FILE_PERMS_PUBLIC, true).map_err(|e| {
+        match target {
+            OutputTarget::Stdout => ToolError::Io(IoError::IoWithPath {
+                source: e,
+                path: None,
+            }),
             OutputTarget::File(p) => ToolError::Io(IoError::IoWithPath {
                 source: e,
                 path: Some(p.display().to_string()),
             }),
-        })
+        }
+    })
 }
 
 pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
@@ -135,14 +144,19 @@ pub fn write_output_transaction(
     Ok(())
 }
 
-/// Resolve final path for a possibly-directory `output_path_str` by appending `default_filename`.
-/// If `output_path_str` is a file path, returns it unchanged.
-pub fn get_final_path_with_default(output_path_str: &str, default_filename: &str) -> PathBuf {
-    let p = Path::new(output_path_str);
-    if p.is_dir() {
-        p.join(default_filename)
-    } else {
-        p.to_path_buf()
+/// Resolve final path for a possibly-directory `output_path` by appending `default_filename`.
+/// If `output_path` is a file path, returns it unchanged.
+pub fn get_final_path_with_default(output_path: Option<&str>, default_filename: &str) -> PathBuf {
+    match output_path {
+        Some(path_str) => {
+            let p = Path::new(path_str);
+            if p.is_dir() {
+                p.join(default_filename)
+            } else {
+                p.to_path_buf()
+            }
+        }
+        None => PathBuf::from(default_filename),
     }
 }
 
@@ -160,14 +174,13 @@ pub fn save_pretty_json<T: serde::Serialize>(
         .map_err(|e| ToolError::InvalidInput(format!("failed to serialize JSON: {e}")))?;
 
     let saved = match out_path {
-        Some(p) => {
-            let target = get_final_path_with_default(p, default_filename);
+        Some(_) => {
+            let target = get_final_path_with_default(out_path, default_filename);
             write_public_file(&target, &json_str, force)?;
             Some(target)
         }
-        None => None,
+        None => None, //TODO: 🟠 add test on this case
     };
-
     Ok(saved)
 }
 
@@ -214,8 +227,12 @@ pub fn write_secret_file(
             path: Some(path.display().to_string()),
         }));
     }
-    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_SECRET, force)
-        .map_err(|e| ToolError::Io(IoError::IoWithPath { source: e, path: Some(path.display().to_string()) }))
+    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_SECRET, force).map_err(|e| {
+        ToolError::Io(IoError::IoWithPath {
+            source: e,
+            path: Some(path.display().to_string()),
+        })
+    })
 }
 
 /// Write non-secret public artifact to a file path, respecting `force` and using 0o644 perms.
@@ -225,8 +242,12 @@ pub fn write_public_file(
     data: &str,
     force: bool,
 ) -> std::result::Result<(), ToolError> {
-    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_PUBLIC, force)
-        .map_err(|e| ToolError::Io(IoError::IoWithPath { source: e, path: Some(path.display().to_string()) }))
+    write_bytes_file_with_opts(path, data.as_bytes(), FILE_PERMS_PUBLIC, force).map_err(|e| {
+        ToolError::Io(IoError::IoWithPath {
+            source: e,
+            path: Some(path.display().to_string()),
+        })
+    })
 }
 
 use std::fs::OpenOptions;

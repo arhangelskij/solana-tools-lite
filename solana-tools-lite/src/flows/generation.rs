@@ -1,4 +1,5 @@
-use crate::adapters::io_adapter::write_secret_file;
+use crate::adapters::io_adapter::{write_secret_file};
+use crate::adapters::io_adapter as io;
 use crate::constants::DEFAULT_WALLET_FILENAME;
 use crate::errors::ToolError;
 use crate::flows::presenter::Presentable;
@@ -38,27 +39,12 @@ fn save_to_file(
     force: bool,
 ) -> Result<PathBuf, ToolError> {
     // Resolve final target path (directory -> append wallet.json; None -> wallet.json)
-    let target: PathBuf = get_final_path(out_path.unwrap_or("wallet.json"));
+    let target = io::get_final_path_with_default(out_path, DEFAULT_WALLET_FILENAME);
 
     // Always save full wallet to file
-    write_secret_file(&target, &result.to_full_json(), force)?;
+    io::write_secret_file(&target, &result.to_full_json(), force)?;
 
     Ok(target)
-}
-
-//TODO: 28 aug 🟡 move into utils or something else
-
-/// Resolve the final wallet path:
-/// - if `output_path_str` points to a directory, append `wallet.json`
-/// - otherwise treat it as a file path
-fn get_final_path(output_path_str: &str) -> PathBuf {
-    let p = Path::new(output_path_str);
-
-    if p.is_dir() {
-        p.join(DEFAULT_WALLET_FILENAME)
-    } else {
-        p.to_path_buf()
-    }
 }
 
 /// Print output of a generation
