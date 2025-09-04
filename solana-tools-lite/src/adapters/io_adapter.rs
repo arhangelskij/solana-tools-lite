@@ -4,7 +4,7 @@ use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::serde::fmt::{self as serde_fmt, OutputFormat};
 use std::io as std_io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // Private source enum: used internally to model a single text input source
 enum TextSource<'a> {
@@ -133,6 +133,42 @@ pub fn write_output_transaction(
     write_output(output, &out_str)?;
 
     Ok(())
+}
+
+/// Resolve final path for a possibly-directory `output_path_str` by appending `default_filename`.
+/// If `output_path_str` is a file path, returns it unchanged.
+pub fn get_final_path_with_default(output_path_str: &str, default_filename: &str) -> PathBuf {
+    let p = Path::new(output_path_str);
+    if p.is_dir() {
+        p.join(default_filename)
+    } else {
+        p.to_path_buf()
+    }
+}
+
+/// Save any serializable value as pretty JSON to a public file.
+/// - When `out_path` is `Some`, writes to that path (directory is allowed; appends `default_filename`).
+/// - When `out_path` is `None`, does nothing and returns `Ok(None)`.
+/// - Respects `force` semantics and uses public file permissions (0644).
+pub fn save_pretty_json<T: serde::Serialize>(
+    value: &T,
+    out_path: Option<&str>,
+    force: bool,
+    default_filename: &str,
+) -> Result<Option<PathBuf>> {
+    let json_str = serde_json::to_string_pretty(value)
+        .map_err(|e| ToolError::InvalidInput(format!("failed to serialize JSON: {e}")))?;
+
+    let saved = match out_path {
+        Some(p) => {
+            let target = get_final_path_with_default(p, default_filename);
+            write_public_file(&target, &json_str, force)?;
+            Some(target)
+        }
+        None => None,
+    };
+
+    Ok(saved)
 }
 
 /// Read mnemonic from file or stdin (`-`) and normalize whitespace.

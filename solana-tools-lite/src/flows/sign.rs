@@ -83,5 +83,4 @@ fn print_result(result: &SignResult, json: bool, saved_path: Option<&Path>) {
             result.present(json, false);
         }
     }
-    Ok(())
 }
