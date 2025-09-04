@@ -40,12 +40,9 @@ fn main() {
             output,
             force,
         } => {
-            let message = message.as_deref();
-            let file_path = from_file.as_deref();
-
             if let Err(e) = flows::sign::execute(
-                message,
-                file_path,
+                message.as_deref(),
+                from_file.as_deref(),
                 keypair,
                 output.as_deref(),
                 *force,
@@ -64,7 +61,7 @@ fn main() {
             pubkey,
             pubkey_file,
             output,
-            force, //TODO: use fields
+            force
         } => {
             if let Err(e) = flows::verify::execute(
                 message.as_deref(),
@@ -73,6 +70,8 @@ fn main() {
                 signature_file.as_deref(),
                 pubkey.as_deref(),
                 pubkey_file.as_deref(),
+                output.as_deref(),
+                *force,
                 cli.json_pretty,
             ) {
                 eprintln!("Flow error: {e}");

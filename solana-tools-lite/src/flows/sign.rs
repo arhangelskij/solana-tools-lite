@@ -28,7 +28,7 @@ pub fn execute(
     let saved_path = save_to_file(&result, output, force)?;
 
     // Print result similarly to generation flow, delegating to Presentable
-    print_result(&result, json, saved_path.as_deref())?;
+    print_result(&result, json, saved_path.as_deref());
 
     Ok(())
 }
@@ -64,18 +64,14 @@ fn save_to_file(
 fn get_final_path(output_path_str: &str) -> PathBuf {
     let p = Path::new(output_path_str);
     if p.is_dir() {
-        p.join("wallet.json")
+        p.join("sign.json") //TODO: 🟡
     } else {
         p.to_path_buf()
     }
 }
 
 /// Print output of a signing flow
-fn print_result(
-    result: &SignResult,
-    json: bool,
-    saved_path: Option<&Path>,
-) -> Result<(), ToolError> {
+fn print_result(result: &SignResult, json: bool, saved_path: Option<&Path>) {
     match saved_path {
         // When saving to a file, keep stdout clean; show signature and saved path on stderr
         Some(path) => {

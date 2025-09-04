@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
-use crate::errors::ToolError;
 use crate::adapters::io_adapter::write_secret_file;
-use crate::models::results::GenResult;
-use crate::flows::presenter::Presentable;
 use crate::constants::DEFAULT_WALLET_FILENAME;
+use crate::errors::ToolError;
+use crate::flows::presenter::Presentable;
 use crate::handlers::generate;
+use crate::models::results::GenResult;
+use std::path::{Path, PathBuf};
 
 /// High-level generation flow: orchestrates handler call, file saving, and presentation.
 ///
@@ -21,18 +21,22 @@ pub fn execute(
     json: bool,
     show_secret: bool,
     out_path: Option<&str>,
-    force: bool
+    force: bool,
 ) -> Result<(), ToolError> {
     // Delegate passphrase resolution to the handler layer for consistency
     let result = generate::handle(mnemonic_path, passphrase_path)?;
     let saved_path = save_to_file(&result, out_path, force)?;
-    
-    print_result(&result, json, show_secret, &saved_path)?;
+
+    print_result(&result, json, show_secret, &saved_path);
 
     Ok(())
 }
 
-fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Result<PathBuf, ToolError> {
+fn save_to_file(
+    result: &GenResult,
+    out_path: Option<&str>,
+    force: bool,
+) -> Result<PathBuf, ToolError> {
     // Resolve final target path (directory -> append wallet.json; None -> wallet.json)
     let target: PathBuf = get_final_path(out_path.unwrap_or("wallet.json"));
 
@@ -42,7 +46,6 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
     Ok(target)
 }
 
-
 //TODO: 28 aug 🟡 move into utils or something else
 
 /// Resolve the final wallet path:
@@ -50,7 +53,7 @@ fn save_to_file(result: &GenResult, out_path: Option<&str>, force: bool) -> Resu
 /// - otherwise treat it as a file path
 fn get_final_path(output_path_str: &str) -> PathBuf {
     let p = Path::new(output_path_str);
-    
+
     if p.is_dir() {
         p.join(DEFAULT_WALLET_FILENAME)
     } else {
@@ -59,11 +62,9 @@ fn get_final_path(output_path_str: &str) -> PathBuf {
 }
 
 /// Print output of a generation
-fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &Path) -> Result<(), ToolError> {
+fn print_result(result: &GenResult, json: bool, show_secret: bool, saved_path: &Path) {
     // Delegate printing to Presentable; secrets and JSON handling stay the same
     result.present(json, show_secret);
     // Always inform where the wallet was saved
     eprintln!("Saved: {}", saved_path.display());
-
-    Ok(())
 }

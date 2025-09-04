@@ -34,7 +34,7 @@ pub enum Commands {
 
         /// Path to keypair file (stdin disabled for secrets)
         #[arg(long, short = 'k')]
-        keypair: String, //TODO: 🟡 think additionally about name 
+        keypair: String, //TODO: 🟡🟠 think additionally about name 
 
           /// Optional output file (if not set, print to stdout)
         #[arg(long, short)]
