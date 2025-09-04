@@ -92,10 +92,10 @@ fn main() {
             output,
             output_format,
         } => {
-            if let Err(e) = handlers::sign_tx::handle_sign_transaction_file(
-                Some(&input.clone()),
+            if let Err(e) = flows::sign_tx::execute(
+                Some(input.as_str()),
                 keypair,
-                output.as_ref(),
+                output.as_deref(),
                 cli.json_pretty,
                 *output_format,
             ) {

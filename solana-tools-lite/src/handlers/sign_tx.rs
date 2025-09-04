@@ -16,14 +16,14 @@ use ed25519_dalek::{Signature, SigningKey};
 /// Read tx JSON → sign → output JSON / stdout
 //TODO: 🟡 rename into common name
 pub fn handle_sign_transaction_file(
-    input: Option<&String>, //TODO: use Path?
+    input: Option<&str>, //TODO: 🔴use Path?
     secret_key_b58: &str,
-    output: Option<&String>,
+    output: Option<&str>,
     json_pretty: bool,
-    out_override: Option<OutFmt>, //TODO: 🟡 rename to force or make it everywhere as out_override
+    out_override: Option<OutFmt>, //TODO: 🟡🔴 4/09 rename to force or make it everywhere as out_override
 ) -> Result<()> {
     // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
-    let input_tx: InputTransaction = read_input_transaction(input.map(|s| s.as_str()))?;
+    let input_tx: InputTransaction = read_input_transaction(input)?;
 
     let default_format = match &input_tx {
         InputTransaction::Json(_) => OutputFormat::Json {
@@ -55,8 +55,8 @@ pub fn handle_sign_transaction_file(
         None => default_format
     };
 
-    // 5. Output
-    write_output_transaction(&ui_tx, chosen_format, output.map(|s| s.as_str()))?;
+    // 5. Output //TODO: 4/09 🔴 move into flow?
+    write_output_transaction(&ui_tx, chosen_format, output)?;
 
     Ok(())
 }
