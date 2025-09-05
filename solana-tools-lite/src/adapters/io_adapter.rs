@@ -1,10 +1,12 @@
 use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
 use crate::errors::{IoError, Result, ToolError};
+use crate::crypto::helpers::parse_signing_key_content;
 use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::serde::fmt::{self as serde_fmt, OutputFormat};
 use std::io as std_io;
 use std::path::{Path, PathBuf};
+use ed25519_dalek::SigningKey;
 
 // Private source enum: used internally to model a single text input source
 enum TextSource<'a> {
@@ -85,6 +87,12 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
         None => read_input(None)?,
     };
     crate::serde::input_tx::parse_input_transaction(Some(&raw)).map_err(ToolError::from)
+}
+
+pub fn read_and_parse_secret_key(path: &str) -> Result<SigningKey> {
+    let text = read_secret_key_file(path)?;
+    let key = parse_signing_key_content(&text)?;
+    Ok(key)
 }
 
 pub fn read_secret_key_file(path: &str) -> std::result::Result<String, ToolError> {

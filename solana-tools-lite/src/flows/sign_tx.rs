@@ -1,6 +1,13 @@
+use crate::adapters::io_adapter::{
+    read_input_transaction,
+    write_output_transaction,
+    read_and_parse_secret_key
+};
 use crate::errors::ToolError;
-use crate::handlers;
+use crate::handlers::sign_tx::handle_sign_transaction;
 use crate::models::cmds::OutFmt;
+use crate::models::input_transaction::{InputTransaction, UiTransaction};
+use crate::serde::fmt::OutputFormat;
 
 /// Sign-transaction flow: thin orchestrator around the handler.
 ///
@@ -12,19 +19,37 @@ use crate::models::cmds::OutFmt;
 /// - `out_override`: force output format (json|base64|base58); otherwise mirrors input format
 pub fn execute(
     input: Option<&str>,
-    keypair: &str,
+    keypair: &str, //TODO: mb add `path` to name?
     output: Option<&str>,
     json_pretty: bool,
     out_override: Option<OutFmt>,
 ) -> Result<(), ToolError> {
-    handlers::sign_tx::handle_sign_transaction_file(
-        input,
-        keypair,
-        output,
-        json_pretty,
-        out_override,
-    )?;
+    // 1) Read input transaction (file/stdin) via adapter
+    let input_tx: InputTransaction = read_input_transaction(input)?;
+
+    // 2) Resolve default output format from input type
+    let default_format = match &input_tx {
+        InputTransaction::Json(_) => OutputFormat::Json { pretty: json_pretty },
+        InputTransaction::Base64(_) => OutputFormat::Base64,
+        InputTransaction::Base58(_) => OutputFormat::Base58,
+    };
+
+    // 3) Read + parse signing key
+    let signing_key = read_and_parse_secret_key(keypair)?;
+
+    // 4) Domain signing via pure handler
+    let ui_tx: UiTransaction = handle_sign_transaction(input_tx, &signing_key)?;
+
+    // 5) Choose output format (override or mirror input)
+    let chosen_format = match out_override {
+        Some(OutFmt::Json) => OutputFormat::Json { pretty: json_pretty },
+        Some(OutFmt::Base64) => OutputFormat::Base64,
+        Some(OutFmt::Base58) => OutputFormat::Base58,
+        None => default_format,
+    };
+
+    // 6) Write out via adapter (file or stdout)
+    write_output_transaction(&ui_tx, chosen_format, output)?;
 
     Ok(())
 }
-

@@ -1,64 +1,23 @@
-use crate::adapters::io_adapter::{read_input_transaction, write_output_transaction, read_secret_key_file};
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::{
     crypto::ed25519,
-    crypto::helpers::{parse_signing_key_content},
     errors::{Result, SignError},
-    models::cmds::OutFmt,
     models::pubkey_base58::PubkeyBase58,
     models::transaction::Transaction,
-    serde::fmt::OutputFormat,
-    utils::serialize
+    utils::serialize,
 };
 
 use ed25519_dalek::{Signature, SigningKey};
 
-/// Read tx JSON → sign → output JSON / stdout
-//TODO: 🟡 rename into common name
-pub fn handle_sign_transaction_file(
-    input: Option<&str>, //TODO: 🔴use Path?
-    secret_key_b58: &str,
-    output: Option<&str>,
-    json_pretty: bool,
-    out_override: Option<OutFmt>, //TODO: 🟡🔴 4/09 rename to force or make it everywhere as out_override
-) -> Result<()> {
-    // 1. Load TX (JSON, Base64, or Base58) and convert to domain model
-    let input_tx: InputTransaction = read_input_transaction(input)?;
-
-    let default_format = match &input_tx {
-        InputTransaction::Json(_) => OutputFormat::Json {
-            pretty: json_pretty
-        },
-        InputTransaction::Base64(_) => OutputFormat::Base64,
-        InputTransaction::Base58(_) => OutputFormat::Base58
-    };
-
+/// Pure handler: sign a UI input transaction with the given key and return UI transaction.
+pub fn handle_sign_transaction(
+    input_tx: InputTransaction,
+    signing_key: &SigningKey,
+) -> Result<UiTransaction> {
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
+    sign_transaction_by_key(&mut tx, signing_key)?;
     
-    // 2. Read and parse the secret key content (file or "-")
-    let key_text = read_secret_key_file(secret_key_b58)?;
-    let signing_key = parse_signing_key_content(&key_text)?;
-
-    // 3. Sign message
-    sign_transaction_by_key(&mut tx, &signing_key)?;
-
-    // 4. Serialize back (to UI DTO)
-    let ui_tx = UiTransaction::from(&tx);
-
-    // Override format output if needed
-    let chosen_format = match out_override {
-        Some(OutFmt::Json) => OutputFormat::Json {
-            pretty: json_pretty
-        },
-        Some(OutFmt::Base64) => OutputFormat::Base64,
-        Some(OutFmt::Base58) => OutputFormat::Base58,
-        None => default_format
-    };
-
-    // 5. Output //TODO: 4/09 🔴 move into flow?
-    write_output_transaction(&ui_tx, chosen_format, output)?;
-
-    Ok(())
+    Ok(UiTransaction::from(&tx))
 }
 
 /// Signs a transaction using the provided signing key.
