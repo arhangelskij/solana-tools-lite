@@ -1,4 +1,4 @@
-use ed25519_dalek::{Signature, Signer};
+use ed25519_dalek::{Signature, Signer, SigningKey};
 use crate::models::results::SignResult;
 use crate::errors::{Result};
 use crate::adapters::io_adapter::{read_and_parse_secret_key};
@@ -8,7 +8,11 @@ use crate::adapters::io_adapter::{read_and_parse_secret_key};
 pub fn handle(message: &str, secret_key_path: &str) -> Result<SignResult> {
     // Read secret key text and parse supported formats
     let signing_key = read_and_parse_secret_key(secret_key_path)?;
+    handle_with_key(message, &signing_key)
+}
 
+/// Pure handler: sign a message with the provided SigningKey (no I/O).
+pub fn handle_with_key(message: &str, signing_key: &SigningKey) -> Result<SignResult> {
     // Sign the message
     let signature: Signature = signing_key.sign(message.as_bytes());
 
