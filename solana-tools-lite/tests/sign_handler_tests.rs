@@ -3,6 +3,8 @@ mod tests {
     use bs58;
     use ed25519_dalek::Verifier;
     use solana_tools_lite::crypto::ed25519;
+    use solana_tools_lite::crypto::helpers::parse_signing_key_content;
+    use solana_tools_lite::adapters::io_adapter::read_and_parse_secret_key;
     use solana_tools_lite::handlers::{sign_message, verify};
     use std::fs;
 
@@ -18,14 +20,16 @@ mod tests {
         let seed = [42u8; 64];
         let key = ed25519::keypair_from_seed(&seed).unwrap();
         let pubkey = key.verifying_key();
-
         let secret_b58 = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
+
         let message = "test-signing";
 
-        // Write secret to a temp file (raw base58) and sign using the file-based handler
+        // Write secret to a temp file (raw base58) and sign using key read from file
         let tmp_path = "tmp_sk_roundtrip.txt";
         std::fs::write(tmp_path, &secret_b58).expect("failed to write temp secret");
-        let sign_result =  sign_message::handle(message, tmp_path).expect("signature failed");
+        
+        let signing_key = read_and_parse_secret_key(tmp_path).expect("failed to read key from file");
+        let sign_result =  sign_message::handle(message, &signing_key).expect("signature failed");
         
         let sig_b58_from_handler = sign_result.signature_base58;
 
@@ -57,12 +61,8 @@ mod tests {
     #[test]
     fn test_sign_invalid_base58_secret_should_fail() {
         let bad = "%%%not_base58%%%";
-        let tmp = "tmp_bad_sk.txt";
-        write_tmp(tmp, bad);
-        let err = sign_message::handle("foo", tmp).unwrap_err().to_string();
-        println!("------- {:?}", err);
-        let _ = fs::remove_file(tmp);
-        assert!(err.contains("Invalid base58 in secret key"));
+        let err = parse_signing_key_content(bad).unwrap_err().to_string();
+        assert!(err.contains("Invalid base58"));
     }
 
     /// A secret key that decodes to a wrong length (too short) should be rejected.
@@ -76,12 +76,7 @@ mod tests {
         secret_bytes.pop(); // now 31 bytes
 
         let sk_b58 = bs58::encode(secret_bytes).into_string();
-        let tmp = "tmp_short_sk.txt";
-
-        write_tmp(tmp, &sk_b58);
-        
-        assert!(sign_message::handle("foo", tmp).is_err());
-        let _ = fs::remove_file(tmp);
+        assert!(parse_signing_key_content(&sk_b58).is_err());
     }
 
     /// An empty message should still produce a valid signature of correct length.
@@ -89,11 +84,7 @@ mod tests {
     fn test_sign_empty_message_should_succeed() {
         let seed = [42u8; 64];
         let key = ed25519::keypair_from_seed(&seed).unwrap();
-        let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
-        let tmp = "tmp_empty_msg_sk.txt";
-        write_tmp(tmp, &sk);
-        let sig = sign_message::handle("", tmp).unwrap().signature_base58;
-        let _ = fs::remove_file(tmp);
+        let sig = sign_message::handle("", &key).unwrap().signature_base58;
         // Decode the signature and verify its byte length is SIG_LEN
         let bytes = bs58::decode(&sig).into_vec().unwrap();
         assert_eq!(bytes.len(), 64);
@@ -106,13 +97,13 @@ mod tests {
         // Sign msg1, attempt to verify msg2 via our verify::handle_verify
         let seed = [42u8; 64];
         let key = ed25519::keypair_from_seed(&seed).unwrap();
-        let sk = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
-        
+        // Sign using key read from a temp file to ensure file-based path works
+        let sk_b58 = bs58::encode(key.to_bytes()[..32].to_vec()).into_string();
         let tmp = "tmp_mismatch_sk.txt";
-        write_tmp(tmp, &sk);
-        
-        let pubkey = key.verifying_key();
-        let sig = sign_message::handle("foo", tmp).unwrap().signature_base58;
+        write_tmp(tmp, &sk_b58);
+        let signing_key = read_and_parse_secret_key(tmp).expect("failed to read key from file");
+        let pubkey = signing_key.verifying_key();
+        let sig = sign_message::handle("foo", &signing_key).unwrap().signature_base58;
         let _ = fs::remove_file(tmp);
 
         let res = verify::handle(

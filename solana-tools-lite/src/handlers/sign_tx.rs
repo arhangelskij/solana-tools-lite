@@ -1,4 +1,4 @@
-use crate::models::input_transaction::{InputTransaction, UiTransaction};
+use crate::models::input_transaction::InputTransaction;
 use crate::{
     crypto::ed25519,
     errors::{Result, SignError},
@@ -6,18 +6,18 @@ use crate::{
     models::transaction::Transaction,
     utils::serialize,
 };
+use crate::models::results::SignTxResult;
 
 use ed25519_dalek::{Signature, SigningKey};
 
-/// Pure handler: sign a UI input transaction with the given key and return UI transaction.
+/// Pure handler: sign an input transaction with the given key and return a domain result.
 pub fn handle_sign_transaction(
     input_tx: InputTransaction,
     signing_key: &SigningKey,
-) -> Result<UiTransaction> {
+) -> Result<SignTxResult> {
     let mut tx: Transaction = Transaction::try_from(input_tx)?;
     sign_transaction_by_key(&mut tx, signing_key)?;
-    
-    Ok(UiTransaction::from(&tx))
+    Ok(SignTxResult { signed_tx: tx })
 }
 
 /// Signs a transaction using the provided signing key.

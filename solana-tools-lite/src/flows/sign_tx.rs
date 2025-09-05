@@ -1,8 +1,4 @@
-use crate::adapters::io_adapter::{
-    read_input_transaction,
-    write_output_transaction,
-    read_and_parse_secret_key
-};
+use crate::adapters::io_adapter::{read_and_parse_secret_key, read_input_transaction, write_output_transaction};
 use crate::errors::ToolError;
 use crate::handlers::sign_tx::handle_sign_transaction;
 use crate::models::cmds::OutFmt;
@@ -27,6 +23,7 @@ pub fn execute(
     // 1) Read input transaction (file/stdin) via adapter
     let input_tx: InputTransaction = read_input_transaction(input)?;
 
+    //TODO: think about to move inside intput_tx this logic
     // 2) Resolve default output format from input type
     let default_format = match &input_tx {
         InputTransaction::Json(_) => OutputFormat::Json { pretty: json_pretty },
@@ -37,8 +34,9 @@ pub fn execute(
     // 3) Read + parse signing key
     let signing_key = read_and_parse_secret_key(keypair)?;
 
-    // 4) Domain signing via pure handler
-    let ui_tx: UiTransaction = handle_sign_transaction(input_tx, &signing_key)?;
+    // 4) Domain signing via pure handler (returns raw tx in result)
+    let result = handle_sign_transaction(input_tx, &signing_key)?;
+    let ui_tx = UiTransaction::from(&result.signed_tx);
 
     // 5) Choose output format (override or mirror input)
     let chosen_format = match out_override {

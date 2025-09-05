@@ -1,6 +1,7 @@
 use serde::Serialize;
 use serde_json;
 use std::fmt;
+use crate::models::transaction::Transaction;
 
 /// Output for signature verification (verify command)
 #[derive(Serialize)]
@@ -55,4 +56,10 @@ pub struct SignResult {
     pub message: String,
     pub signature_base58: String,
     pub public_key: String 
+}
+
+/// Output for transaction signing (sign-tx command)
+#[derive(Debug)]
+pub struct SignTxResult {
+    pub signed_tx: Transaction
 }

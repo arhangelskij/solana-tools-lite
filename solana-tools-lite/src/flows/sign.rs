@@ -25,7 +25,7 @@ pub fn execute(
     let signing_key = io::read_and_parse_secret_key(secret_key_path)?;
 
     // Sign message
-    let result = sign_message::handle_with_key(&message_content, &signing_key)?;
+    let result = sign_message::handle(&message_content, &signing_key)?;
 
     // Persist full JSON artifact to file only if requested (independent of `json`)
     let saved_path = io::save_pretty_json(&result, output, force, "sign.json")?;

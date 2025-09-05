@@ -9,7 +9,7 @@ pub fn handle_base58(action: &Base58Action) ->  Result<()> {
         }
         Base58Action::Decode { input } => {
             let bytes = bs58::decode(input).into_vec()?; 
-            println!("{}", String::from_utf8_lossy(&bytes));
+            println!("{}", String::from_utf8_lossy(&bytes)); //TODO: 5sept 🔴 not should not print
         }
     }
     Ok(())
