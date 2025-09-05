@@ -6,7 +6,7 @@ mod tests_sign_tx {
         transaction::Transaction,
     };
     use solana_tools_lite::utils;
-    use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
+    use solana_tools_lite::handlers::sign_tx::{sign_transaction_by_key, handle_sign_transaction};
 
     use crate::utils::*;
 
@@ -105,6 +105,57 @@ mod tests_sign_tx {
         let is_valid = ed25519::verify_signature(&verifying_key, &msg_bytes, &signature);
 
         assert!(is_valid);
+    }
+
+    /// New: handler-level test for handle_sign_transaction success path
+    #[test]
+    fn test_handle_sign_transaction_success() {
+        // Prepare a keypair and matching account key
+        let seed = [77u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+        let verifying_key = keypair.verifying_key();
+        let pk = bs58::encode(verifying_key.to_bytes()).into_string();
+
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
+
+        // Build InputTransaction where signer pubkey is present at index 0
+        let input_tx: InputTransaction =
+            generate_input_transaction(1, vec![&pk, program_id], &blockhash, 2, vec![0, 1], &data);
+
+        // Call pure handler
+        let result = handle_sign_transaction(input_tx, &keypair).expect("handler should sign successfully");
+        let tx = result.signed_tx;
+
+        // Verify signature
+        assert_eq!(tx.signatures.len(), 1, "must have one signature");
+        let sig = tx.signatures[0];
+        let msg_bytes = utils::serialize(&tx.message).expect("serialize message");
+        let ok = ed25519::verify_signature(&verifying_key, &msg_bytes, &sig);
+        assert!(ok, "signature must verify");
+    }
+
+    /// New: handler-level negative test when signer key is missing in account_keys
+    #[test]
+    fn test_handle_sign_transaction_signer_missing_fails() {
+        // Keypair that will be used for signing
+        let seed = [13u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+
+        // Build transaction where the signer's pubkey is NOT in account_keys
+        let fake_pk = generate_mock_pubkey();
+        let program_id = "11111111111111111111111111111111";
+        let blockhash = generate_mock_pubkey();
+        let data = bs58::encode(b"mockdata").into_string();
+        let input_tx: InputTransaction =
+            generate_input_transaction(1, vec![&fake_pk, program_id], &blockhash, 2, vec![0, 1], &data);
+
+        let err = handle_sign_transaction(input_tx, &keypair).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Provided signer is not within required signers")
+            || msg.contains("Signer pubkey not found"),
+            "unexpected error: {}", msg);
     }
 
     // After signing, tamper with message, signature must fail

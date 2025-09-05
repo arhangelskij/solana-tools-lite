@@ -88,7 +88,7 @@ pub enum SignError {
     JsonParse(#[source] serde_json::Error),
 
     #[error("Failed to serialize JSON for output: {0}")]
-    JsonSerialize(#[source] serde_json::Error),
+    JsonSerialize(#[source] serde_json::Error), //TODO: looks like unused
 }
 
 /// Signature verification domain errors.
