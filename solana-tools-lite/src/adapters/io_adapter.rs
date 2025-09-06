@@ -1,12 +1,12 @@
 use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
-use crate::errors::{IoError, Result, ToolError};
 use crate::crypto::helpers::parse_signing_key_content;
+use crate::errors::{IoError, Result, ToolError};
 use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::serde::fmt::{self as serde_fmt, OutputFormat};
+use ed25519_dalek::SigningKey;
 use std::io as std_io;
 use std::path::{Path, PathBuf};
-use ed25519_dalek::SigningKey;
 
 // Private source enum: used internally to model a single text input source
 enum TextSource<'a> {
@@ -57,10 +57,9 @@ pub fn read_text_source(
 ///
 /// - When `path` is `None` or `Some("-")`, writes to stdout as-is.
 /// - When `path` is `Some(p)`, writes to file `p` with permissions 0o644.
-/// - Always overwrites existing files (does not respect `--force`).
 /// - Not intended for secrets; use `write_secret_file` for secret material.
 fn write_output(path: Option<&str>, data: &str, force: bool) -> std::result::Result<(), ToolError> {
-    // Public output: stdout allowed, 0644 permissions, always overwrite
+    // Public output: stdout allowed, 0644 permissions
     let target = match path {
         Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
         _ => OutputTarget::Stdout,
@@ -137,7 +136,6 @@ pub fn read_secret_key_file(path: &str) -> std::result::Result<String, ToolError
 /// - Uses `serde::fmt::encode_ui_transaction` to build the output string
 ///   (JSON pretty/plain, Base64(JSON), or Base58(JSON)).
 /// - Writes to stdout when `output` is `None` or `Some("-")`.
-/// - Writes to file with 0o644 and always overwrites when `output = Some(path)`.
 pub fn write_output_transaction(
     transaction: &UiTransaction,
     format: OutputFormat,
