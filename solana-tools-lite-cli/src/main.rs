@@ -5,6 +5,7 @@ use solana_tools_lite::layers::cli::Cli;
 use solana_tools_lite::models::cmds::Commands;
 
 fn main() {
+    /* 
     let cli = Cli::parse();
 
     match &cli.command {
@@ -104,5 +105,6 @@ fn main() {
             }
         }
     }
+    */
 }
 
