@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "solana-tools-lite",
+    "solana-tools-lite-cli"
+]
+
+resolver = "3"
+
+[profile.release]
+strip = "symbols"
+lto = true
+codegen-units = 1
+panic = "abort"

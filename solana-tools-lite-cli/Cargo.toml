@@ -1,0 +1,9 @@
+[package]
+name = "solana-tools-lite-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.44", default-features = false, features = ["std", "derive"] }
+solana-tools-lite = { path = "../solana-tools-lite" }
+
