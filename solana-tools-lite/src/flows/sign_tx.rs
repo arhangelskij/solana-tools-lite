@@ -19,6 +19,7 @@ pub fn execute(
     output: Option<&str>,
     json_pretty: bool,
     out_override: Option<OutFmt>,
+    force: bool
 ) -> Result<(), ToolError> {
     // 1) Read input transaction (file/stdin) via adapter
     let input_tx: InputTransaction = read_input_transaction(input)?;
@@ -46,8 +47,8 @@ pub fn execute(
         None => default_format,
     };
 
-    // 6) Write out via adapter (file or stdout)
-    write_output_transaction(&ui_tx, chosen_format, output)?;
+    // 6) Write out via adapter (file or stdout), respecting force for files
+    write_output_transaction(&ui_tx, chosen_format, output, force)?;
 
     Ok(())
 }

@@ -620,7 +620,7 @@ fn test_write_output_to_file_adapter() -> Result<()> {
     let path = "test_write_adapter.json";
 
     // First write (create)
-    write_output_transaction(&ui, OutputFormat::Json { pretty: false }, Some(path))?;
+    write_output_transaction(&ui, OutputFormat::Json { pretty: false }, Some(path), false)?;
     let content1 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     assert_eq!(content1, serde_json::to_string(&ui).unwrap());
 
@@ -636,7 +636,7 @@ fn test_write_output_to_file_adapter() -> Result<()> {
         vec![],
         "",
     );
-    write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path))?;
+    write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path), true)?;
 
     let content2 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     assert_eq!(content2, serde_json::to_string(&ui2).unwrap());

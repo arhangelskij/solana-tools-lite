@@ -59,14 +59,14 @@ pub fn read_text_source(
 /// - When `path` is `Some(p)`, writes to file `p` with permissions 0o644.
 /// - Always overwrites existing files (does not respect `--force`).
 /// - Not intended for secrets; use `write_secret_file` for secret material.
-fn write_output(path: Option<&str>, data: &str) -> std::result::Result<(), ToolError> {
+fn write_output(path: Option<&str>, data: &str, force: bool) -> std::result::Result<(), ToolError> {
     // Public output: stdout allowed, 0644 permissions, always overwrite
     let target = match path {
         Some(p) if p != "-" => OutputTarget::File(Path::new(p)),
         _ => OutputTarget::Stdout,
     };
 
-    write_bytes_with_opts(&target, data.as_bytes(), FILE_PERMS_PUBLIC, true).map_err(|e| {
+    write_bytes_with_opts(&target, data.as_bytes(), FILE_PERMS_PUBLIC, force).map_err(|e| {
         match target {
             OutputTarget::Stdout => ToolError::Io(IoError::IoWithPath {
                 source: e,
@@ -142,12 +142,13 @@ pub fn write_output_transaction(
     transaction: &UiTransaction,
     format: OutputFormat,
     output: Option<&str>,
+    force: bool,
 ) -> Result<()> {
     // Encode UI Tx
     let out_str = serde_fmt::encode_ui_transaction(transaction, format)?;
 
     // Write to file or stdout
-    write_output(output, &out_str)?;
+    write_output(output, &out_str, force)?;
 
     Ok(())
 }

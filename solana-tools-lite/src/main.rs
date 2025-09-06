@@ -91,6 +91,7 @@ fn main() {
             keypair,
             output,
             output_format,
+            force
         } => {
             if let Err(e) = flows::sign_tx::execute(
                 Some(input.as_str()),
@@ -98,6 +99,7 @@ fn main() {
                 output.as_deref(),
                 cli.json_pretty,
                 *output_format,
+                *force
             ) {
                 eprintln!("Error executing sign-tx command: {e}");
                 std::process::exit(1);

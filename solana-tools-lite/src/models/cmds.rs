@@ -18,7 +18,7 @@ pub enum Commands {
         output: Option<String>,
         /// Force save(override) a wallet file
         #[arg(long, short, default_value = "false")]
-        force: bool
+        force: bool,
     },
 
     /// Sign a message
@@ -34,15 +34,15 @@ pub enum Commands {
 
         /// Path to keypair file (stdin disabled for secrets)
         #[arg(long, short = 'k')]
-        keypair: String, //TODO: 🟡🟠 think additionally about name 
+        keypair: String, //TODO: 🟡🟠 think additionally about name
 
-          /// Optional output file (if not set, print to stdout)
+        /// Optional output file (if not set, print to stdout)
         #[arg(long, short)]
         output: Option<String>,
 
         /// Force save(override) a file
         #[arg(long, short, default_value = "false")]
-        force: bool
+        force: bool,
     },
 
     /// Verify a signature
@@ -56,7 +56,12 @@ pub enum Commands {
 
         /// Read message from file or stdin ("-")
         /// Accepts both `--from-file` and `--message-file` for convenience.
-        #[arg(long = "from-file", alias = "message-file", value_name = "FILE", group = "msg_src")]
+        #[arg(
+            long = "from-file",
+            alias = "message-file",
+            value_name = "FILE",
+            group = "msg_src"
+        )]
         from_file: Option<String>,
 
         /// Signature to verify (Base58, inline)
@@ -80,14 +85,15 @@ pub enum Commands {
         output: Option<String>,
 
         /// Force save(override) a file
-        #[arg(long, short, default_value = "false")] //TODO: 27 aug 🔴 hz if we need it here
-        force: bool
+        #[arg(long, short, default_value = "false")]
+        //TODO: 27 aug 🔴 hz if we need it here
+        force: bool,
     },
 
     /// Base58 encode/decode
     Base58 {
         #[command(subcommand)]
-        action: Base58Action
+        action: Base58Action,
     },
 
     /// Sign a transaction JSON file (cold-signer)
@@ -97,7 +103,7 @@ pub enum Commands {
         input: String,
 
         //TODO: 🔴 delete comment after checking command Base58-encoded private key (32 bytes)
-        /// Path to keypair file (stdin disabled for secrets) 
+        /// Path to keypair file (stdin disabled for secrets)
         #[arg(long, short = 'k')]
         keypair: String,
 
@@ -106,8 +112,12 @@ pub enum Commands {
         output: Option<String>,
 
         /// Force output format (json|base64|base58). If not specified, we mirror the input format.
-        #[arg(long = "output-format", value_enum, short = 'f')]
-        output_format: Option<OutFmt>
+        #[arg(long = "output-format", value_enum)] //TODO: short vers
+        output_format: Option<OutFmt>,
+         
+         /// Force save(override) the output file when it exists
+        #[arg(long, short, default_value = "false")]
+        force: bool
     },
 }
 
@@ -119,7 +129,7 @@ pub enum Base58Action {
     },
     Decode {
         #[arg(short, long)]
-        input: String
+        input: String,
     },
 }
 
@@ -127,5 +137,5 @@ pub enum Base58Action {
 pub enum OutFmt {
     Json,
     Base64,
-    Base58
+    Base58,
 }
