@@ -210,6 +210,19 @@ pub fn serialize_instruction(instr: &Instruction) -> Vec<u8> {
 }
 
 /// Serialize a Message into wire-format bytes.
+/// Serialize a `Message` into Solana wire-format bytes.
+///
+/// Format details
+/// - Header: 3 bytes (`num_required_signatures`, `num_readonly_signed_accounts`, `num_readonly_unsigned_accounts`).
+/// - Account keys: shortvec length + N public keys (32 bytes each) in order.
+/// - Recent blockhash: 32 bytes.
+/// - Instructions: shortvec length + each instruction encoded as
+///   `program_id_index (u8)` + `accounts (shortvec<u8>)` + `data (shortvec<u8>)`.
+///
+/// Round-trip guarantee
+/// - Together with `deserialize_message`, this encoding is covered by
+///   `tests/deserializer_tests.rs::test_roundtrip_serde_base64_tx` (via Transaction),
+///   ensuring canonical, lossless serialization for signing and comparison.
 pub fn serialize_message(msg: &Message) -> Vec<u8> {
     let mut buf = Vec::new();
     
@@ -236,6 +249,16 @@ pub fn serialize_message(msg: &Message) -> Vec<u8> {
 }
 
 /// Serialize a Transaction into wire-format bytes.
+/// Serialize a `Transaction` into Solana wire-format bytes.
+///
+/// Layout
+/// - Signatures: shortvec length followed by each 64-byte signature.
+/// - Message: bytes produced by `serialize_message(&tx.message)`.
+///
+/// Validation
+/// - The pair `deserialize_transaction`/`serialize_transaction` is validated by
+///   `tests/deserializer_tests.rs::test_roundtrip_serde_base64_tx` to ensure exact
+///   equality with the original wire bytes from the SDK fixture before signing.
 pub fn serialize_transaction(tx: &Transaction) -> Vec<u8> {
     let mut buf = Vec::new();
     

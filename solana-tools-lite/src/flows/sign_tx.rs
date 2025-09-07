@@ -1,8 +1,8 @@
-use crate::adapters::io_adapter::{read_and_parse_secret_key, read_input_transaction, write_output_transaction};
+use crate::adapters::io_adapter::{read_and_parse_secret_key, read_input_transaction, write_signed_transaction};
 use crate::errors::ToolError;
 use crate::handlers::sign_tx::handle_sign_transaction;
 use crate::models::cmds::OutFmt;
-use crate::models::input_transaction::{InputTransaction, UiTransaction};
+use crate::models::input_transaction::InputTransaction;
 use crate::serde::fmt::OutputFormat;
 
 /// Sign-transaction flow: thin orchestrator around the handler.
@@ -37,7 +37,6 @@ pub fn execute(
 
     // 4) Domain signing via pure handler (returns raw tx in result)
     let result = handle_sign_transaction(input_tx, &signing_key)?;
-    let ui_tx = UiTransaction::from(&result.signed_tx);
 
     // 5) Choose output format (override or mirror input)
     let chosen_format = match out_override {
@@ -46,9 +45,9 @@ pub fn execute(
         Some(OutFmt::Base58) => OutputFormat::Base58,
         None => default_format,
     };
-
+//TODO: 6/09 write 🔴🔴
     // 6) Write out via adapter (file or stdout), respecting force for files
-    write_output_transaction(&ui_tx, chosen_format, output, force)?;
+    write_signed_transaction(&result.signed_tx, chosen_format, output, force)?;
 
     Ok(())
 }

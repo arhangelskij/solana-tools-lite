@@ -3,8 +3,12 @@ use crate::crypto::helpers::parse_signing_key_content;
 use crate::errors::{IoError, Result, ToolError};
 use crate::layers::io;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
-use crate::serde::fmt::{self as serde_fmt, OutputFormat};
+use crate::models::transaction::Transaction;
+use crate::deserializer::serialize_transaction;
+use crate::serde::fmt::OutputFormat;
 use ed25519_dalek::SigningKey;
+use data_encoding::BASE64 as B64;
+use bs58;
 use std::io as std_io;
 use std::path::{Path, PathBuf};
 
@@ -130,24 +134,42 @@ pub fn read_secret_key_file(path: &str) -> std::result::Result<String, ToolError
     Ok(s.trim().to_string())
 }
 
-/// Serialize a `UiTransaction` into the specified `OutputFormat` and write it out.
+/// Write a signed domain `Transaction` according to `OutputFormat`.
 ///
 /// Behavior
-/// - Uses `serde::fmt::encode_ui_transaction` to build the output string
-///   (JSON pretty/plain, Base64(JSON), or Base58(JSON)).
-/// - Writes to stdout when `output` is `None` or `Some("-")`.
-pub fn write_output_transaction(
-    transaction: &UiTransaction,
+/// - `OutputFormat::Json { pretty }`: converts to `UiTransaction` and encodes as JSON (pretty/plain).
+/// - `OutputFormat::Base64`: serializes to wire bytes and encodes as Base64.
+/// - `OutputFormat::Base58`: serializes to wire bytes and encodes as Base58.
+
+pub fn write_signed_transaction(
+    transaction: &Transaction,
     format: OutputFormat,
     output: Option<&str>,
     force: bool,
 ) -> Result<()> {
-    // Encode UI Tx
-    let out_str = serde_fmt::encode_ui_transaction(transaction, format)?;
-
-    // Write to file or stdout
-    write_output(output, &out_str, force)?;
-
+    match format {
+        OutputFormat::Json { pretty } => {
+            let ui = UiTransaction::from(transaction);
+            let out_str = if pretty {
+                serde_json::to_string_pretty(&ui)
+                    .map_err(|e| ToolError::InvalidInput(format!("failed to serialize JSON: {e}")))?
+            } else {
+                serde_json::to_string(&ui)
+                    .map_err(|e| ToolError::InvalidInput(format!("failed to serialize JSON: {e}")))?
+            };
+            write_output(output, &out_str, force)?;
+        }
+        OutputFormat::Base64 => {
+            let raw = serialize_transaction(transaction);
+            let out_str = B64.encode(&raw);
+            write_output(output, &out_str, force)?;
+        }
+        OutputFormat::Base58 => {
+            let raw = serialize_transaction(transaction);
+            let out_str = bs58::encode(&raw).into_string();
+            write_output(output, &out_str, force)?;
+        }
+    }
     Ok(())
 }
 
@@ -335,7 +357,7 @@ fn write_bytes_with_opts(
     bytes: &[u8],
     perms: u32,
     force: bool,
-) -> std::result::Result<(), std::io::Error> {
+) -> std::result::Result<(), std::io::Error> {//TODO: result
     match target {
         OutputTarget::Stdout => {
             let mut stdout = std_io::stdout();

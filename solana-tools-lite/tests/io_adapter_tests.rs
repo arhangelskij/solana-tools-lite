@@ -9,7 +9,7 @@ use data_encoding::BASE64;
 use solana_tools_lite::adapters::io_adapter::read_mnemonic;
 use solana_tools_lite::adapters::io_adapter::read_text_source;
 use solana_tools_lite::adapters::io_adapter::{
-    read_input_transaction, read_secret_key_file, write_output_transaction,
+    read_input_transaction, read_secret_key_file, write_signed_transaction,
 };
 use solana_tools_lite::adapters::io_adapter::{read_message, read_pubkey, read_signature};
 #[path = "utils.rs"]
@@ -601,7 +601,7 @@ fn test_read_pubkey_nonexistent_file_has_path_context() {
     }
 }
 
-// Adapter: write_output_transaction writes via write_output (0644) and overwrites
+// Adapter: write_signed_transaction(JSON) writes via write_output (0644) and overwrites
 #[test]
 fn test_write_output_to_file_adapter() -> Result<()> {
     // Minimal valid UiTransaction via helper
@@ -619,10 +619,15 @@ fn test_write_output_to_file_adapter() -> Result<()> {
 
     let path = "test_write_adapter.json";
 
-    // First write (create)
-    write_output_transaction(&ui, OutputFormat::Json { pretty: false }, Some(path), false)?;
+    // Convert UiTransaction -> domain Transaction for adapter API
+    let tx = solana_tools_lite::models::transaction::Transaction::try_from(ui)
+        .expect("ui -> tx");
+
+    // First write (create) in JSON mode
+    write_signed_transaction(&tx, OutputFormat::Json { pretty: false }, Some(path), false)?;
     let content1 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
-    assert_eq!(content1, serde_json::to_string(&ui).unwrap());
+    let ui_again = solana_tools_lite::models::input_transaction::UiTransaction::from(&tx);
+    assert_eq!(content1, serde_json::to_string(&ui_again).unwrap());
 
     // Second write (overwrite) with different content
     let ui2 = test_utils::generate_ui_transaction(
@@ -636,10 +641,16 @@ fn test_write_output_to_file_adapter() -> Result<()> {
         vec![],
         "",
     );
-    write_output_transaction(&ui2, OutputFormat::Json { pretty: false }, Some(path), true)?;
+    // Overwrite with a different UiTransaction
+    let tx2 = solana_tools_lite::models::transaction::Transaction::try_from(ui2)
+        .expect("ui2 -> tx");
+    write_signed_transaction(&tx2, OutputFormat::Json { pretty: false }, Some(path), true)?;
 
     let content2 = std::fs::read_to_string(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
-    assert_eq!(content2, serde_json::to_string(&ui2).unwrap());
+    let ui2_again = solana_tools_lite::models::input_transaction::UiTransaction::from(&tx2);
+    assert_eq!(content2, serde_json::to_string(&ui2_again).unwrap());
+
+    println!("--- {:?}", ui2_again);
 
     std::fs::remove_file(path).map_err(|e| ToolError::Io(IoError::Io(e)))?;
     Ok(())

@@ -8,7 +8,7 @@ pub enum OutputFormat {
     Base64,
     Base58
 }
-
+//TODO: 🔴 6/9
 /// Serialize a `UiTransaction` according to the specified `OutputFormat`.
 /// Note: current semantics encode Base64/Base58 from JSON string representation.
 pub fn encode_ui_transaction(tx: &UiTransaction, format: OutputFormat) -> Result<String, TransactionParseError> {
