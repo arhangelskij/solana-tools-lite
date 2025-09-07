@@ -317,17 +317,6 @@ mod deserialize_tests {
         // Print signed transaction as Base64 (wire bytes)
         let signed_raw = serialize_transaction(&tx);
         println!("{}", BASE64.encode(&signed_raw));
-//TODO: 6/09 why ui_tx?
-        // Also print UiTransaction JSON encoded as Base64 via fmt
-        let ui_tx = solana_tools_lite::models::input_transaction::UiTransaction::from(&tx);
-        let ui_b64 = solana_tools_lite::serde::fmt::encode_ui_transaction(
-            &ui_tx,
-            solana_tools_lite::serde::fmt::OutputFormat::Base64,
-        )
-        .expect("encode ui tx to base64");
-        println!("{}", ui_b64);
-
-
         let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
         
         assert_eq!(
