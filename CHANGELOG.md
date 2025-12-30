@@ -2,6 +2,11 @@
 
 ## Ready for release
 
+## [0.1.1]
+
+- Docs: fix README installation commands and CLI examples (stdin/pipeline, jq snippets).
+- Release: bump core + CLI crates to `0.1.1` (no functional changes).
+
 ## [0.1.0]
 
 ### Added
