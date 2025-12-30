@@ -1,0 +1,389 @@
+#[cfg(test)]
+mod deserialize_tests {
+    use data_encoding::BASE64;
+    use solana_tools_lite::codec::{
+        deserialize_message_legacy, deserialize_message_v0, deserialize_transaction,
+        parse_instruction, read_shortvec_len, serialize_transaction, write_shortvec_len,
+    };
+    use solana_tools_lite::handlers::sign_tx::sign_transaction_by_key;
+
+    use solana_tools_lite::crypto::ed25519;
+
+    // Shortvec decoding: basic cases.
+
+    // Granular shortvec edge tests (easier to read + localize failures)
+    // Decodes zero length from single-byte shortvec encoding.
+    #[test]
+    fn shortvec_decodes_0() {
+        let (v, off) = read_shortvec_len(&[0]).unwrap();
+        assert_eq!((v, off), (0, 1));
+    }
+
+    // Decodes the maximum single-byte shortvec value.
+    #[test]
+    fn shortvec_decodes_127_single_byte() {
+        let (v, off) = read_shortvec_len(&[127]).unwrap();
+        assert_eq!((v, off), (127, 1));
+    }
+
+    // Decodes the first two-byte shortvec encoding (128).
+    #[test]
+    fn shortvec_decodes_128_two_bytes() {
+        // 128 -> 0x80 0x01 (first two-byte form)
+        let (v, off) = read_shortvec_len(&[0x80, 0x01]).unwrap();
+        assert_eq!((v, off), (128, 2));
+    }
+
+    // Decodes the maximum two-byte shortvec value.
+    #[test]
+    fn shortvec_decodes_16383_two_bytes() {
+        // 16_383 -> 0xFF 0x7F (max two-byte)
+        let (v, off) = read_shortvec_len(&[0xFF, 0x7F]).unwrap();
+        assert_eq!((v, off), (16_383, 2));
+    }
+
+    // Decodes the first three-byte shortvec encoding (16_384).
+    #[test]
+    fn shortvec_decodes_16384_three_bytes() {
+        // 16_384 -> 0x80 0x80 0x01 (first three-byte form)
+        let (v, off) = read_shortvec_len(&[0x80, 0x80, 0x01]).unwrap();
+        assert_eq!((v, off), (16_384, 3));
+    }
+
+    // deserialize_transaction: negative cases.
+
+    // Error when transaction byte slice is too short for declared signature count
+    #[test]
+    fn test_insufficient_data() {
+        let data = vec![1u8];
+        let result = deserialize_transaction(&data);
+        assert!(result.is_err());
+    }
+
+    // parse_instruction: basic cases.
+
+    // Simple instruction parse: one account, fixed data
+    #[test]
+    fn test_parse_instruction_simple() {
+        // program_id_index = 2, 1 account = [3], data = [0x01, 0x02]
+        let data = vec![
+            2, // program_id_index
+            1, // accounts_len
+            3, // account_index
+            2, // data_len
+            0x01, 0x02, // data
+        ];
+
+        let mut cursor = 0;
+        let instruction = parse_instruction(&data, &mut cursor).unwrap();
+
+        assert_eq!(instruction.program_id_index, 2);
+        assert_eq!(instruction.accounts, vec![3]);
+        assert_eq!(instruction.data, vec![0x01, 0x02]);
+        assert_eq!(cursor, data.len());
+    }
+
+    // deserialize_message: basic cases.
+
+    // Basic message deserialization: one account, no instruction data
+    #[test]
+    fn test_full_message_parsing() {
+        // Simple message: 1 account, 1 instruction.
+        let mut data = vec![
+            1, 0, 0, // header
+            1, // 1 account
+        ];
+
+        // Append pubkey (32 bytes).
+        data.extend_from_slice(&[1u8; 32]);
+
+        // Append blockhash (32 bytes).
+        data.extend_from_slice(&[2u8; 32]);
+
+        // 1 instruction.
+        data.extend_from_slice(&[
+            1, // instructions_count (compact-u16)
+            0, // program_id_index
+            0, // accounts_len
+            0, // data_len
+        ]);
+
+        let (message, consumed) = deserialize_message_legacy(&data).unwrap();
+        assert_eq!(message.header.num_required_signatures, 1);
+        assert_eq!(message.account_keys.len(), 1);
+        assert_eq!(message.instructions.len(), 1);
+        assert_eq!(consumed, data.len());
+    }
+
+    // Error on truncated shortvec encoding (missing continuation byte)
+    #[test]
+    fn test_shortvec_not_enough_bytes() {
+        let res = read_shortvec_len(&[0x80]);
+        assert!(res.is_err(), "expected error for truncated shortvec length");
+    }
+
+    // Error on program_id_index out of bounds in message parsing
+    #[test]
+    fn test_message_program_index_oob() {
+        // header: 1 required sig, 0/0 readonly
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 1 (out of bounds, since only 1 account -> valid indices: 0)
+        data.push(1);
+        // accounts_len = 0
+        data.push(0);
+        // data_len = 0
+        data.push(0);
+
+        let res = deserialize_message_legacy(&data);
+        assert!(
+            res.is_err(),
+            "expected error due to program_id_index out of bounds"
+        );
+    }
+
+    // Error on account index out of bounds within instruction
+    #[test]
+    fn test_message_account_index_oob() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 0 (ok)
+        data.push(0);
+        // accounts_len = 1
+        data.push(1);
+        // accounts: index 5 (out of bounds)
+        data.push(5);
+        // data_len = 0
+        data.push(0);
+
+        let res = deserialize_message_legacy(&data);
+        assert!(
+            res.is_err(),
+            "expected error due to account index out of bounds"
+        );
+    }
+
+    // shortvec: extra negatives / limits.
+    // Error on overly long shortvec encoding (>3 bytes)
+    #[test]
+    fn test_shortvec_too_long_encoding_err() {
+        // 4-byte continuation should be rejected by solana-short-vec (u16 max, up to 3 bytes)
+        let res = read_shortvec_len(&[0x80, 0x80, 0x80, 0x01]);
+        assert!(
+            res.is_err(),
+            "expected error for length encoded with >3 bytes"
+        );
+    }
+
+    // deserialize_message_legacy: error on missing header bytes
+    #[test]
+    fn test_legacy_missing_header_bytes() {
+        let res = deserialize_message_legacy(&[1u8, 0u8]);
+        assert!(res.is_err(), "expected header length error");
+    }
+
+    // Transaction / Message: positive and negative cases.
+    // Deserialize minimal multisig transaction with two signatures
+    #[test]
+    fn test_deserialize_transaction_multisig_minimal() {
+        // signatures_count = 2
+        let mut data: Vec<u8> = vec![2];
+        // 2 signatures (2 * 64 bytes)
+        data.extend_from_slice(&[0u8; 64]);
+        data.extend_from_slice(&[0u8; 64]);
+
+        // Message
+        // header: 2 required signatures, 0/0 readonly
+        data.extend_from_slice(&[2, 0, 0]);
+        // accounts_count = 2
+        data.push(2);
+        // 2 pubkeys (2 * 32)
+        data.extend_from_slice(&[1u8; 32]);
+        data.extend_from_slice(&[2u8; 32]);
+        // recent_blockhash (32 bytes)
+        data.extend_from_slice(&[3u8; 32]);
+        // instructions_count = 0
+        data.push(0);
+
+        let tx = deserialize_transaction(&data).expect("must parse minimal multisig tx");
+        assert_eq!(tx.signatures.len(), 2);
+        assert_eq!(tx.message.header().num_required_signatures, 2);
+        assert_eq!(tx.message.account_keys().len(), 2);
+        assert!(tx.message.instructions().is_empty());
+    }
+
+    // Error on truncated recent_blockhash field
+    #[test]
+    fn test_message_truncated_blockhash() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey (32 bytes)
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash – truncate intentionally: only 10 bytes
+        data.extend_from_slice(&[0u8; 10]);
+
+        let res = deserialize_message_legacy(&data);
+        assert!(res.is_err(), "expected error due to truncated blockhash");
+    }
+
+    // Error on truncated instruction data (length mismatch)
+    #[test]
+    fn test_message_truncated_instruction_data() {
+        // header
+        let mut data = vec![1, 0, 0];
+        // accounts_count = 1
+        data.push(1);
+        // 1 pubkey
+        data.extend_from_slice(&[0u8; 32]);
+        // recent_blockhash
+        data.extend_from_slice(&[0u8; 32]);
+        // instructions_count = 1
+        data.push(1);
+        // instruction:
+        // program_id_index = 0
+        data.push(0);
+        // accounts_len = 0
+        data.push(0);
+        // data_len = 2, but we will provide only 1 byte
+        data.push(2);
+        data.push(0xAA);
+
+        let res = deserialize_message_legacy(&data);
+        assert!(
+            res.is_err(),
+            "expected error due to truncated instruction data"
+        );
+    }
+
+    // Main test: deserialize provided Base64 transaction fixture.
+    // Note: static Base64 fixture originally exported from Solana SDK (no SDK dependency here)
+    #[test]
+    fn test_deserialize_provided_base64_tx() {
+        // Unsigned Tx from the Solana SDK
+        let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAED4viKcSXOZTHLc68aIq0QRoeJ7pPCtJIumjEv636+oX/NLoC2Z66TEsGaE4CkHQIC/XLT0yZ7mSg2EtNl+5KzsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgIAAQwCAAAAQEIPAAAAAAA=";
+        let raw = BASE64
+            .decode(b64.as_bytes())
+            .expect("failed to decode base64 transaction");
+        let tx = deserialize_transaction(&raw).expect("failed to deserialize transaction");
+        // Sanity checks
+        assert!(!tx.signatures.is_empty(), "expected at least one signature");
+        assert!(
+            !tx.message.account_keys().is_empty(),
+            "expected at least one account key"
+        );
+        assert!(
+            !tx.message.instructions().is_empty(),
+            "expected at least one instruction"
+        );
+    }
+    // Utility test: generate signed transaction Base64.
+    #[test]
+    fn test_roundtrip_serde_base64_tx() {
+        // Derive deterministic keypair from a fixed secret (all ones)
+        let seed = [1u8; 32];
+        let keypair = ed25519::keypair_from_seed(&seed).unwrap();
+
+        // Use provided Base64-encoded unsigned tx fixture
+        let b64 = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEDiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkBAgIAAQwCAAAAQEIPAAAAAAA=";
+        let raw = BASE64.decode(b64.as_bytes()).expect("decode unsigned tx");
+        let mut tx: solana_tools_lite::models::transaction::Transaction =
+            deserialize_transaction(&raw).expect("failed to deserialize transaction");
+
+        let tx_raw_again = serialize_transaction(&tx);
+        assert_eq!(raw, tx_raw_again);
+
+        sign_transaction_by_key(&mut tx, &keypair).unwrap();
+
+        // Print signed transaction as Base64 (wire bytes)
+        let signed_raw = serialize_transaction(&tx);
+        println!("{}", BASE64.encode(&signed_raw));
+        let sig_bytes = bs58::encode(tx.signatures[0].to_bytes()).into_string();
+
+        assert_eq!(
+            sig_bytes,
+            "5uqmwQq2f3DhLAU9Mwa51GzByKR6NrKkxELeibhs1r3PU2KdiucpBTLw2Q7o43E3VxTtUod1ksXpy8oebvNrvyLb"
+        );
+    }
+
+    // deserialize_message_v0: error on empty input
+    #[test]
+    fn test_v0_missing_version_byte() {
+        let res = deserialize_message_v0(&[]);
+        assert!(res.is_err(), "expected missing version error");
+    }
+
+    // deserialize_message_v0: error on missing header bytes
+    #[test]
+    fn test_v0_missing_header_bytes() {
+        let res = deserialize_message_v0(&[0x80, 1]);
+        assert!(res.is_err(), "expected header length error");
+    }
+
+    // deserialize_message_v0: error on missing pubkey bytes
+    #[test]
+    fn test_v0_missing_pubkey_bytes() {
+        let mut msg_bytes = Vec::new();
+        msg_bytes.push(0x80); // version 0
+        msg_bytes.extend_from_slice(&[1, 0, 1]); // header
+        write_shortvec_len(1, &mut msg_bytes); // one account key
+        msg_bytes.push(1); // incomplete pubkey bytes
+
+        let res = deserialize_message_v0(&msg_bytes);
+        assert!(res.is_err(), "expected pubkey length error");
+    }
+
+    // deserialize_message_v0: error on invalid prefix
+    #[test]
+    fn test_v0_invalid_prefix() {
+        let res = deserialize_message_v0(&[0x00]);
+        assert!(res.is_err(), "expected invalid prefix error");
+    }
+
+    // deserialize_message_v0: error on unsupported version
+    #[test]
+    fn test_v0_unsupported_version() {
+        let res = deserialize_message_v0(&[0x81]);
+        assert!(res.is_err(), "expected unsupported version error");
+    }
+
+    // deserialize_message_v0: program_id_index out of bounds
+    #[test]
+    fn test_v0_program_id_index_oob() {
+        let mut msg_bytes = Vec::new();
+        msg_bytes.push(0x80); // version 0
+        msg_bytes.extend_from_slice(&[1, 0, 1]); // header
+
+        write_shortvec_len(1, &mut msg_bytes); // one account key
+        msg_bytes.extend_from_slice(&[1u8; 32]);
+        msg_bytes.extend_from_slice(&[2u8; 32]); // blockhash
+
+        write_shortvec_len(1, &mut msg_bytes); // one instruction
+        msg_bytes.push(2); // program_id_index (oob)
+        write_shortvec_len(0, &mut msg_bytes); // accounts len
+        write_shortvec_len(0, &mut msg_bytes); // data len
+
+        write_shortvec_len(0, &mut msg_bytes); // no lookups
+
+        let res = deserialize_message_v0(&msg_bytes);
+        assert!(res.is_err(), "expected program_id_index oob");
+    }
+}

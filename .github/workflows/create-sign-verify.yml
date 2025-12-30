@@ -1,0 +1,124 @@
+name: Create + Sign + Verify (SDK)
+
+on:
+  # Manual run remains available
+  workflow_dispatch:
+    inputs:
+      to_pubkey:
+        description: 'To public key'
+        required: true
+        type: string
+        default: '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL'
+      amount_lamports:
+        description: 'Amount in lamports'
+        required: true
+        type: string
+        default: '1000000'
+      rpc_url:
+        description: 'Solana RPC URL'
+        required: false
+        type: string
+        default: 'https://api.devnet.solana.com'
+  # Auto-run on merge/push to main
+  push:
+    branches: [ main ]
+
+jobs:
+  sign-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install JS deps
+        run: |
+          npm init -y
+          npm install @solana/web3.js bs58
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build solana-tools-lite-cli
+        run: cargo build -p solana-tools-lite-cli --release
+
+      - name: Write signer keypair file from secret
+        env:
+          SIGNER_KEYPAIR_JSON: ${{ secrets.SIGNER_KEYPAIR_JSON }}
+        run: |
+          test -n "$SIGNER_KEYPAIR_JSON" || { echo "Secret SIGNER_KEYPAIR_JSON is not set"; exit 1; }
+          echo "$SIGNER_KEYPAIR_JSON" > kp.json
+          chmod 600 kp.json
+          echo "Using pubkey: $(node -e "console.log(JSON.parse(require('fs').readFileSync('kp.json','utf8')).publicKey)")"
+
+      - name: Create unsigned tx (JS SDK)
+        env:
+          TO_PUBKEY: ${{ inputs.to_pubkey }}
+          AMOUNT_LAMPORTS: ${{ inputs.amount_lamports }}
+          RPC_URL: ${{ inputs.rpc_url }}
+        run: |
+          cat > create_unsigned_tx.mjs <<'JS'
+          import { Connection, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
+          import fs from 'fs';
+
+          async function main() {
+            const conn = new Connection(process.env.RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
+
+            // Read signer pubkey from kp.json secret
+            const kp = JSON.parse(fs.readFileSync('kp.json', 'utf-8'));
+            const from = new PublicKey(kp.publicKey);
+
+            // Fallback to default recipient when inputs are not provided (e.g., push to main)
+            const to = new PublicKey(process.env.TO_PUBKEY || '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL');
+            const lamports = parseInt(process.env.AMOUNT_LAMPORTS || '1000000', 10);
+
+            const tx = new Transaction().add(
+              SystemProgram.transfer({ fromPubkey: from, toPubkey: to, lamports })
+            );
+            const { blockhash } = await conn.getLatestBlockhash('confirmed');
+            tx.recentBlockhash = blockhash;
+            tx.feePayer = from;
+
+            const b64 = tx
+              .serialize({ requireAllSignatures: false, verifySignatures: false })
+              .toString('base64');
+            fs.writeFileSync('unsigned.b64', b64);
+            console.log('Unsigned tx (base64):', b64);
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node create_unsigned_tx.mjs
+
+      - name: Sign with solana-tools-lite (wire/Base64)
+        run: |
+          target/release/stl sign-tx \
+            --input unsigned.b64 \
+            --keypair kp.json \
+            --output tool_signed.b64 \
+            --output-format base64 \
+            --force \
+            --yes
+
+      - name: Verify signed tx with JS SDK
+        run: |
+          cat > verify_tx.mjs <<'JS'
+          import fs from 'fs';
+          import { Transaction } from '@solana/web3.js';
+
+          async function main() {
+            const signedBase64 = fs.readFileSync('tool_signed.b64', 'utf-8').trim();
+            const raw = Buffer.from(signedBase64, 'base64');
+            const tx = Transaction.from(raw);
+            const isValid = tx.verifySignatures();
+            console.log(`Sign is valid: ${isValid ? '✅' : '❌'}`);
+            if (!isValid) process.exit(1);
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node verify_tx.mjs

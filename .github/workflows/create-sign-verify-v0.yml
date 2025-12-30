@@ -1,0 +1,135 @@
+name: Create + Sign + Verify V0 (SDK)
+
+on:
+  workflow_dispatch:
+    inputs:
+      to_pubkey:
+        description: 'To public key'
+        required: true
+        type: string
+        default: '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL'
+      amount_lamports:
+        description: 'Amount in lamports'
+        required: true
+        type: string
+        default: '1000000'
+      rpc_url:
+        description: 'Solana RPC URL'
+        required: false
+        type: string
+        default: 'https://api.devnet.solana.com'
+  push:
+    branches: [ main ]
+
+jobs:
+  sign-and-verify-v0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install JS deps
+        run: |
+          npm init -y
+          npm install @solana/web3.js bs58 tweetnacl
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build solana-tools-lite-cli
+        run: cargo build -p solana-tools-lite-cli --release
+
+      - name: Write signer keypair file from secret
+        env:
+          SIGNER_KEYPAIR_JSON: ${{ secrets.SIGNER_KEYPAIR_JSON }}
+        run: |
+          test -n "$SIGNER_KEYPAIR_JSON" || { echo "Secret SIGNER_KEYPAIR_JSON is not set"; exit 1; }
+          echo "$SIGNER_KEYPAIR_JSON" > kp.json
+          chmod 600 kp.json
+          echo "Using pubkey: $(node -e "console.log(JSON.parse(require('fs').readFileSync('kp.json','utf8')).publicKey)")"
+
+      - name: Create unsigned v0 tx (JS SDK)
+        env:
+          TO_PUBKEY: ${{ inputs.to_pubkey }}
+          AMOUNT_LAMPORTS: ${{ inputs.amount_lamports }}
+          RPC_URL: ${{ inputs.rpc_url }}
+        run: |
+          cat > create_unsigned_v0.mjs <<'JS'
+          import { Connection, SystemProgram, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
+          import fs from 'fs';
+
+          async function main() {
+            const conn = new Connection(process.env.RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
+            const kp = JSON.parse(fs.readFileSync('kp.json', 'utf-8'));
+            const from = new PublicKey(kp.publicKey);
+            const to = new PublicKey(process.env.TO_PUBKEY || '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL');
+            const lamports = parseInt(process.env.AMOUNT_LAMPORTS || '1000000', 10);
+
+            const ix = SystemProgram.transfer({ fromPubkey: from, toPubkey: to, lamports });
+            const { blockhash } = await conn.getLatestBlockhash('confirmed');
+
+            const msg = new TransactionMessage({
+              payerKey: from,
+              recentBlockhash: blockhash,
+              instructions: [ix],
+            }).compileToV0Message();
+
+            const tx = new VersionedTransaction(msg);
+            const b64 = Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64');
+            fs.writeFileSync('unsigned_v0.b64', b64);
+            console.log('Unsigned v0 tx (base64):', b64);
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node create_unsigned_v0.mjs
+
+      - name: Sign v0 with solana-tools-lite (wire/Base64)
+        run: |
+          target/release/stl sign-tx \
+            --input unsigned_v0.b64 \
+            --keypair kp.json \
+            --output tool_signed_v0.b64 \
+            --output-format base64 \
+            --force \
+            --yes
+
+      - name: Verify signed v0 tx with JS SDK
+        run: |
+          cat > verify_v0.mjs <<'JS'
+          import fs from 'fs';
+          import { VersionedTransaction } from '@solana/web3.js';
+          import nacl from 'tweetnacl';
+
+          async function main() {
+            const signedBase64 = fs.readFileSync('tool_signed_v0.b64', 'utf-8').trim();
+            const raw = Buffer.from(signedBase64, 'base64');
+            const tx = VersionedTransaction.deserialize(raw);
+            
+            const messageBytes = tx.message.serialize();
+            let allValid = true;
+            
+            // Verify each signature
+            for (let i = 0; i < tx.signatures.length; i++) {
+              const signature = tx.signatures[i];
+              // In V0, staticAccountKeys are the first keys, signers are at the start
+              const pubkey = tx.message.staticAccountKeys[i];
+              if (!pubkey) continue;
+              
+              const valid = nacl.sign.detached.verify(messageBytes, signature, pubkey.toBytes());
+              console.log(`Pubkey ${pubkey.toBase58()}: ${valid ? '✅' : '❌'}`);
+              if (!valid) allValid = false;
+            }
+            
+            console.log(`Overall Valid: ${allValid ? '✅' : '❌'}`);
+            if (!allValid) process.exit(1);
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node verify_v0.mjs

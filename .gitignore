@@ -1,0 +1,20 @@
+# === Rust build artifacts ===
+# Ignore workspace target
+target/
+
+# Per-crate lock files for library crates (optional; workspace will have one at root if used)
+solana-tools-lite/Cargo.lock
+
+# VSCode
+.vscode/
+/.idea/
+*.code-workspace
+
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+
+# Common debug folders outside target
+**/debug/

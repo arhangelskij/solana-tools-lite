@@ -1,0 +1,428 @@
+name: e2e Create + Sign + Verify V0 + send to Devnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      to_pubkey:
+        description: 'To public key'
+        required: true
+        type: string
+        default: '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL'
+      amount_lamports:
+        description: 'Amount in lamports'
+        required: true
+        type: string
+        default: '1000000'
+      rpc_url:
+        description: 'Solana RPC URL'
+        required: false
+        type: string
+        default: 'https://api.devnet.solana.com'
+  push:
+    branches: [ main ]
+
+jobs:
+  sign-and-broadcast-v0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install JS deps
+        run: |
+          npm init -y
+          npm install @solana/web3.js bs58 tweetnacl
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build solana-tools-lite-cli
+        run: cargo build -p solana-tools-lite-cli --release
+
+      - name: Write signer keypair file from secret
+        env:
+          SIGNER_KEYPAIR_JSON: ${{ secrets.SIGNER_KEYPAIR_JSON }}
+        run: |
+          test -n "$SIGNER_KEYPAIR_JSON" || { echo "Secret SIGNER_KEYPAIR_JSON is not set"; exit 1; }
+          echo "$SIGNER_KEYPAIR_JSON" > kp.json
+          chmod 600 kp.json
+          echo "Using pubkey: $(node -e "console.log(JSON.parse(require('fs').readFileSync('kp.json','utf8')).publicKey)")"
+
+      - name: Create unsigned v0 tx (JS SDK)
+        env:
+          TO_PUBKEY: ${{ inputs.to_pubkey }}
+          AMOUNT_LAMPORTS: ${{ inputs.amount_lamports }}
+          RPC_URL: ${{ inputs.rpc_url }}
+        run: |
+          cat > create_unsigned_v0.mjs <<'JS'
+          import { 
+            Connection, 
+            SystemProgram, 
+            PublicKey, 
+            TransactionMessage, 
+            VersionedTransaction, 
+            AddressLookupTableProgram,
+            Transaction
+          } from '@solana/web3.js';
+          import fs from 'fs';
+
+          async function confirm(conn, sig) {
+            const latest = await conn.getLatestBlockhash();
+            await conn.confirmTransaction({ signature: sig, ...latest }, 'confirmed');
+          }
+
+          async function loadKeypair(filePath) {
+            const content = fs.readFileSync(filePath, 'utf-8').trim();
+            
+            let json;
+            try {
+              json = JSON.parse(content);
+            } catch (e) {
+              // Maybe it's a raw string without quotes?
+              json = content; 
+            }
+
+            let secretKey;
+            
+            // Handle simple string (Base58 or Base64)
+            if (typeof json === 'string') {
+              // Try Base58 first (common for Phantom export)
+              try {
+                 const bs58 = (await import('bs58')).default;
+                 secretKey = bs58.decode(json);
+              } catch (e) {
+                 // Try Base64
+                 secretKey = new Uint8Array(Buffer.from(json, 'base64'));
+              }
+            } 
+            // Handle JSON Array [1,2,3...]
+            else if (Array.isArray(json)) {
+              secretKey = new Uint8Array(json);
+            } 
+            // Handle JSON Object where secretKey might be a string (Base58) or array
+            else if (json.secretKey) {
+              if (typeof json.secretKey === 'string') {
+                 try {
+                   const bs58 = (await import('bs58')).default;
+                   secretKey = bs58.decode(json.secretKey);
+                 } catch (e) {
+                   secretKey = new Uint8Array(Buffer.from(json.secretKey, 'base64'));
+                 }
+              } else {
+                 secretKey = new Uint8Array(Object.values(json.secretKey));
+              }
+            } else if (json._keypair && json._keypair.secretKey) {
+              secretKey = new Uint8Array(Object.values(json._keypair.secretKey));
+            } else {
+              throw new Error('Could not find secretKey in JSON (expected String, Array, or object with .secretKey)');
+            }
+
+            console.log(`Loaded key with length: ${secretKey.length} bytes`);
+            
+            const { Keypair } = await import('@solana/web3.js');
+            if (secretKey.length === 64) {
+              return Keypair.fromSecretKey(secretKey);
+            } else if (secretKey.length === 32) {
+              console.log('Secret is 32 bytes, assuming Seed...');
+              return Keypair.fromSeed(secretKey);
+            } else {
+              throw new Error(`Invalid secret key size: ${secretKey.length} (expected 32 or 64)`);
+            }
+          }
+
+          async function main() {
+            const rpc = process.env.RPC_URL || 'https://api.devnet.solana.com';
+            console.log('Connecting to', rpc);
+            const conn = new Connection(rpc, 'confirmed');
+
+            const kp = await loadKeypair('kp.json');
+            const payer = kp.publicKey;
+            console.log('Payer:', payer.toBase58());
+            
+            // Robust airdrop function
+            const requestAirdrop = async (pubkey) => {
+              const RETRIES = 3;
+              for (let i = 0; i < RETRIES; i++) {
+                try {
+                  console.log(`Requesting airdrop (attempt ${i + 1}/${RETRIES})...`);
+                  const sig = await conn.requestAirdrop(pubkey, 100_000_000); // 0.1 SOL
+                  await confirm(conn, sig);
+                  console.log('Airdrop successful');
+                  return;
+                } catch (e) {
+                  console.warn(`Airdrop attempt ${i + 1} failed:`, e.message);
+                  if (i === RETRIES - 1) console.warn('Proceeding with existing balance...');
+                  await new Promise(r => setTimeout(r, 2000));
+                }
+              }
+            };
+
+            // Check balance and airdrop if critical (< 0.05 SOL)
+            if (rpc.includes('devnet')) {
+              const bal = await conn.getBalance(payer);
+              console.log(`Current balance: ${bal/1e9} SOL`);
+              // Need roughly: 0.002 (ALT rent) + 0.001 (tx fees) ~= 0.003 minimum. 
+              // We ask for 0.1 if below 0.05 to be safe.
+              if (bal < 50_000_000) { 
+                 await requestAirdrop(payer);
+              }
+            }
+
+            const to = new PublicKey(process.env.TO_PUBKEY || '7H1ozjm7CigpRPCDpnb3116cQTkH8UAhMQHQWET8N3vL');
+            const lamports = parseInt(process.env.AMOUNT_LAMPORTS || '1000000', 10);
+
+            // 1. Create Address Lookup Table
+            console.log('Creating Address Lookup Table...');
+            // Use 'finalized' slot to avoid "is not a recent slot" errors
+            const slot = await conn.getSlot('finalized'); 
+            const [lookupTableInst, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
+              authority: payer,
+              payer: payer,
+              recentSlot: slot,
+            });
+
+            // 2. Extend ALT with 'to' address
+            const extendInst = AddressLookupTableProgram.extendLookupTable({
+              payer: payer,
+              authority: payer,
+              lookupTable: lookupTableAddress,
+              addresses: [to],
+            });
+
+            // Send setup tx (using legacy or v0, just needs to work)
+            const setupTx = new Transaction().add(lookupTableInst, extendInst);
+            setupTx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+            setupTx.feePayer = payer;
+            
+            // We need to sign this setup tx with the secret key we have
+            // But we don't have the Keypair object loaded (only JSON). 
+            // We can construct Keypair from secretKey bytes.
+            const secretKey = new Uint8Array(kp.secretKey ? Object.values(kp.secretKey) : []); 
+            // OR if secretKey field is missing but we have it... 
+            // Wait, kp.json from `solana-keygen new` usually has just array of numbers, or [numbers].
+            // If it is array:
+            const kpArr = Array.isArray(kp) ? kp : (kp.secretKey ? Object.values(kp.secretKey) : []);
+            const { Keypair } = await import('@solana/web3.js'); // dynamic import or just use what we have
+            const signerKeypair = Keypair.fromSecretKey(new Uint8Array(kpArr));
+
+            setupTx.sign(signerKeypair);
+            const setupSig = await conn.sendRawTransaction(setupTx.serialize());
+            console.log('Setup ALT tx:', setupSig);
+            await confirm(conn, setupSig);
+
+            console.log('ALT created at:', lookupTableAddress.toBase58());
+            
+            // Wait for ALT to be active (sometimes takes a slot or two, confirm handles it?)
+            // Fetch ALT
+            const lookupTableAccount = (await conn.getAddressLookupTable(lookupTableAddress)).value;
+            if (!lookupTableAccount) throw new Error("Failed to fetch ALT");
+            console.log('ALT addresses:', lookupTableAccount.state.addresses.map(k=>k.toBase58()));
+
+            // 3. Create Transfer using ALT
+            const ix = SystemProgram.transfer({ fromPubkey: payer, toPubkey: to, lamports });
+            
+            const latestBlockhash = await conn.getLatestBlockhash('confirmed');
+            const { blockhash, lastValidBlockHeight } = latestBlockhash;
+            
+            const msg = new TransactionMessage({
+              payerKey: payer,
+              recentBlockhash: blockhash,
+              instructions: [ix],
+            }).compileToV0Message([lookupTableAccount]);
+
+            const tx = new VersionedTransaction(msg);
+            
+            // Serialize
+            // requireAllSignatures: false (since 'payer' not signed yet)
+            const b64 = Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64');
+            fs.writeFileSync('unsigned_v0.b64', b64);
+            const metaPayload = { blockhash, lastValidBlockHeight };
+            fs.writeFileSync('unsigned_v0.meta.json', JSON.stringify(metaPayload, null, 2));
+            console.log('Unsigned v0 tx with ALT (base64):', b64);
+            console.log('Saved blockhash metadata:', JSON.stringify(metaPayload));
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node create_unsigned_v0.mjs
+
+      - name: Sign v0 with solana-tools-lite (wire/Base64)
+        run: |
+          target/release/stl sign-tx \
+            --input unsigned_v0.b64 \
+            --keypair kp.json \
+            --output tool_signed_v0.b64 \
+            --output-format base64 \
+            --force \
+            --yes
+
+      - name: Verify signed v0 tx with JS SDK
+        run: |
+          cat > verify_v0.mjs <<'JS'
+          import fs from 'fs';
+          import { VersionedTransaction } from '@solana/web3.js';
+          import nacl from 'tweetnacl';
+
+          async function main() {
+            const signedBase64 = fs.readFileSync('tool_signed_v0.b64', 'utf-8').trim();
+            const raw = Buffer.from(signedBase64, 'base64');
+            const tx = VersionedTransaction.deserialize(raw);
+            console.log('Transaction Version:', tx.version);
+            
+            const messageBytes = tx.message.serialize();
+            let allValid = true;
+            
+            // Verify each signature
+            for (let i = 0; i < tx.signatures.length; i++) {
+              const signature = tx.signatures[i];
+              // In V0, staticAccountKeys are the first keys, signers are at the start
+              const pubkey = tx.message.staticAccountKeys[i];
+              if (!pubkey) continue;
+              
+              const valid = nacl.sign.detached.verify(messageBytes, signature, pubkey.toBytes());
+              console.log(`Pubkey ${pubkey.toBase58()}: ${valid ? '✅' : '❌'}`);
+              if (!valid) allValid = false;
+            }
+            
+            console.log(`Overall Valid: ${allValid ? '✅' : '❌'}`);
+            if (!allValid) process.exit(1);
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node verify_v0.mjs
+
+      - name: Broadcast signed v0 tx to cluster
+        env:
+          RPC_URL: ${{ inputs.rpc_url }}
+        run: |
+          cat > broadcast_v0.mjs <<'JS'
+          import fs from 'fs';
+          import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
+
+          async function ensureAirdropIfDevnet(conn, pubkey) {
+            const url = conn.rpcEndpoint ?? '';
+            if (!url.includes('devnet')) {
+              console.log('Not devnet, skipping airdrop');
+              return;
+            }
+            try {
+              const bal = await conn.getBalance(pubkey);
+              console.log(`Current balance: ${bal} lamports (${bal / 1e9} SOL)`);
+              if (bal < 5_000_000) {
+                console.log('Requesting airdrop of 0.1 SOL...');
+                const sig = await conn.requestAirdrop(pubkey, 100_000_000);
+                await conn.confirmTransaction(sig, 'confirmed');
+                const newBal = await conn.getBalance(pubkey);
+                console.log(`New balance after airdrop: ${newBal} lamports (${newBal / 1e9} SOL)`);
+              }
+            } catch (e) {
+              console.warn('Airdrop failed:', e?.message || e);
+            }
+          }
+
+          async function main() {
+            const rpc = process.env.RPC_URL || 'https://api.devnet.solana.com';
+            const conn = new Connection(rpc, 'confirmed');
+            console.log('Using RPC:', rpc);
+
+            const kp = JSON.parse(fs.readFileSync('kp.json','utf8'));
+            const feePayer = new PublicKey(kp.publicKey);
+            console.log('Fee payer:', feePayer.toBase58());
+
+            await ensureAirdropIfDevnet(conn, feePayer);
+
+            if (!fs.existsSync('unsigned_v0.meta.json')) {
+              throw new Error('Missing unsigned_v0.meta.json; cannot confirm original blockhash');
+            }
+            const signedBase64 = fs.readFileSync('tool_signed_v0.b64', 'utf-8').trim();
+            const meta = JSON.parse(fs.readFileSync('unsigned_v0.meta.json','utf8'));
+            const { blockhash: txBlockhash, lastValidBlockHeight } = meta;
+
+            const raw = Buffer.from(signedBase64, 'base64');
+            const tx = VersionedTransaction.deserialize(raw);
+
+            console.log('Starting custom broadcast loop...');
+            
+            // Re-serialize immediately to get raw bytes for sending
+            const rawTx = tx.serialize();
+            
+            if (tx.message.recentBlockhash !== txBlockhash) {
+              console.warn('Warning: tx blockhash mismatch between metadata and transaction');
+            }
+
+            const startHeight = await conn.getBlockHeight();
+            console.log(`Current block height: ${startHeight}, last valid: ${lastValidBlockHeight}`);
+            if (startHeight > lastValidBlockHeight) {
+              throw new Error(`Blockhash expired before broadcast (current ${startHeight} > ${lastValidBlockHeight})`);
+            }
+            
+            // Usually valid for 150 blocks (~60s)
+            let retries = 0;
+            const MAX_RETRIES = 30; // 30 * 2s = 60s
+            
+            let txid;
+            try {
+              txid = await conn.sendRawTransaction(rawTx, { skipPreflight: false });
+            } catch (e) {
+              console.error("Initial send failed:", e.message);
+              // Maybe already confirmed? check logs
+              throw e;
+            }
+            
+            console.log('Initial Signature:', txid);
+            
+            while (retries < MAX_RETRIES) {
+              const status = await conn.getSignatureStatus(txid);
+              if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
+                console.log('✅ Transaction confirmed!');
+                break;
+              }
+              
+              if (status.value?.err) {
+                 throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`);
+              }
+              
+              // Check expiration
+              const currentHeight = await conn.getBlockHeight();
+              if (currentHeight > lastValidBlockHeight) {
+                throw new Error(`Blockhash expired before confirmation (current ${currentHeight} > ${lastValidBlockHeight})`);
+              }
+              // Blockhash validity check (heuristic)
+              // If we don't know lastValidBlockHeight from creation, we just guess.
+              // But real expiration comes from 'confirmTransaction'.
+              
+              console.log(`Retry ${retries+1}/${MAX_RETRIES}... status: ${status.value?.confirmationStatus}`);
+              try {
+                // Re-broadcast
+                 await conn.sendRawTransaction(rawTx, { skipPreflight: true, maxRetries: 0 });
+              } catch (e) { /* ignore re-broadcast errors */ }
+              
+              await new Promise(r => setTimeout(r, 2000));
+              retries++;
+            }
+            
+            // Final confirmation check with strict strategy
+            try {
+               await conn.confirmTransaction(
+                 { signature: txid, blockhash: txBlockhash, lastValidBlockHeight },
+                 'confirmed'
+               );
+               console.log('✅ Transaction Verified Finalized:', txid);
+               if (rpc.includes('devnet')) {
+                 console.log(`Explorer: https://solscan.io/tx/${txid}?cluster=devnet`);
+               }
+            } catch (e) {
+               console.error("Confirmation failed (might be expired):", e.message);
+               process.exit(1);
+            }
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          JS
+
+          node broadcast_v0.mjs
