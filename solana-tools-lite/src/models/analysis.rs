@@ -1,3 +1,4 @@
+use crate::models::extensions::ExtensionAction;
 use crate::models::pubkey_base58::PubkeyBase58;
 use serde::Serialize;
 
@@ -13,6 +14,10 @@ pub struct TxAnalysis {
     pub compute_unit_price_micro: Option<u64>,
     pub warnings: Vec<AnalysisWarning>,
     pub message_version: &'static str,
+    /// Privacy level of this transaction based on detected confidential operations
+    pub privacy_level: PrivacyLevel,
+    /// Actions detected by protocol extensions (e.g. Light Protocol).
+    pub extension_actions: Vec<ExtensionAction>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +43,7 @@ pub struct SigningSummary {
     pub total_send_by_signer: u64,
     pub max_total_cost_lamports: u64,
     pub warnings: Vec<AnalysisWarning>,
+    pub extension_actions: Vec<ExtensionAction>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,4 +58,11 @@ pub enum AnalysisWarning {
 pub enum TokenProgramKind {
     SplToken,
     Token2022,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub enum PrivacyLevel {
+    Public,
+    Hybrid,
+    Confidential,
 }

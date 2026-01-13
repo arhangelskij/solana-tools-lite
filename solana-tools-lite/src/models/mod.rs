@@ -7,6 +7,7 @@ pub mod analysis;
 pub mod pubkey_base58;
 pub mod results;
 pub mod transaction;
+pub mod extensions;
 
 /// 32-byte blockhash wrapper encoded in Base58.
 pub use crate::models::hash_base58::HashBase58;

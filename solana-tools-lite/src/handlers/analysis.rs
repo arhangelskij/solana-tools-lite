@@ -1,8 +1,11 @@
 use crate::codec::serialize_transaction;
 use crate::constants::{compute_budget, programs};
+use crate::extensions::light_protocol::LightProtocol;
+use crate::extensions::traits::ProtocolAnalyzer;
 use crate::models::analysis::{
-    AnalysisWarning, SigningSummary, TokenProgramKind, TransferView, TxAnalysis,
+    AnalysisWarning, PrivacyLevel, SigningSummary, TokenProgramKind, TransferView, TxAnalysis,
 };
+use crate::models::extensions::ExtensionAction;
 use crate::models::message::{Message, MessageAddressTableLookup};
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::Transaction;
@@ -23,6 +26,18 @@ const COMPUTE_UNIT_LIMIT_LEN: usize = 4;
 const COMPUTE_UNIT_PRICE_LEN: usize = 8;
 const MICRO_LAMPORTS_PER_LAMPORT: u128 = 1_000_000;
 
+/// Internal state used to collect metrics and flags during transaction analysis.
+#[derive(Default)]
+struct AnalysisState {
+    transfers: Vec<TransferView>,
+    total_send_by_signer: u128,
+    saw_token_spl: bool,
+    saw_token_2022: bool,
+    cu_price_micro: Option<u64>,
+    cu_limit: Option<u32>,
+    extension_actions: Vec<ExtensionAction>,
+}
+
 /// Analyze a message to produce fee estimates, transfers, and warnings.
 ///
 /// For v0 messages, resolves loaded accounts using lookup tables when provided.
@@ -32,12 +47,12 @@ pub fn analyze_transaction(
     signer: &PubkeyBase58,
     tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
 ) -> TxAnalysis {
-    let mut transfers = Vec::new();
-    let mut total_send_by_signer: u128 = 0;
+    let mut state = AnalysisState::default();
     let mut warnings = Vec::new();
     let mut unknown_programs: HashSet<PubkeyBase58> = HashSet::new();
-    let mut saw_token_spl = false;
-    let mut saw_token_2022 = false;
+    
+    // Extensions
+    let analyzers: Vec<Box<dyn ProtocolAnalyzer>> = vec![Box::new(LightProtocol)];
 
     let (account_list, instructions, message_version, address_lookups) = match message {
         Message::Legacy(m) => (m.account_keys.clone(), m.instructions.clone(), "legacy", None),
@@ -61,8 +76,6 @@ pub fn analyze_transaction(
     }
 
     // Detect compute budget settings
-    let mut cu_price_micro: Option<u64> = None;
-    let mut cu_limit: Option<u32> = None;
 
     for instr in &instructions {
         let program_id = account_list.get(instr.program_id_index as usize);
@@ -70,6 +83,13 @@ pub fn analyze_transaction(
             Some(pk) => pk,
             None => continue,
         };
+
+        // Run protocol extensions
+        for analyzer in &analyzers {
+            if let Some(action) = analyzer.analyze(program_id, &instr.data) {
+                state.extension_actions.push(action);
+            }
+        }
 
         if program_id == programs::system_program() && instr.data.len() >= SYSTEM_TRANSFER_DATA_LEN {
             let kind = u32::from_le_bytes(instr.data[0..4].try_into().unwrap());
@@ -82,9 +102,9 @@ pub fn analyze_transaction(
                     .map(|pk| pk == signer)
                     .unwrap_or(false);
                 if from_is_signer {
-                    total_send_by_signer += lamports as u128;
+                    state.total_send_by_signer += lamports as u128;
                 }
-                transfers.push(TransferView {
+                state.transfers.push(TransferView {
                     from,
                     to,
                     lamports,
@@ -96,33 +116,33 @@ pub fn analyze_transaction(
                 COMPUTE_BUDGET_SET_UNIT_LIMIT => {
                     // SetComputeUnitLimit
                     if instr.data.len() >= COMPUTE_BUDGET_TAG_LEN + COMPUTE_UNIT_LIMIT_LEN {
-                        cu_limit = Some(u32::from_le_bytes(instr.data[1..5].try_into().unwrap()));
+                        state.cu_limit = Some(u32::from_le_bytes(instr.data[1..5].try_into().unwrap()));
                     }
                 }
                 COMPUTE_BUDGET_SET_UNIT_PRICE => {
                     // SetComputeUnitPrice
                     if instr.data.len() >= COMPUTE_BUDGET_TAG_LEN + COMPUTE_UNIT_PRICE_LEN {
-                        cu_price_micro =
+                        state.cu_price_micro =
                             Some(u64::from_le_bytes(instr.data[1..9].try_into().unwrap()));
                     }
                 }
                 _ => {}
             }
         } else if program_id == programs::token_program() {
-            saw_token_spl = true;
+            state.saw_token_spl = true;
         } else if program_id == programs::token_2022_program() {
-            saw_token_2022 = true;
+            state.saw_token_2022 = true;
         } else {
             unknown_programs.insert(program_id.clone());
         }
     }
 
-    if saw_token_spl {
+    if state.saw_token_spl {
         warnings.push(AnalysisWarning::TokenTransferDetected(
             TokenProgramKind::SplToken,
         ));
     }
-    if saw_token_2022 {
+    if state.saw_token_2022 {
         warnings.push(AnalysisWarning::TokenTransferDetected(
             TokenProgramKind::Token2022,
         ));
@@ -133,10 +153,10 @@ pub fn analyze_transaction(
 
     let base_fee_lamports = ESTIMATED_BASE_FEE_PER_SIGNATURE as u128
         * signature_count(message) as u128;
-    let priority_fee_lamports = cu_price_micro.map(|price_micro| {
-        let limit = cu_limit.unwrap_or(compute_budget::DEFAULT_COMPUTE_UNIT_LIMIT);
+    let priority_fee_lamports = state.cu_price_micro.map(|price_micro| {
+        let limit = state.cu_limit.unwrap_or(compute_budget::DEFAULT_COMPUTE_UNIT_LIMIT);
         let fee = (price_micro as u128 * limit as u128) / MICRO_LAMPORTS_PER_LAMPORT;
-        let estimated = cu_limit.is_none();
+        let estimated = state.cu_limit.is_none();
         (fee, estimated)
     });
 
@@ -144,15 +164,17 @@ pub fn analyze_transaction(
         base_fee_lamports + priority_fee_lamports.map(|(f, _)| f).unwrap_or(0);
 
     TxAnalysis {
-        transfers,
+        transfers: state.transfers,
         base_fee_lamports,
         priority_fee_lamports,
         total_fee_lamports,
-        total_send_by_signer,
-        compute_unit_limit: cu_limit,
-        compute_unit_price_micro: cu_price_micro,
+        total_send_by_signer: state.total_send_by_signer,
+        compute_unit_limit: state.cu_limit,
+        compute_unit_price_micro: state.cu_price_micro,
         warnings,
         message_version,
+        privacy_level: PrivacyLevel::Public, // Default for now
+        extension_actions: state.extension_actions,
     }
 }
 
@@ -198,6 +220,7 @@ pub fn build_signing_summary(
             analysis.total_fee_lamports + analysis.total_send_by_signer,
         )?,
         warnings: analysis.warnings.clone(),
+        extension_actions: analysis.extension_actions.clone(),
     })
 }
 

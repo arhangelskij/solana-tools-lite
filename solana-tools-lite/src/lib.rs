@@ -3,6 +3,7 @@
 pub mod handlers;
 pub mod layers;
 pub mod models;
+pub mod extensions;
 
 pub mod adapters;
 pub mod crypto;

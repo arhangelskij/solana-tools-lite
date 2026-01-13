@@ -5,6 +5,7 @@ use crate::shell::error::CliError;
 use crate::constants::LAMPORTS_PER_SOL;
 use solana_tools_lite::constants::compute_budget;
 use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxAnalysis};
+use solana_tools_lite::models::extensions::{ExtensionAction, LightProtocolAction};
 
 /// Bundles analysis and an optional JSON summary payload.
 pub(crate) struct SignTxPresentation<'a> {
@@ -92,7 +93,15 @@ fn emit_summary(analysis: &TxAnalysis) {
         );
     }
     eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
+    eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
     eprintln!("--------------------------------------------------");
+
+    // ZK Compression / Extension Notices
+    if !analysis.extension_actions.is_empty() {
+        emit_extension_notices(&analysis.extension_actions);
+        eprintln!("--------------------------------------------------");
+    }
+
     if !analysis.warnings.is_empty() {
         eprintln!("WARNINGS:");
         for w in &analysis.warnings {
@@ -123,5 +132,28 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
         AnalysisWarning::UnknownProgram { program_id } => {
             format!("Unknown program encountered: {}", program_id)
         }
+    }
+}
+fn emit_extension_notices(actions: &[ExtensionAction]) {
+    let mut saw_light_protocol = false;
+    
+    eprintln!("EXTENSION PROTOCOLS DETECTED:");
+    for action in actions {
+        match action {
+            ExtensionAction::LightProtocol(light_action) => {
+                saw_light_protocol = true;
+                eprintln!("- Light Protocol: {}", light_action.description());
+            }
+        }
+    }
+
+    if saw_light_protocol {
+        eprintln!();
+        eprintln!("!!! ZK COMPRESSION NOTICE !!!");
+        eprintln!("This transaction uses ZK Compression (Light Protocol).");
+        eprintln!("- Compressed assets are NOT visible in standard explorers (SolanaFM, Solscan, etc.)");
+        eprintln!("- You need a specialized indexer or explorer (e.g. Photon) to view state.");
+        eprintln!("- Valid proofs are required for these instructions.");
+        eprintln!("Please verify the integrity of the proof data source.");
     }
 }
