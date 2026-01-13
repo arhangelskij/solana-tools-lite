@@ -1,7 +1,6 @@
 use crate::codec::serialize_transaction;
 use crate::constants::{compute_budget, programs};
-use crate::extensions::light_protocol::LightProtocol;
-use crate::extensions::traits::ProtocolAnalyzer;
+use crate::extensions::registry;
 use crate::models::analysis::{
     AnalysisWarning, PrivacyLevel, SigningSummary, TokenProgramKind, TransferView, TxAnalysis,
 };
@@ -52,7 +51,7 @@ pub fn analyze_transaction(
     let mut unknown_programs: HashSet<PubkeyBase58> = HashSet::new();
     
     // Extensions
-    let analyzers: Vec<Box<dyn ProtocolAnalyzer>> = vec![Box::new(LightProtocol)];
+    let analyzers = registry::get_all_analyzers();
 
     let (account_list, instructions, message_version, address_lookups) = match message {
         Message::Legacy(m) => (m.account_keys.clone(), m.instructions.clone(), "legacy", None),
@@ -112,7 +111,7 @@ pub fn analyze_transaction(
                 });
             }
         } else if program_id == programs::compute_budget_program() && !instr.data.is_empty() {
-            match instr.data[0] {
+            match instr.data[0] { //TODO: could be not safety index
                 COMPUTE_BUDGET_SET_UNIT_LIMIT => {
                     // SetComputeUnitLimit
                     if instr.data.len() >= COMPUTE_BUDGET_TAG_LEN + COMPUTE_UNIT_LIMIT_LEN {
