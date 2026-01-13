@@ -34,11 +34,7 @@ tiny-bip39 = "2.0.0"
 ed25519-dalek = { version = "2.2.0", features = ["std"] }
 rand = "0.8.5"
 solana-short-vec = "3.1.0"
-zeroize = { version = "1.8.1", features = ["zeroize_derive"], optional = true }
-
-[features]
-default = ["zeroize"]
-zeroize = ["dep:zeroize"]
+zeroize = { version = "1.8.1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 rayon = "1.11.0"
