@@ -5,7 +5,7 @@ use crate::shell::error::CliError;
 use crate::constants::LAMPORTS_PER_SOL;
 use solana_tools_lite::constants::compute_budget;
 use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxAnalysis};
-use solana_tools_lite::models::extensions::{ExtensionAction, LightProtocolAction};
+use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
 
 /// Bundles analysis and an optional JSON summary payload.
 pub(crate) struct SignTxPresentation<'a> {
@@ -57,6 +57,11 @@ fn emit_summary(analysis: &TxAnalysis) {
         lamports_to_sol(analysis.base_fee_lamports),
         analysis.base_fee_lamports
     );
+    
+    if analysis.is_fee_payer {
+        eprintln!("                !!! YOU ARE THE FEE PAYER !!!");
+    }
+    
     if let Some((pf, est)) = analysis.priority_fee_lamports {
         if est {
             eprintln!(
@@ -75,6 +80,7 @@ fn emit_summary(analysis: &TxAnalysis) {
     } else {
         eprintln!("Priority Fee:   0.000000000 SOL (0 lamports)");
     }
+    
     if let Some(price) = analysis.compute_unit_price_micro {
         let limit = analysis
             .compute_unit_limit
@@ -84,17 +90,32 @@ fn emit_summary(analysis: &TxAnalysis) {
             price, limit
         );
     }
-    let total_cost = analysis.total_fee_lamports + analysis.total_send_by_signer;
-    if analysis.total_send_by_signer > 0 {
+    let total_cost = analysis.total_fee_lamports + analysis.total_sol_send_by_signer;
+    
+    if analysis.total_sol_send_by_signer > 0 {
         eprintln!(
             "YOU SEND:       {:.9} SOL ({} lamports)",
-            lamports_to_sol(analysis.total_send_by_signer),
-            analysis.total_send_by_signer
+            lamports_to_sol(analysis.total_sol_send_by_signer),
+            analysis.total_sol_send_by_signer
         );
+        //TODO: 🟡 check it
+    } else if analysis.warnings.iter().any(|w| matches!(w, AnalysisWarning::TokenTransferDetected(_))) {
+        eprintln!("YOU SEND:       Non-SOL Assets (SPL/Token-2022 detected)");
+        eprintln!("                Value unknown in offline mode.");
     }
     eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
-    eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
     eprintln!("--------------------------------------------------");
+
+    if analysis.confidential_ops_count > 0 || analysis.storage_ops_count > 0 {
+        eprintln!("EXTENSION PROTOCOLS SUMMARY:");
+        if analysis.confidential_ops_count > 0 {
+            eprintln!("  - Private (Confidential) Operations: {}", analysis.confidential_ops_count);
+        }
+        if analysis.storage_ops_count > 0 {
+            eprintln!("  - Storage/Bridge (Public->ZK) Operations: {}", analysis.storage_ops_count);
+        }
+        eprintln!("--------------------------------------------------");
+    }
 
     // ZK Compression / Extension Notices
     if !analysis.extension_actions.is_empty() {
@@ -132,15 +153,24 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
         AnalysisWarning::UnknownProgram { program_id } => {
             format!("Unknown program encountered: {}", program_id)
         }
+        AnalysisWarning::SignerNotRequired => {
+            "!!! SECURITY WARNING !!! Your signature is NOT REQUIRED for this transaction. This might be a phishing attempt if you were asked to sign it.".to_string()
+        }
+        AnalysisWarning::CpiLimit => {
+            "Analysis limited to top-level instructions. CPI (Cross-Program Invocations) not analyzed.".to_string()
+        }
+        AnalysisWarning::ConfidentialTransferDetected => {
+            "Confidential Transfer (Token-2022) detected. Transaction privacy level set to Hybrid/Confidential.".to_string()
+        }
     }
 }
-fn emit_extension_notices(actions: &[ExtensionAction]) {
+fn emit_extension_notices(actions: &[AnalysisExtensionAction]) {
     let mut saw_light_protocol = false;
     
     eprintln!("EXTENSION PROTOCOLS DETECTED:");
     for action in actions {
         match action {
-            ExtensionAction::LightProtocol(light_action) => {
+            AnalysisExtensionAction::LightProtocol(light_action) => {
                 saw_light_protocol = true;
                 eprintln!("- Light Protocol: {}", light_action.description());
             }

@@ -5,6 +5,7 @@ use solana_tools_lite::models::message::{Message, MessageAddressTableLookup, Mes
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::models::hash_base58::HashBase58;
 use solana_tools_lite::constants::programs;
+use solana_tools_lite::models::extensions::AnalysisExtensionAction;
 use std::collections::HashMap;
 
 #[test]
@@ -38,8 +39,9 @@ fn analyze_legacy_system_transfer() {
     let analysis = analyze_transaction(&msg, &signer, None);
 
     assert_eq!(analysis.transfers.len(), 1);
-    assert_eq!(analysis.total_send_by_signer, 1_500);
+    assert_eq!(analysis.total_sol_send_by_signer, 1_500);
     assert_eq!(analysis.base_fee_lamports, 5000);
+    assert!(analysis.is_fee_payer, "signer should be fee payer");
     assert!(analysis.priority_fee_lamports.is_none());
     assert!(analysis.warnings.is_empty());
 }

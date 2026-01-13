@@ -5,7 +5,7 @@ use solana_tools_lite::extensions::light_protocol::constants::{
 };
 use solana_tools_lite::extensions::light_protocol::LightProtocol;
 use solana_tools_lite::extensions::ProtocolAnalyzer;
-use solana_tools_lite::models::extensions::{ExtensionAction, LightProtocolAction};
+use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
 #[test]
@@ -17,7 +17,7 @@ fn test_detect_create_mint() {
     let result = analyzer.analyze(&program_id, &data);
     assert!(matches!(
         result,
-        Some(ExtensionAction::LightProtocol(LightProtocolAction::CreateMint))
+        Some(AnalysisExtensionAction::LightProtocol(LightProtocolAction::CreateMint))
     ));
 }
 
@@ -30,7 +30,7 @@ fn test_detect_mint_to() {
     let result = analyzer.analyze(&program_id, &data);
     assert!(matches!(
         result,
-        Some(ExtensionAction::LightProtocol(LightProtocolAction::MintTo))
+        Some(AnalysisExtensionAction::LightProtocol(LightProtocolAction::MintTo))
     ));
 }
 
@@ -43,7 +43,7 @@ fn test_detect_transfer() {
     let result = analyzer.analyze(&program_id, &data);
     assert!(matches!(
         result,
-        Some(ExtensionAction::LightProtocol(LightProtocolAction::Transfer))
+        Some(AnalysisExtensionAction::LightProtocol(LightProtocolAction::Transfer))
     ));
 }
 
@@ -59,10 +59,10 @@ fn test_detect_compress_sol() {
 
     let result = analyzer.analyze(&program_id, &data);
     
-    if let Some(ExtensionAction::LightProtocol(LightProtocolAction::CompressSol { lamports: l })) = result {
-        assert_eq!(l, Some(lamports));
+    if let Some(AnalysisExtensionAction::LightProtocol(LightProtocolAction::CompressSol)) = result {
+        // Success
     } else {
-        panic!("Failed to detect CompressSol with amount: {:?}", result);
+        panic!("Failed to detect CompressSol: {:?}", result);
     }
 }
 
@@ -83,7 +83,7 @@ fn test_unknown_light_instruction() {
     let data = vec![1, 2, 3, 4, 5, 6, 7, 8]; // Random discriminator
 
     let result = analyzer.analyze(&program_id, &data);
-    if let Some(ExtensionAction::LightProtocol(LightProtocolAction::Unknown { discriminator })) = result {
+    if let Some(AnalysisExtensionAction::LightProtocol(LightProtocolAction::Unknown { discriminator })) = result {
         assert_eq!(discriminator, [1, 2, 3, 4, 5, 6, 7, 8]);
     } else {
         panic!("Should have detected unknown instruction");

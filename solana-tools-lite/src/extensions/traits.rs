@@ -1,4 +1,4 @@
-use crate::models::extensions::ExtensionAction;
+use crate::models::extensions::AnalysisExtensionAction;
 use crate::models::pubkey_base58::PubkeyBase58;
 
 /// Trait for protocol-specific analyzers.
@@ -8,5 +8,5 @@ use crate::models::pubkey_base58::PubkeyBase58;
 /// verifying hardcoded logic in the main loop.
 pub trait ProtocolAnalyzer {
     /// Analyze an instruction to see if it belongs to this protocol.
-    fn analyze(&self, program_id: &PubkeyBase58, data: &[u8]) -> Option<ExtensionAction>;
+    fn analyze(&self, program_id: &PubkeyBase58, data: &[u8]) -> Option<AnalysisExtensionAction>;
 }

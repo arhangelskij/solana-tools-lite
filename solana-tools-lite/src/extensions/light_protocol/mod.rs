@@ -1,5 +1,5 @@
 use crate::extensions::traits::ProtocolAnalyzer;
-use crate::models::extensions::{ExtensionAction, LightProtocolAction};
+use crate::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
 use crate::models::pubkey_base58::PubkeyBase58;
 
 pub mod constants;
@@ -8,7 +8,7 @@ pub mod constants;
 pub struct LightProtocol;
 
 impl ProtocolAnalyzer for LightProtocol {
-    fn analyze(&self, program_id: &PubkeyBase58, data: &[u8]) -> Option<ExtensionAction> {
+    fn analyze(&self, program_id: &PubkeyBase58, data: &[u8]) -> Option<AnalysisExtensionAction> {
         // Check if program ID is one of the known Light Protocol programs
         let is_light = program_id == constants::light_system_program()
             || program_id == constants::account_compression_program()
@@ -31,18 +31,13 @@ impl ProtocolAnalyzer for LightProtocol {
         } else if discriminator == constants::DISCRIMINATOR_TRANSFER {
             LightProtocolAction::Transfer
         } else if discriminator == constants::DISCRIMINATOR_COMPRESS_SOL {
-            // Attempt to parse amount (u64) following the discriminator
-            let lamports = data
-                .get(8..16)
-                .and_then(|b| b.try_into().ok())
-                .map(u64::from_le_bytes);
-            LightProtocolAction::CompressSol { lamports }
+            LightProtocolAction::CompressSol
         } else {
             let mut d = [0u8; 8];
             d.copy_from_slice(discriminator);
             LightProtocolAction::Unknown { discriminator: d }
         };
 
-        Some(ExtensionAction::LightProtocol(action))
+        Some(AnalysisExtensionAction::LightProtocol(action))
     }
 }
