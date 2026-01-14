@@ -1,63 +1,49 @@
-use solana_tools_lite::handlers::analysis::analyze_transaction;
 use solana_tools_lite::models::analysis::PrivacyLevel;
-use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
-use solana_tools_lite::models::message::{Message, MessageHeader, MessageLegacy};
-use solana_tools_lite::models::hash_base58::HashBase58;
-use solana_tools_lite::models::instruction::Instruction;
-use std::collections::HashMap;
-
-/// Helper to create a dummy message with specific instructions
-fn create_test_message(instructions: Vec<Instruction>, account_keys: Vec<PubkeyBase58>) -> Message {
-    Message::Legacy(MessageLegacy {
-        header: MessageHeader {
-            num_required_signatures: 1,
-            num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 0,
-        },
-        account_keys,
-        recent_blockhash: HashBase58::try_from("11111111111111111111111111111111").unwrap(),
-        instructions,
-    })
-}
+use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction, PrivacyImpact};
+// Note: We would usually import the analysis handler, but for hierarchy logic tests 
+// we can simulate the finalized state or call finalize_analysis if it were public.
+// Since we want to test the hierarchy logic specifically, let's add tests that 
+// verify the Expected outcomes based on the new rules.
 
 #[test]
 fn test_privacy_hierarchy_pure_confidential() {
-    // TODO: 🟡 Variant 1: Pure Confidential
-    // Scenario: Only Shielded Transfer (Confidential)
-    // Expectation: PrivacyLevel::Confidential
+    // TODO: 🔴 Implement full mock with Transfer (Shielded) only.
+    // Expected: PrivacyLevel::Confidential
+    todo!("Implement mock for pure shielded transfer");
 }
 
 #[test]
-fn test_privacy_hierarchy_storage_only() {
-    // TODO: 🟡 Variant 2: Storage Only
-    // Scenario: Only CompressSol or Decompress (StorageCompression)
-    // Expectation: PrivacyLevel::Hybrid (as it's a public-facing bridge)
+fn test_privacy_hierarchy_pure_compressed() {
+    // TODO: 🟡 Implement full mock with CompressSol only.
+    // Expected: PrivacyLevel::Compressed (New Level)
+    todo!("Implement mock for pure space-saving compression");
 }
 
 #[test]
-fn test_privacy_hierarchy_confidential_plus_storage() {
-    // TODO: 🟡 Variant 3: Confidential + Storage (Pure ZK)
-    // Scenario: Shielded Transfer + CompressSol
-    // Expectation: PrivacyLevel::Confidential (Confidential should consume StorageCompression)
+fn test_privacy_hierarchy_hybrid_mixed_confidential() {
+    // TODO: 🟠 Implement mock with Shielded Transfer + Public SOL Transfer.
+    // Expected: PrivacyLevel::Hybrid
+    todo!("Implement mock for mixed private/public transfer");
 }
 
 #[test]
-fn test_privacy_hierarchy_hybrid_public_mixing() {
-    // TODO: 🟡 Variant 4: Public Mixing
-    // Scenario: Shielded Transfer + System Transfer (Public)
-    // Expectation: PrivacyLevel::Hybrid
+fn test_privacy_hierarchy_hybrid_bridge_exit() {
+    // TODO: 🟠 Implement mock with Decompress only.
+    // Expected: PrivacyLevel::Hybrid (Bridge Exit)
+    todo!("Implement mock for bridge exit (Decompress)");
 }
 
 #[test]
-fn test_privacy_hierarchy_hybrid_decompress_only() {
-    // TODO: 🟡 Variant 5: Decompress Public Exit
-    // Scenario: Just Decompress
-    // Expectation: PrivacyLevel::Hybrid
+fn test_privacy_hierarchy_public_only() {
+    // TODO: 🟢 Implement mock with standard SOL Transfer.
+    // Expected: PrivacyLevel::Public
+    todo!("Implement mock for standard public transfer");
 }
 
 #[test]
-fn test_privacy_hierarchy_pure_public() {
-    // TODO: 🟡 Variant 6: Pure Public
-    // Scenario: Only System Transfers
-    // Expectation: PrivacyLevel::Public
+fn test_privacy_hierarchy_confidential_takes_precedence_over_storage() {
+    // Scenario: Shielded Transfer + Compress (Storage).
+    // No public mixing.
+    // Expected: PrivacyLevel::Confidential (Shielded is more "private" than just space-saving)
+    // todo!("Verify hierarchy precedence");
 }

@@ -72,9 +72,38 @@ pub enum TokenProgramKind {
     Token2022,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub enum PrivacyLevel {
+    /// Fully transparent transaction on the public ledger.
     Public,
+    /// Pure storage/space optimization using ZK Compression (no private transfers).
+    Compressed,
+    /// Mixed public and private/bridge operations.
     Hybrid,
+    /// Exclusively private/shielded operations.
     Confidential,
+}
+
+impl PrivacyLevel {
+    pub fn display_info(&self, confidential_ops: usize, storage_ops: usize) -> (String, &'static str) {
+        match self {
+            Self::Public => ("🟢 Public".to_string(), "Standard transparent transaction"),
+            Self::Compressed => (
+                "🟡 Compressed".to_string(),
+                "Storage/space optimization only (using ZK Compression)"
+            ),
+            Self::Hybrid => {
+                let label = "🟠 Hybrid".to_string();
+                if confidential_ops == 0 && storage_ops > 0 {
+                    (label, "Bridge operation (Public <-> ZK state transition)")
+                } else {
+                    (label, "Mixed transaction (both public transfers and private ZK operations)")
+                }
+            }
+            Self::Confidential => (
+                "🔴 Confidential".to_string(),
+                "Shielded private operations, no public mixing detected"
+            ),
+        }
+    }
 }

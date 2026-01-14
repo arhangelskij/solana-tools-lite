@@ -104,6 +104,12 @@ fn emit_summary(analysis: &TxAnalysis) {
         eprintln!("                Value unknown in offline mode.");
     }
     eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
+    
+    let (label, desc) = analysis.privacy_level.display_info(
+        analysis.confidential_ops_count,
+        analysis.storage_ops_count
+    );
+    eprintln!("PRIVACY LEVEL:  {} ({})", label, desc);
     eprintln!("--------------------------------------------------");
 
     if analysis.confidential_ops_count > 0 || analysis.storage_ops_count > 0 {

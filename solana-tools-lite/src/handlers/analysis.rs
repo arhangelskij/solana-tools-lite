@@ -338,32 +338,37 @@ fn finalize_analysis(
         warnings.push(AnalysisWarning::UnknownProgram { program_id });
     }
     // Privacy Level Calculation
-    let mut has_confidential = state.confidential_ops_count > 0;
-    let mut has_hybrid = state.storage_ops_count > 0;
+    let has_confidential = state.confidential_ops_count > 0 
+        || warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));
+    
+    let mut has_hybrid_action = false;
+    let mut has_storage = state.storage_ops_count > 0;
 
     for action in &state.extension_actions {
         if action.privacy_impact() == PrivacyImpact::Hybrid {
-            has_hybrid = true;
+            has_hybrid_action = true;
         }
     }
 
-    // Check for legacy or manual confidential indicators in warnings
-    if warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected)) {
-        has_confidential = true;
-    }
+    let has_public_mixing = state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty();
 
-    let privacy_level = if has_confidential {
-        // Confidential (Zk) operations exist. 
-        // We only downgrade to Hybrid if there is actual public mixing (SOL or SPL Token transfers).
-        if state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty() {
+    let privacy_level = if has_hybrid_action {
+        // Any explicit Hybrid action (like Decompress/bridge exit) forces Hybrid.
+        PrivacyLevel::Hybrid
+    } else if has_confidential {
+        // Confidential operations exist.
+        if has_public_mixing {
             PrivacyLevel::Hybrid
         } else {
             PrivacyLevel::Confidential
         }
-    } else if has_hybrid {
-        // No confidential ops, but we saw bridge/storage actions (Compress/Decompress).
-        // These are public-facing transitions, so they count as Hybrid.
-        PrivacyLevel::Hybrid
+    } else if has_storage {
+        // Only storage compression (entrance/internal) exists.
+        if has_public_mixing {
+            PrivacyLevel::Hybrid
+        } else {
+            PrivacyLevel::Compressed
+        }
     } else {
         PrivacyLevel::Public
     };
