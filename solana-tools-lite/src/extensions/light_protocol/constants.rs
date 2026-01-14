@@ -5,6 +5,9 @@ const LIGHT_SYSTEM_PROGRAM_ID: &str = "Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEm
 const ACCOUNT_COMPRESSION_PROGRAM_ID: &str = "compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq";
 const COMPRESSED_TOKEN_PROGRAM_ID: &str = "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m";
 
+pub const DISCRIMINATOR_SIZE: usize = 8;
+pub const U64_SIZE: usize = 8;
+
 pub const DISCRIMINATOR_CREATE_MINT: [u8; 8] = [69, 44, 215, 132, 253, 214, 41, 45];
 pub const DISCRIMINATOR_MINT_TO: [u8; 8] = [241, 34, 48, 186, 37, 179, 123, 192];
 pub const DISCRIMINATOR_TRANSFER: [u8; 8] = [163, 52, 200, 231, 140, 3, 69, 186];
