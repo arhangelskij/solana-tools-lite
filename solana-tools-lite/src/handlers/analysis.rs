@@ -92,6 +92,8 @@ pub fn analyze_transaction(
             None => continue,
         };
 
+        let mut handled = false;
+
         // Run protocol extensions (ZK Compression, etc.)
         for analyzer in &analyzers {
             if let Some(action) = analyzer.analyze(program_id, &instr.data) {
@@ -101,10 +103,12 @@ pub fn analyze_transaction(
                     _ => {}
                 }
                 state.extension_actions.push(action);
+                handled = true;
             }
         }
 
         if program_id == programs::system_program() {
+            handled = true;
             if let Some(lamports) = parse_system_transfer_amount(&instr.data) {
                 // Ensure we have at least 2 accounts (from, to)
                 if instr.accounts.len() >= 2 {
@@ -113,16 +117,21 @@ pub fn analyze_transaction(
                 }
             }
         } else if program_id == programs::compute_budget_program() {
+            handled = true;
             match parse_compute_budget(&instr.data) {
                 ComputeBudgetAction::SetLimit(l) => state.cu_limit = Some(l),
                 ComputeBudgetAction::SetPrice(p) => state.cu_price_micro = Some(p),
                 ComputeBudgetAction::None => {}
             }
         } else if program_id == programs::token_program() {
+            handled = true;
             state.saw_token_spl = true;
         } else if program_id == programs::token_2022_program() {
+            handled = true;
             state.saw_token_2022 = true;
-        } else {
+        }
+
+        if !handled {
             state.unknown_programs.insert(program_id.clone());
         }
     }
