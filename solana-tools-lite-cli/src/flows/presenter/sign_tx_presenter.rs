@@ -6,6 +6,7 @@ use crate::constants::LAMPORTS_PER_SOL;
 use solana_tools_lite::constants::compute_budget;
 use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxAnalysis};
 use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
+use solana_tools_lite::utils::format_sol;
 
 /// Bundles analysis and an optional JSON summary payload.
 pub(crate) struct SignTxPresentation<'a> {
@@ -46,15 +47,16 @@ fn emit_summary(analysis: &TxAnalysis) {
             if t.from_is_signer { " (signer)" } else { "" }
         );
         eprintln!("  To:     {}", t.to);
-        eprintln!("  Amount: {:.9} SOL", lamports_to_sol(t.lamports as u128));
+        eprintln!("  Amount: {}", format_sol(t.lamports as u128));
         eprintln!("          ({} lamports)", t.lamports);
     }
 
     eprintln!("--------------------------------------------------");
     eprintln!("TRANSACTION SUMMARY");
+    eprintln!("Non-SOL Assets: {}", if analysis.has_non_sol_assets { "Yes (SPL/Token-2022 detected)" } else { "No" });
     eprintln!(
-        "Network Fee:    {:.9} SOL ({} lamports)",
-        lamports_to_sol(analysis.base_fee_lamports),
+        "Network Fee:    {} ({} lamports)",
+        format_sol(analysis.base_fee_lamports),
         analysis.base_fee_lamports
     );
     
@@ -65,20 +67,20 @@ fn emit_summary(analysis: &TxAnalysis) {
     if let Some((pf, est)) = analysis.priority_fee_lamports {
         if est {
             eprintln!(
-                "Priority Fee:   {:.9} SOL ({} lamports, estimated with default {} CU)",
-                lamports_to_sol(pf),
+                "Priority Fee:   {} ({} lamports, estimated with default {} CU)",
+                format_sol(pf),
                 pf,
                 compute_budget::DEFAULT_COMPUTE_UNIT_LIMIT
             );
         } else {
             eprintln!(
-                "Priority Fee:   {:.9} SOL ({} lamports)",
-                lamports_to_sol(pf),
+                "Priority Fee:   {} ({} lamports)",
+                format_sol(pf),
                 pf
             );
         }
     } else {
-        eprintln!("Priority Fee:   0.000000000 SOL (0 lamports)");
+        eprintln!("Priority Fee:   0.000 SOL (0 lamports)");
     }
     
     if let Some(price) = analysis.compute_unit_price_micro {
@@ -94,17 +96,13 @@ fn emit_summary(analysis: &TxAnalysis) {
     
     if analysis.total_sol_send_by_signer > 0 {
         eprintln!(
-            "YOU SEND:       {:.9} SOL ({} lamports)",
-            lamports_to_sol(analysis.total_sol_send_by_signer),
+            "YOU SEND:       {} ({} lamports)",
+            format_sol(analysis.total_sol_send_by_signer as u128),
             analysis.total_sol_send_by_signer
         );
     }
     
-    if analysis.has_non_sol_assets {
-        eprintln!("ASSETS:         SOL + Non-SOL Tokens involved");
-    }
-    
-    eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
+    eprintln!("MAX TOTAL COST: {}", format_sol(total_cost));
     
     let (label, desc) = analysis.privacy_level.display_info(
         analysis.confidential_ops_count,
@@ -126,7 +124,7 @@ fn emit_summary(analysis: &TxAnalysis) {
 
     // ZK Compression / Extension Notices
     if !analysis.extension_actions.is_empty() {
-        emit_extension_notices(&analysis.extension_actions);
+        emit_extension_notices(&analysis.extension_actions, analysis.base_fee_lamports);
         eprintln!("--------------------------------------------------");
     }
 
@@ -171,7 +169,7 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
         }
     }
 }
-fn emit_extension_notices(actions: &[AnalysisExtensionAction]) {
+fn emit_extension_notices(actions: &[AnalysisExtensionAction], base_fee_lamports: u128) {
     let mut saw_light_protocol = false;
     
     eprintln!("EXTENSION PROTOCOLS DETECTED:");
@@ -192,5 +190,6 @@ fn emit_extension_notices(actions: &[AnalysisExtensionAction]) {
         eprintln!("- You need a specialized indexer or explorer (e.g. Photon) to view state.");
         eprintln!("- Valid proofs are required for these instructions.");
         eprintln!("Please verify the integrity of the proof data source.");
+        eprintln!("Note: Network fee ({}) is always public", format_sol(base_fee_lamports));
     }
 }

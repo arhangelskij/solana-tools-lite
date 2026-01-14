@@ -31,7 +31,25 @@ impl ProtocolAnalyzer for LightProtocol {
         } else if discriminator == constants::DISCRIMINATOR_TRANSFER {
             LightProtocolAction::Transfer
         } else if discriminator == constants::DISCRIMINATOR_COMPRESS_SOL {
-            LightProtocolAction::CompressSol
+            let lamports = if data.len() >= 16 {
+                Some(u64::from_le_bytes(data[8..16].try_into().unwrap_or([0u8; 8])))
+            } else {
+                None
+            };
+            LightProtocolAction::CompressSol { lamports }
+        } else if discriminator == constants::DISCRIMINATOR_COMPRESS_TOKEN {
+            let amount = if data.len() >= 16 {
+                Some(u64::from_le_bytes(data[8..16].try_into().unwrap_or([0u8; 8])))
+            } else {
+                None
+            };
+            LightProtocolAction::CompressToken { amount }
+        } else if discriminator == constants::DISCRIMINATOR_DECOMPRESS {
+            LightProtocolAction::Decompress
+        } else if discriminator == constants::DISCRIMINATOR_STATE_UPDATE {
+            LightProtocolAction::StateUpdate
+        } else if discriminator == constants::DISCRIMINATOR_CLOSE_ACCOUNT {
+            LightProtocolAction::CloseAccount
         } else {
             let mut d = [0u8; 8];
             d.copy_from_slice(discriminator);

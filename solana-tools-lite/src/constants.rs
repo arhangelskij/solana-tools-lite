@@ -4,6 +4,8 @@ pub mod permission {
     pub const FILE_PERMS_SECRET: u32 = 0o600;
 }
 
+pub const LAMPORTS_PER_SOL: f64 = 1_000_000_000.0;
+
 /// Common crypto constants
 pub mod crypto {
     /// Ed25519 signature length in bytes.
