@@ -46,7 +46,7 @@ impl LightProtocolAction {
             Self::Transfer => PrivacyImpact::Confidential,
             Self::CompressSol => PrivacyImpact::StorageCompression,
             Self::CompressToken => PrivacyImpact::StorageCompression,
-            Self::Decompress => PrivacyImpact::Hybrid,
+            Self::Decompress => PrivacyImpact::StorageCompression,
             Self::StateUpdate => PrivacyImpact::Confidential,
             Self::Unknown { .. } => PrivacyImpact::None,
         }

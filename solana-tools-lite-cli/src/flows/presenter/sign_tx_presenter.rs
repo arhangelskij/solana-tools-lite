@@ -98,11 +98,12 @@ fn emit_summary(analysis: &TxAnalysis) {
             lamports_to_sol(analysis.total_sol_send_by_signer),
             analysis.total_sol_send_by_signer
         );
-        //TODO: 🟡 check it
-    } else if analysis.warnings.iter().any(|w| matches!(w, AnalysisWarning::TokenTransferDetected(_))) {
-        eprintln!("YOU SEND:       Non-SOL Assets (SPL/Token-2022 detected)");
-        eprintln!("                Value unknown in offline mode.");
     }
+    
+    if analysis.has_non_sol_assets {
+        eprintln!("ASSETS:         SOL + Non-SOL Tokens involved");
+    }
+    
     eprintln!("MAX TOTAL COST: {:.9} SOL", lamports_to_sol(total_cost));
     
     let (label, desc) = analysis.privacy_level.display_info(

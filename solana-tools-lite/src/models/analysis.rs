@@ -24,6 +24,8 @@ pub struct TxAnalysis {
     pub storage_ops_count: usize,
     /// Whether the analyzed signer is the fee payer for this transaction.
     pub is_fee_payer: bool,
+    /// Whether non-SOL assets (SPL/Token-2022) are involved in movement.
+    pub has_non_sol_assets: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +51,7 @@ pub struct SigningSummary {
     pub total_sol_send_by_signer: u64,
     pub max_total_cost_lamports: u64,
     pub is_fee_payer: bool,
+    pub has_non_sol_assets: bool,
     pub warnings: Vec<AnalysisWarning>,
     pub extension_actions: Vec<AnalysisExtensionAction>,
     pub confidential_ops_count: usize,
@@ -94,7 +97,9 @@ impl PrivacyLevel {
             ),
             Self::Hybrid => {
                 let label = "🟠 Hybrid".to_string();
-                if confidential_ops == 0 && storage_ops > 0 {
+                if confidential_ops > 0 && storage_ops > 0 {
+                    (label, "Private transfers + public bridge (Compress/Decompress)")
+                } else if confidential_ops == 0 && storage_ops > 0 {
                     (label, "Bridge operation (Public <-> ZK state transition)")
                 } else {
                     (label, "Mixed transaction (both public transfers and private ZK operations)")

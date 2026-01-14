@@ -413,6 +413,7 @@ fn finalize_analysis(
         confidential_ops_count: state.confidential_ops_count,
         storage_ops_count: state.storage_ops_count,
         is_fee_payer: state.is_fee_payer,
+        has_non_sol_assets: state.saw_token_spl || state.saw_token_2022,
     }
 }
 
@@ -458,8 +459,9 @@ pub fn build_signing_summary(
         compute_unit_limit: analysis.compute_unit_limit,
         total_fee_lamports: to_u64(analysis.total_fee_lamports)?,
         total_sol_send_by_signer: to_u64(analysis.total_sol_send_by_signer)?,
-        max_total_cost_lamports: to_u64(max_cost)?,
+        max_total_cost_lamports: to_u64(analysis.total_fee_lamports + analysis.total_sol_send_by_signer)?,
         is_fee_payer,
+        has_non_sol_assets: analysis.has_non_sol_assets,
         warnings: analysis.warnings.clone(),
         extension_actions: analysis.extension_actions.clone(),
         confidential_ops_count: analysis.confidential_ops_count,
