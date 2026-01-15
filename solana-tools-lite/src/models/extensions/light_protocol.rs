@@ -63,7 +63,7 @@ impl LightProtocolAction {
             Self::CompressSol { .. } => PrivacyImpact::StorageCompression,
             Self::CompressToken { .. } => PrivacyImpact::StorageCompression,
             Self::Decompress => PrivacyImpact::StorageCompression,
-            Self::StateUpdate => PrivacyImpact::Confidential,
+            Self::StateUpdate => PrivacyImpact::StorageCompression, //TODO: оставляем пока этот стейт
             Self::CloseAccount => PrivacyImpact::StorageCompression,
             Self::Unknown { .. } => PrivacyImpact::None,
         }

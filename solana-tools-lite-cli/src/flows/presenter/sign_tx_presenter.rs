@@ -2,10 +2,9 @@
 
 use crate::flows::presenter::{emit_line, Presentable};
 use crate::shell::error::CliError;
-use crate::constants::LAMPORTS_PER_SOL;
 use solana_tools_lite::constants::compute_budget;
 use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxAnalysis};
-use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
+use solana_tools_lite::models::extensions::AnalysisExtensionAction;
 use solana_tools_lite::utils::format_sol;
 
 /// Bundles analysis and an optional JSON summary payload.
@@ -32,10 +31,6 @@ impl Presentable for SignTxPresentation<'_> {
         }
         Ok(())
     }
-}
-
-fn lamports_to_sol(lamports: u128) -> f64 {
-    lamports as f64 / LAMPORTS_PER_SOL
 }
 
 fn emit_summary(analysis: &TxAnalysis) {
@@ -122,10 +117,25 @@ fn emit_summary(analysis: &TxAnalysis) {
         eprintln!("--------------------------------------------------");
     }
 
-    // ZK Compression / Extension Notices
+    // Extension Protocol Actions
     if !analysis.extension_actions.is_empty() {
-        emit_extension_notices(&analysis.extension_actions, analysis.base_fee_lamports);
+        eprintln!("EXTENSION PROTOCOLS DETECTED:");
+        for action in &analysis.extension_actions {
+            match action {
+                AnalysisExtensionAction::LightProtocol(light_action) => {
+                    eprintln!("- Light Protocol: {}", light_action.description());
+                }
+            }
+        }
         eprintln!("--------------------------------------------------");
+    }
+
+    // Protocol-specific Notices (Plugins)
+    if !analysis.extension_notices.is_empty() {
+        for notice in &analysis.extension_notices {
+            eprintln!("{}", notice);
+            eprintln!("--------------------------------------------------");
+        }
     }
 
     if !analysis.warnings.is_empty() {
@@ -167,29 +177,8 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
         AnalysisWarning::ConfidentialTransferDetected => {
             "Confidential Transfer (Token-2022) detected. Transaction privacy level set to Hybrid/Confidential.".to_string()
         }
-    }
-}
-fn emit_extension_notices(actions: &[AnalysisExtensionAction], base_fee_lamports: u128) {
-    let mut saw_light_protocol = false;
-    
-    eprintln!("EXTENSION PROTOCOLS DETECTED:");
-    for action in actions {
-        match action {
-            AnalysisExtensionAction::LightProtocol(light_action) => {
-                saw_light_protocol = true;
-                eprintln!("- Light Protocol: {}", light_action.description());
-            }
+        AnalysisWarning::MalformedInstruction => {
+            "One or more protocol instructions are malformed (too short or corrupted data)".to_string()
         }
-    }
-
-    if saw_light_protocol {
-        eprintln!();
-        eprintln!("!!! ZK COMPRESSION NOTICE !!!");
-        eprintln!("This transaction uses ZK Compression (Light Protocol).");
-        eprintln!("- Compressed assets are NOT visible in standard explorers (SolanaFM, Solscan, etc.)");
-        eprintln!("- You need a specialized indexer or explorer (e.g. Photon) to view state.");
-        eprintln!("- Valid proofs are required for these instructions.");
-        eprintln!("Please verify the integrity of the proof data source.");
-        eprintln!("Note: Network fee ({}) is always public", format_sol(base_fee_lamports));
     }
 }

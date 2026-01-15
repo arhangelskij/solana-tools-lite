@@ -84,7 +84,6 @@ pub fn analyze_transaction(
         is_fee_payer,
         ..Default::default()
     };
-    let analyzers = registry::get_all_analyzers();
 
     for instr in instructions {
         let program_id = match account_list.get(instr.program_id_index as usize) {
@@ -94,18 +93,6 @@ pub fn analyze_transaction(
 
         let mut handled = false;
 
-        // Run protocol extensions (ZK Compression, etc.)
-        for analyzer in &analyzers {
-            if let Some(action) = analyzer.analyze(program_id, &instr.data) {
-                match action.privacy_impact() {
-                    PrivacyImpact::Confidential => state.confidential_ops_count += 1,
-                    PrivacyImpact::StorageCompression => state.storage_ops_count += 1,
-                    _ => {}
-                }
-                state.extension_actions.push(action);
-                handled = true;
-            }
-        }
 
         if program_id == programs::system_program() {
             handled = true;
@@ -137,7 +124,25 @@ pub fn analyze_transaction(
     }
 
     // 3. Finalize results
-    finalize_analysis(message, state, warnings, message_version)
+    let mut analysis = finalize_analysis(message, state, warnings, message_version);
+
+    // 4. Run protocol extensions (Plugins)
+    let plugins = registry::get_all_analyzers();
+    
+    for plugin in plugins {
+        if plugin.detect(message) {
+            plugin.analyze(message, &account_list, signer, &mut analysis);
+            
+            if let Some(notice) = plugin.enrich_notice(&analysis) {
+                analysis.extension_notices.push(notice);
+            }
+        }
+    }
+
+    // Refresh privacy level after plugins
+    analysis.recalculate_privacy_level();
+
+    analysis
 }
 
 /// Verify that the current user (signer) is actually listed as a required signer in the message header.
@@ -342,7 +347,7 @@ fn finalize_analysis(
         || warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));
     
     let mut has_hybrid_action = false;
-    let mut has_storage = state.storage_ops_count > 0;
+    let has_storage = state.storage_ops_count > 0;
 
     for action in &state.extension_actions {
         if action.privacy_impact() == PrivacyImpact::Hybrid {
@@ -410,6 +415,7 @@ fn finalize_analysis(
         message_version,
         privacy_level,
         extension_actions: state.extension_actions,
+        extension_notices: Vec::new(),
         confidential_ops_count: state.confidential_ops_count,
         storage_ops_count: state.storage_ops_count,
         is_fee_payer: state.is_fee_payer,
@@ -459,11 +465,12 @@ pub fn build_signing_summary(
         compute_unit_limit: analysis.compute_unit_limit,
         total_fee_lamports: to_u64(analysis.total_fee_lamports)?,
         total_sol_send_by_signer: to_u64(analysis.total_sol_send_by_signer)?,
-        max_total_cost_lamports: to_u64(analysis.total_fee_lamports + analysis.total_sol_send_by_signer)?,
+        max_total_cost_lamports: to_u64(max_cost)?,
         is_fee_payer,
         has_non_sol_assets: analysis.has_non_sol_assets,
         warnings: analysis.warnings.clone(),
         extension_actions: analysis.extension_actions.clone(),
+        extension_notices: analysis.extension_notices.clone(),
         confidential_ops_count: analysis.confidential_ops_count,
         storage_ops_count: analysis.storage_ops_count,
     })

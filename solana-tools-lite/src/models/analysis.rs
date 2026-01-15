@@ -18,6 +18,8 @@ pub struct TxAnalysis {
     pub privacy_level: PrivacyLevel,
     /// Actions detected by protocol extensions (e.g. Light Protocol).
     pub extension_actions: Vec<AnalysisExtensionAction>,
+    /// Custom notices or reports from protocol extensions.
+    pub extension_notices: Vec<String>,
     /// Aggregated count of confidential (ZK) operations.
     pub confidential_ops_count: usize,
     /// Aggregated count of storage compression (public bridge) operations.
@@ -54,6 +56,7 @@ pub struct SigningSummary {
     pub has_non_sol_assets: bool,
     pub warnings: Vec<AnalysisWarning>,
     pub extension_actions: Vec<AnalysisExtensionAction>,
+    pub extension_notices: Vec<String>,
     pub confidential_ops_count: usize,
     pub storage_ops_count: usize,
 }
@@ -67,6 +70,7 @@ pub enum AnalysisWarning {
     SignerNotRequired,
     CpiLimit,
     ConfidentialTransferDetected,
+    MalformedInstruction,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -110,5 +114,45 @@ impl PrivacyLevel {
                 "Shielded private operations, no public mixing detected"
             ),
         }
+    }
+}
+
+impl TxAnalysis {
+    /// Recalculates the privacy level based on current metrics and extension actions.
+    pub fn recalculate_privacy_level(&mut self) {
+        use crate::models::extensions::PrivacyImpact;
+
+        let has_confidential = self.confidential_ops_count > 0 
+            || self.warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));
+        
+        let mut has_hybrid_action = false;
+        let has_storage = self.storage_ops_count > 0;
+
+        for action in &self.extension_actions {
+            if action.privacy_impact() == PrivacyImpact::Hybrid {
+                has_hybrid_action = true;
+                break;
+            }
+        }
+
+        let has_public_mixing = self.has_non_sol_assets || !self.transfers.is_empty();
+
+        self.privacy_level = if has_hybrid_action {
+            PrivacyLevel::Hybrid
+        } else if has_confidential {
+            if has_public_mixing {
+                PrivacyLevel::Hybrid
+            } else {
+                PrivacyLevel::Confidential
+            }
+        } else if has_storage {
+            if has_public_mixing {
+                PrivacyLevel::Hybrid
+            } else {
+                PrivacyLevel::Compressed
+            }
+        } else {
+            PrivacyLevel::Public
+        };
     }
 }
