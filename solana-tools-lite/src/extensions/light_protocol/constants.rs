@@ -3,7 +3,6 @@
 /// This module contains all the program IDs, discriminators, and other constants
 /// used by the Light Protocol (ZK Compression) on Solana. These values are used
 /// to identify and parse Light Protocol instructions.
-
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::ToolError;
 use std::sync::OnceLock;
@@ -43,7 +42,6 @@ pub const U64_SIZE: usize = 8;
 /// These 8-byte arrays uniquely identify different Light Protocol operations.
 /// They are derived from the instruction method names using anchor's discriminator
 /// generation process.
-
 /// Discriminator for CreateMint instruction.
 /// Creates a new compressed token mint.
 pub const DISCRIMINATOR_CREATE_MINT: [u8; 8] = [69, 44, 215, 132, 253, 214, 41, 45];
@@ -106,5 +104,5 @@ pub fn supported_programs() -> Result<&'static [PubkeyBase58; 3], &'static ToolE
             .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded COMPRESSED_TOKEN_PROGRAM_ID is invalid: {}", e)))?;
         
         Ok([light_system, account_compression, compressed_token])
-    }).as_ref().map_err(|e| e)
+    }).as_ref()
 }

@@ -3,7 +3,6 @@
 /// This module provides safe, reusable functions for parsing binary data
 /// from Light Protocol instructions. All functions use defensive programming
 /// practices to avoid panics and handle malformed data gracefully.
-
 use super::constants::{DISCRIMINATOR_SIZE, U64_SIZE};
 
 /// Safely parse a u64 value from instruction data at the given offset.
