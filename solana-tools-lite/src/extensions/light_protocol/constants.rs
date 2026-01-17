@@ -5,6 +5,7 @@
 /// to identify and parse Light Protocol instructions.
 
 use crate::models::pubkey_base58::PubkeyBase58;
+use crate::ToolError;
 use std::sync::OnceLock;
 
 /// Light Protocol system program ID (verified Jan 2026).
@@ -75,33 +76,35 @@ pub const DISCRIMINATOR_STATE_UPDATE: [u8; 8] = [81, 156, 178, 100, 94, 144, 128
 /// Closes a compressed account and reclaims rent.
 pub const DISCRIMINATOR_CLOSE_ACCOUNT: [u8; 8] = [125, 255, 149, 14, 110, 34, 72, 24];
 
-static SUPPORTED_PROGRAMS: OnceLock<Vec<PubkeyBase58>> = OnceLock::new();
+static SUPPORTED_PROGRAMS: OnceLock<Result<[PubkeyBase58; 3], ToolError>> = OnceLock::new();
 
 /// Returns the list of Light Protocol program IDs.
 /// 
-/// Uses lazy initialization with graceful error handling. If any program ID
-/// fails to parse, it is skipped rather than causing a panic. This ensures
-/// the system remains functional even if program IDs are updated incorrectly.
+/// Uses lazy initialization with proper error handling. If any program ID
+/// fails to parse, returns a ToolError instead of panicking. This ensures
+/// robust error handling while maintaining type safety.
 /// 
 /// # Returns
 /// 
-/// A slice of valid Light Protocol program IDs. In normal operation, this
-/// should contain 3 program IDs, but may contain fewer if some fail to parse.
-pub fn supported_programs() -> &'static [PubkeyBase58] {
+/// `Ok(&[PubkeyBase58; 3])` containing exactly three Light Protocol program IDs,
+/// or `Err(&ToolError)` if any program ID fails to parse.
+/// 
+/// # Errors
+/// 
+/// Returns `ToolError::ConfigurationError` if any of the hardcoded program ID strings
+/// cannot be parsed as valid base58 public keys. This indicates a bug in the code
+/// rather than user error.
+pub fn supported_programs() -> Result<&'static [PubkeyBase58; 3], &'static ToolError> {
     SUPPORTED_PROGRAMS.get_or_init(|| {
-        let mut programs = Vec::new();
+        let light_system = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID)
+            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded LIGHT_SYSTEM_PROGRAM_ID is invalid: {}", e)))?;
         
-        // Try to parse each program ID, skip invalid ones with graceful degradation
-        if let Ok(pk) = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID) {
-            programs.push(pk);
-        }
-        if let Ok(pk) = PubkeyBase58::try_from(ACCOUNT_COMPRESSION_PROGRAM_ID) {
-            programs.push(pk);
-        }
-        if let Ok(pk) = PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID) {
-            programs.push(pk);
-        }
+        let account_compression = PubkeyBase58::try_from(ACCOUNT_COMPRESSION_PROGRAM_ID)
+            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded ACCOUNT_COMPRESSION_PROGRAM_ID is invalid: {}", e)))?;
         
-        programs
-    })
+        let compressed_token = PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID)
+            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded COMPRESSED_TOKEN_PROGRAM_ID is invalid: {}", e)))?;
+        
+        Ok([light_system, account_compression, compressed_token])
+    }).as_ref().map_err(|e| e)
 }

@@ -68,6 +68,9 @@ pub enum ToolError {
 
     #[error("{0}")]
     InvalidInput(String),
+
+    #[error("configuration: {0}")]
+    ConfigurationError(String),
 }
 
 /// Errors that can arise when working with BIP‑39 helpers.
@@ -234,6 +237,7 @@ impl AsExitCode for ToolError {
     fn as_exit_code(&self) -> i32 {
         match self {
             ToolError::InvalidInput(_) => ExitCode::Usage.as_i32(),
+            ToolError::ConfigurationError(_) => ExitCode::Software.as_i32(),
             ToolError::Io(err) => err.as_exit_code(),
             ToolError::FileExists { .. } => ExitCode::IoErr.as_i32(),
             ToolError::Bip39(_)

@@ -1,6 +1,7 @@
 use crate::models::analysis::TxAnalysis;
 use crate::models::message::Message;
 use crate::models::pubkey_base58::PubkeyBase58;
+use crate::ToolError;
 
 /// Trait for protocol-specific analyzers (Plugins).
 ///
@@ -12,11 +13,20 @@ pub trait ProtocolAnalyzer: Send + Sync {
 
     /// List of program IDs owned/used by this protocol.
     /// Used by the registry for high-performance early filtering.
-    fn supported_programs(&self) -> &'static [PubkeyBase58];
+    /// 
+    /// # Returns
+    /// 
+    /// `Ok(&[PubkeyBase58])` containing the program IDs, or `Err(&ToolError)`
+    /// if the program IDs cannot be initialized.
+    fn supported_programs(&self) -> Result<&[PubkeyBase58], &ToolError>;
 
     /// Quick check if the transaction contains relevant instructions.
     fn detect(&self, message: &Message) -> bool {
-        let supported = self.supported_programs();
+        let supported = match self.supported_programs() {
+            Ok(programs) => programs,
+            Err(_) => return false, // If we can't get programs, assume no detection
+        };
+        
         message.instructions().iter().any(|instr| {
             if let Some(pk) = message.account_keys().get(instr.program_id_index as usize) {
                 supported.contains(pk)

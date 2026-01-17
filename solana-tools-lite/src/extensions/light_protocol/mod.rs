@@ -22,16 +22,6 @@ mod tests;
 /// - `StorageCompression`: Operations that compress/decompress assets or manage state
 /// - `Confidential`: Operations that involve private transfers or minting
 /// - `None`: Unknown or unclassified operations
-/// 
-/// # Examples
-/// 
-/// ```rust
-/// use solana_tools_lite::extensions::light_protocol::LightProtocol;
-/// use solana_tools_lite::extensions::ProtocolAnalyzer;
-/// 
-/// let analyzer = LightProtocol;
-/// let is_light_tx = analyzer.detect(&message);
-/// ```
 pub struct LightProtocol;
 
 impl ProtocolAnalyzer for LightProtocol {
@@ -40,8 +30,8 @@ impl ProtocolAnalyzer for LightProtocol {
     }
 
     // Light Protocol programs (verified Jan 2026)
-    fn supported_programs(&self) -> &'static [PubkeyBase58] {
-        constants::supported_programs()
+    fn supported_programs(&self) -> Result<&[PubkeyBase58], &crate::ToolError> {
+        constants::supported_programs().map(|programs| programs.as_slice())
     }
 
     fn analyze(
@@ -51,7 +41,14 @@ impl ProtocolAnalyzer for LightProtocol {
         signer: &PubkeyBase58,
         analysis: &mut TxAnalysis,
     ) {
-        let programs = self.supported_programs();
+        let programs = match self.supported_programs() {
+            Ok(programs) => programs,
+            Err(_) => {
+                // If we can't get supported programs, add a warning and return
+                analysis.warnings.push(crate::models::analysis::AnalysisWarning::MalformedInstruction);
+                return;
+            }
+        };
 
         for instr in message.instructions() {
             let program_id = match account_list.get(instr.program_id_index as usize) {

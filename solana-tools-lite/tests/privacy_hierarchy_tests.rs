@@ -1,5 +1,5 @@
 use solana_tools_lite::models::analysis::{PrivacyLevel, TxAnalysis, TransferView};
-use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction, PrivacyImpact};
+use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
 
 fn empty_analysis() -> TxAnalysis {
     TxAnalysis {
@@ -56,12 +56,14 @@ fn test_privacy_hierarchy_hybrid_mixed_confidential() {
 #[test]
 fn test_privacy_hierarchy_hybrid_bridge_exit() {
     let mut analysis = empty_analysis();
-    // Decompress is a Hybrid impact action
+    // Decompress is a StorageCompression impact action
     analysis.extension_actions.push(AnalysisExtensionAction::LightProtocol(
         LightProtocolAction::Decompress
     ));
+    // Simulate what analyze() does
+    analysis.storage_ops_count = 1;
     analysis.recalculate_privacy_level();
-    assert_eq!(analysis.privacy_level, PrivacyLevel::Hybrid);
+    assert_eq!(analysis.privacy_level, PrivacyLevel::Compressed);
 }
 
 #[test]
