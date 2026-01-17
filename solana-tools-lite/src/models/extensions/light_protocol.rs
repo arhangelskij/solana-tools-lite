@@ -55,16 +55,35 @@ impl LightProtocolAction {
     }
 
     /// Determine the privacy impact of this Light Protocol action.
+    /// 
+    /// Privacy impact classification is based on the nature of the operation:
+    /// 
+    /// - `StorageCompression`: Operations that compress/decompress assets or manage
+    ///   compressed state without directly transferring value between parties.
+    /// - `Confidential`: Operations that involve private value transfers or minting
+    ///   where the amounts and recipients may be hidden.
+    /// - `None`: Unknown operations that cannot be classified.
     pub fn privacy_impact(&self) -> PrivacyImpact {
         match self {
+            // Storage compression operations - manage compressed state infrastructure
             Self::CreateMint => PrivacyImpact::StorageCompression,
-            Self::MintTo => PrivacyImpact::Confidential,
-            Self::Transfer => PrivacyImpact::Confidential,
             Self::CompressSol { .. } => PrivacyImpact::StorageCompression,
             Self::CompressToken { .. } => PrivacyImpact::StorageCompression,
             Self::Decompress => PrivacyImpact::StorageCompression,
-            Self::StateUpdate => PrivacyImpact::StorageCompression, //TODO: оставляем пока этот стейт
             Self::CloseAccount => PrivacyImpact::StorageCompression,
+            
+            // StateUpdate is classified as StorageCompression because:
+            // - It updates on-chain compressed state (merkle trees, nullifiers)
+            // - Does not directly transfer assets between parties
+            // - Infrastructure operation for the compression system
+            // - Proof verification for transfers happens in Transfer/MintTo instructions
+            Self::StateUpdate => PrivacyImpact::StorageCompression,
+            
+            // Confidential operations - involve private value transfers
+            Self::MintTo => PrivacyImpact::Confidential,
+            Self::Transfer => PrivacyImpact::Confidential,
+            
+            // Unknown operations cannot be classified
             Self::Unknown { .. } => PrivacyImpact::None,
         }
     }
