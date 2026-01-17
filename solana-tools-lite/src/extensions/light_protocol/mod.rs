@@ -5,8 +5,33 @@ use crate::models::message::Message;
 use crate::models::pubkey_base58::PubkeyBase58;
 
 pub mod constants;
+pub mod parsing;
+
+#[cfg(test)]
+mod tests;
 
 /// Analyzer for Light Protocol (ZK Compression).
+/// 
+/// This analyzer detects and classifies Light Protocol instructions in Solana transactions.
+/// It supports all major Light Protocol operations including compression, decompression,
+/// transfers, and state management.
+/// 
+/// # Privacy Classification
+/// 
+/// The analyzer classifies operations into different privacy impact categories:
+/// - `StorageCompression`: Operations that compress/decompress assets or manage state
+/// - `Confidential`: Operations that involve private transfers or minting
+/// - `None`: Unknown or unclassified operations
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// use solana_tools_lite::extensions::light_protocol::LightProtocol;
+/// use solana_tools_lite::extensions::ProtocolAnalyzer;
+/// 
+/// let analyzer = LightProtocol;
+/// let is_light_tx = analyzer.detect(&message);
+/// ```
 pub struct LightProtocol;
 
 impl ProtocolAnalyzer for LightProtocol {
@@ -38,48 +63,24 @@ impl ProtocolAnalyzer for LightProtocol {
                 continue;
             }
 
-            if instr.data.len() < constants::DISCRIMINATOR_SIZE {
+            // Validate instruction has minimum required data length
+            if !parsing::validate_instruction_length(&instr.data, constants::DISCRIMINATOR_SIZE) {
                 analysis.warnings.push(crate::models::analysis::AnalysisWarning::MalformedInstruction);
                 continue;
             }
 
-            let discriminator: [u8; constants::DISCRIMINATOR_SIZE] = instr.data
-                [0..constants::DISCRIMINATOR_SIZE]
-                .try_into()
-                .unwrap_or([0u8; constants::DISCRIMINATOR_SIZE]);
+            let discriminator = parsing::extract_discriminator(&instr.data);
 
             let action = match discriminator {
                 constants::DISCRIMINATOR_CREATE_MINT => LightProtocolAction::CreateMint,
                 constants::DISCRIMINATOR_MINT_TO => LightProtocolAction::MintTo,
                 constants::DISCRIMINATOR_TRANSFER => LightProtocolAction::Transfer,
                 constants::DISCRIMINATOR_COMPRESS_SOL => {
-                    let lamports = if instr.data.len()
-                        >= constants::DISCRIMINATOR_SIZE + constants::U64_SIZE
-                    {
-                        Some(u64::from_le_bytes(
-                            instr.data[constants::DISCRIMINATOR_SIZE
-                                ..constants::DISCRIMINATOR_SIZE + constants::U64_SIZE]
-                                .try_into()
-                                .unwrap_or([0u8; 8]),
-                        ))
-                    } else {
-                        None
-                    };
+                    let lamports = parsing::parse_amount_from_instruction(&instr.data);
                     LightProtocolAction::CompressSol { lamports }
                 }
                 constants::DISCRIMINATOR_COMPRESS_TOKEN => {
-                    let amount = if instr.data.len()
-                        >= constants::DISCRIMINATOR_SIZE + constants::U64_SIZE
-                    {
-                        Some(u64::from_le_bytes(
-                            instr.data[constants::DISCRIMINATOR_SIZE
-                                ..constants::DISCRIMINATOR_SIZE + constants::U64_SIZE]
-                                .try_into()
-                                .unwrap_or([0u8; 8]),
-                        ))
-                    } else {
-                        None
-                    };
+                    let amount = parsing::parse_amount_from_instruction(&instr.data);
                     LightProtocolAction::CompressToken { amount }
                 }
                 constants::DISCRIMINATOR_DECOMPRESS => LightProtocolAction::Decompress,
