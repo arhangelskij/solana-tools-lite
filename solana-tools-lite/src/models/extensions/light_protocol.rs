@@ -1,6 +1,6 @@
-use serde::Serialize;
 use super::PrivacyImpact;
 use crate::utils::format_sol;
+use serde::Serialize;
 
 /// Action types detected for Light Protocol (ZK Compression).
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -23,7 +23,7 @@ pub enum LightProtocolAction {
     CloseAccount,
     /// Action not specifically parsed but identified as Light Protocol.
     Unknown {
-        discriminator: [u8; 8],
+        discriminator: [u8; 8], //TODO: type alias
     },
 }
 
@@ -55,13 +55,13 @@ impl LightProtocolAction {
     }
 
     /// Determine the privacy impact of this Light Protocol action.
-    /// 
-    /// Privacy impact classification is based on the nature of the operation:
-    /// 
-    /// - `StorageCompression`: Operations that compress/decompress assets or manage
-    ///   compressed state without directly transferring value between parties.
-    /// - `Confidential`: Operations that involve private value transfers or minting
-    ///   where the amounts and recipients may be hidden.
+    ///
+    /// # Classification
+    ///
+    /// - `StorageCompression`: Operations that manage compressed state infrastructure
+    ///   (compression, decompression, state updates) without directly transferring value.
+    /// - `Confidential`: Operations involving private value transfers where amounts
+    ///   and recipients are hidden via zero-knowledge proofs.
     /// - `None`: Unknown operations that cannot be classified.
     pub fn privacy_impact(&self) -> PrivacyImpact {
         match self {
@@ -71,18 +71,18 @@ impl LightProtocolAction {
             Self::CompressToken { .. } => PrivacyImpact::StorageCompression,
             Self::Decompress => PrivacyImpact::StorageCompression,
             Self::CloseAccount => PrivacyImpact::StorageCompression,
-            
+
             // StateUpdate is classified as StorageCompression because:
             // - It updates on-chain compressed state (merkle trees, nullifiers)
             // - Does not directly transfer assets between parties
             // - Infrastructure operation for the compression system
             // - Proof verification for transfers happens in Transfer/MintTo instructions
             Self::StateUpdate => PrivacyImpact::StorageCompression,
-            
+
             // Confidential operations - involve private value transfers
             Self::MintTo => PrivacyImpact::Confidential,
             Self::Transfer => PrivacyImpact::Confidential,
-            
+
             // Unknown operations cannot be classified
             Self::Unknown { .. } => PrivacyImpact::None,
         }
