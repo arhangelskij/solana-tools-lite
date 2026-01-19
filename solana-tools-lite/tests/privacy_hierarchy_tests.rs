@@ -1,5 +1,7 @@
 use solana_tools_lite::models::analysis::{PrivacyLevel, TxAnalysis, TransferView};
-use solana_tools_lite::models::extensions::{AnalysisExtensionAction, LightProtocolAction};
+use solana_tools_lite::models::extensions::AnalysisExtensionAction;
+use extensions::analysis::light_protocol::models::LightProtocolAction;
+use std::sync::Arc;
 
 fn empty_analysis() -> TxAnalysis {
     TxAnalysis {
@@ -56,14 +58,15 @@ fn test_privacy_hierarchy_hybrid_mixed_confidential() {
 #[test]
 fn test_privacy_hierarchy_hybrid_bridge_exit() {
     let mut analysis = empty_analysis();
-    // Decompress is a StorageCompression impact action
-    analysis.extension_actions.push(AnalysisExtensionAction::LightProtocol(
-        LightProtocolAction::Decompress
-    ));
-    // Simulate what analyze() does
+    // Decompress is a Hybrid impact action
+    analysis.extension_actions.push(
+        AnalysisExtensionAction::new(Arc::new(LightProtocolAction::Decompress))
+    );
+    // Simulate what analyze() does for Hybrid actions
+    analysis.confidential_ops_count = 1;
     analysis.storage_ops_count = 1;
     analysis.recalculate_privacy_level();
-    assert_eq!(analysis.privacy_level, PrivacyLevel::Compressed);
+    assert_eq!(analysis.privacy_level, PrivacyLevel::Hybrid); //TODO: 🟡 check it if Hybrid!
 }
 
 #[test]

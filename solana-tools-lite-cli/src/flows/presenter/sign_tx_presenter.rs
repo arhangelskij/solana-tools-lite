@@ -4,7 +4,6 @@ use crate::flows::presenter::{emit_line, Presentable};
 use crate::shell::error::CliError;
 use solana_tools_lite::constants::compute_budget;
 use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxAnalysis};
-use solana_tools_lite::models::extensions::AnalysisExtensionAction;
 use solana_tools_lite::utils::format_sol;
 
 /// Bundles analysis and an optional JSON summary payload.
@@ -121,11 +120,7 @@ fn emit_summary(analysis: &TxAnalysis) {
     if !analysis.extension_actions.is_empty() {
         eprintln!("EXTENSION PROTOCOLS DETECTED:");
         for action in &analysis.extension_actions {
-            match action {
-                AnalysisExtensionAction::LightProtocol(light_action) => {
-                    eprintln!("- Light Protocol: {}", light_action.description());
-                }
-            }
+            eprintln!("  - {}: {}", action.protocol_name(), action.description());
         }
         eprintln!("--------------------------------------------------");
     }

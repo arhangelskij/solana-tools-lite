@@ -15,9 +15,14 @@ exclude = [
     "tests/*",
 ]
 
+[features]
+default = ["protocol-extensions"]
+protocol-extensions = ["extensions"]
+
 [dependencies]
 clap = { version = "4.5.44", default-features = false, features = ["std", "derive", "help", "usage"] }
 solana-tools-lite = { version = "0.1.1", path = "../solana-tools-lite" }
+extensions = { path = "../extensions", optional = true }
 
 # Dependencies needed by handlers and adapters
 serde = { version = "1.0.228", features = ["derive"] }

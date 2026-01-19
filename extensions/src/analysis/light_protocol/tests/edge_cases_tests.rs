@@ -1,11 +1,10 @@
-use crate::extensions::light_protocol::LightProtocol;
-use crate::extensions::ProtocolAnalyzer;
-use crate::models::analysis::{AnalysisWarning, PrivacyLevel, TxAnalysis};
-use crate::models::hash_base58::HashBase58;
-use crate::models::instruction::Instruction;
-use crate::models::message::{Message, MessageHeader, MessageLegacy};
-use crate::models::pubkey_base58::PubkeyBase58;
-use crate::extensions::light_protocol::constants;
+use crate::analysis::light_protocol::{LightProtocol, constants};
+use solana_tools_lite::extensions::ProtocolAnalyzer;
+use solana_tools_lite::models::analysis::{AnalysisWarning, PrivacyLevel, TxAnalysis};
+use solana_tools_lite::models::hash_base58::HashBase58;
+use solana_tools_lite::models::instruction::Instruction;
+use solana_tools_lite::models::message::{Message, MessageHeader, MessageLegacy};
+use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
 fn empty_analysis() -> TxAnalysis {
     TxAnalysis {

@@ -17,11 +17,11 @@ exclude = [
 ]
 
 [dependencies]
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { workspace = true }
 serde_json = "1.0.145"
-bs58 = "0.5.1"
+bs58 = { workspace = true }
 data-encoding = "2.9.0"
-thiserror = "2.0.16"
+thiserror = { workspace = true }
 
 # manual cryptography
 hmac = "0.12.1"
@@ -36,10 +36,14 @@ rand = "0.8.5"
 solana-short-vec = "3.1.0"
 zeroize = { version = "1.8.1", features = ["derive"], optional = true }
 
+[features]
+default = []
+
 [dev-dependencies]
 rayon = "1.11.0"
 criterion = "0.8.1"
 anyhow = "1.0.100"
+extensions = { path = "../extensions" }
 
 [[bench]]
 name = "bench_signing"

@@ -1,5 +1,5 @@
-use crate::extensions::light_protocol::parsing::*;
-use crate::extensions::light_protocol::constants::DISCRIMINATOR_SIZE;
+use crate::analysis::light_protocol::parsing::*;
+use crate::analysis::light_protocol::constants::DISCRIMINATOR_SIZE;
 
 #[test]
 fn test_parse_u64_at_offset_success() {

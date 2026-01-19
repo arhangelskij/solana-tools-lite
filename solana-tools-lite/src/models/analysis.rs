@@ -2,8 +2,10 @@ use crate::models::extensions::AnalysisExtensionAction;
 use crate::models::pubkey_base58::PubkeyBase58;
 use serde::Serialize;
 
+//TODO: 🔴 check if need serialize for structs in the file
+
 /// Transaction analysis output used by CLI and other front-ends.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TxAnalysis {
     pub transfers: Vec<TransferView>,
     pub base_fee_lamports: u128,
@@ -55,7 +57,8 @@ pub struct SigningSummary {
     pub is_fee_payer: bool,
     pub has_non_sol_assets: bool,
     pub warnings: Vec<AnalysisWarning>,
-    pub extension_actions: Vec<AnalysisExtensionAction>,
+    /// Extension actions serialized as descriptions (not the full objects) //TODO: 🟡 check it
+    pub extension_actions: Vec<String>,
     pub extension_notices: Vec<String>,
     pub confidential_ops_count: usize,
     pub storage_ops_count: usize,

@@ -1,9 +1,7 @@
-use super::PrivacyImpact;
-use crate::utils::format_sol;
-use serde::Serialize;
+use solana_tools_lite::models::extensions::PrivacyImpact;
 
 /// Action types detected for Light Protocol (ZK Compression).
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LightProtocolAction {
     /// Creation of a new compressed mint.
     CreateMint,
@@ -22,9 +20,7 @@ pub enum LightProtocolAction {
     /// Closing a compressed account.
     CloseAccount,
     /// Action not specifically parsed but identified as Light Protocol.
-    Unknown {
-        discriminator: [u8; 8], //TODO: type alias
-    },
+    Unknown { discriminator: [u8; 8] },
 }
 
 impl LightProtocolAction {
@@ -35,7 +31,7 @@ impl LightProtocolAction {
             Self::Transfer => "Private Transfer".to_string(),
             Self::CompressSol { lamports } => {
                 if let Some(l) = lamports {
-                    format!("Compress {}", format_sol(*l as u128))
+                    format!("Compress {} SOL", *l as f64 / 1_000_000_000.0)
                 } else {
                     "Compress SOL".to_string()
                 }
@@ -55,36 +51,52 @@ impl LightProtocolAction {
     }
 
     /// Determine the privacy impact of this Light Protocol action.
-    ///
+    /// 
     /// # Classification
-    ///
-    /// - `StorageCompression`: Operations that manage compressed state infrastructure
-    ///   (compression, decompression, state updates) without directly transferring value.
+    /// 
+    /// - `Hybrid`: Operations that transition between public and private state
+    ///   (compression/decompression). These operations involve both public and
+    ///   private data in a single transaction.
     /// - `Confidential`: Operations involving private value transfers where amounts
     ///   and recipients are hidden via zero-knowledge proofs.
+    /// - `StorageCompression`: Operations that manage compressed state infrastructure
+    ///   without directly transferring value.
     /// - `None`: Unknown operations that cannot be classified.
     pub fn privacy_impact(&self) -> PrivacyImpact {
         match self {
-            // Storage compression operations - manage compressed state infrastructure
-            Self::CreateMint => PrivacyImpact::StorageCompression,
-            Self::CompressSol { .. } => PrivacyImpact::StorageCompression,
-            Self::CompressToken { .. } => PrivacyImpact::StorageCompression,
-            Self::Decompress => PrivacyImpact::StorageCompression,
-            Self::CloseAccount => PrivacyImpact::StorageCompression,
+            // Hybrid operations - transition between public and private state
+            // Compress: Public → Private (hybrid transaction)
+            // Decompress: Private → Public (hybrid transaction)
+            Self::CompressSol { .. } => PrivacyImpact::Hybrid,
+            Self::CompressToken { .. } => PrivacyImpact::Hybrid,
+            Self::Decompress => PrivacyImpact::Hybrid,
 
-            // StateUpdate is classified as StorageCompression because:
-            // - It updates on-chain compressed state (merkle trees, nullifiers)
-            // - Does not directly transfer assets between parties
-            // - Infrastructure operation for the compression system
-            // - Proof verification for transfers happens in Transfer/MintTo instructions
-            Self::StateUpdate => PrivacyImpact::StorageCompression,
-
-            // Confidential operations - involve private value transfers
+            // Confidential operations - fully private value transfers
             Self::MintTo => PrivacyImpact::Confidential,
             Self::Transfer => PrivacyImpact::Confidential,
 
-            // Unknown operations cannot be classified
+            // Storage compression operations - infrastructure management
+            Self::CreateMint => PrivacyImpact::StorageCompression,
+            Self::StateUpdate => PrivacyImpact::StorageCompression,
+            Self::CloseAccount => PrivacyImpact::StorageCompression,
+
+            // Unknown
             Self::Unknown { .. } => PrivacyImpact::None,
         }
+    }
+}
+
+/// Implement ExtensionAction trait for Light Protocol actions.
+impl solana_tools_lite::models::extensions::ExtensionAction for LightProtocolAction {
+    fn protocol_name(&self) -> &'static str {
+        "Light Protocol"
+    }
+    
+    fn description(&self) -> String {
+        self.description()
+    }
+    
+    fn privacy_impact(&self) -> PrivacyImpact {
+        self.privacy_impact()
     }
 }

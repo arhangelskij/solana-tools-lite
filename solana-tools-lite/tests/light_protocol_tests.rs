@@ -1,10 +1,10 @@
 use solana_tools_lite::constants::programs;
-use solana_tools_lite::extensions::light_protocol::constants::{
+use extensions::analysis::light_protocol::constants::{
     self, DISCRIMINATOR_COMPRESS_SOL, DISCRIMINATOR_CREATE_MINT, DISCRIMINATOR_MINT_TO,
     DISCRIMINATOR_TRANSFER,
 };
-use solana_tools_lite::extensions::light_protocol::LightProtocol;
-use solana_tools_lite::extensions::ProtocolAnalyzer;
+use extensions::analysis::light_protocol::LightProtocol;
+use solana_tools_lite::extensions::traits::ProtocolAnalyzer;
 use solana_tools_lite::models::analysis::{PrivacyLevel, TxAnalysis};
 use solana_tools_lite::models::hash_base58::HashBase58;
 use solana_tools_lite::models::instruction::Instruction;

@@ -1,4 +1,5 @@
-use crate::extensions::light_protocol::constants::*;
+use crate::analysis::light_protocol::constants::*;
+use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
 #[test]
 fn test_supported_programs_success() {
@@ -35,9 +36,9 @@ fn test_supported_programs_consistent() {
 #[test]
 fn test_program_id_constants_are_valid() {
     // Test that all individual program ID constants are valid
-    assert!(crate::models::pubkey_base58::PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).is_ok());
-    assert!(crate::models::pubkey_base58::PubkeyBase58::try_from(ACCOUNT_COMPRESSION_PROGRAM_ID).is_ok());
-    assert!(crate::models::pubkey_base58::PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID).is_ok());
+    assert!(PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).is_ok());
+    assert!(PubkeyBase58::try_from(ACCOUNT_COMPRESSION_PROGRAM_ID).is_ok());
+    assert!(PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID).is_ok());
 }
 
 #[test]

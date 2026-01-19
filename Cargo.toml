@@ -1,10 +1,16 @@
 [workspace]
 members = [
     "solana-tools-lite",
-    "solana-tools-lite-cli"
+    "solana-tools-lite-cli",
+    "extensions"
 ]
 
 resolver = "3"
+
+[workspace.dependencies]
+bs58 = "0.5.1"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.16"
 
 [profile.release]
 opt-level = "z"

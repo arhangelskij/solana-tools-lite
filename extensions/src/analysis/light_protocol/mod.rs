@@ -1,14 +1,21 @@
-use crate::extensions::traits::ProtocolAnalyzer;
-use crate::models::analysis::TxAnalysis;
-use crate::models::extensions::{AnalysisExtensionAction, LightProtocolAction, PrivacyImpact};
-use crate::models::message::Message;
-use crate::models::pubkey_base58::PubkeyBase58;
+use solana_tools_lite::extensions::traits::ProtocolAnalyzer;
+use solana_tools_lite::models::analysis::TxAnalysis;
+use solana_tools_lite::models::extensions::PrivacyImpact;
+use solana_tools_lite::models::message::Message;
+use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
+use solana_tools_lite::ToolError;
 
 pub mod constants;
 pub mod parsing;
+pub mod errors;
+pub mod models;
+
+pub use models::LightProtocolAction;
 
 #[cfg(test)]
 mod tests;
+
+use models::LightProtocolAction as Action;
 
 /// Analyzer for Light Protocol (ZK Compression).
 /// 
@@ -29,9 +36,9 @@ impl ProtocolAnalyzer for LightProtocol {
         "Light Protocol"
     }
 
-    // Light Protocol programs (verified Jan 2026)
-    fn supported_programs(&self) -> Result<&[PubkeyBase58], &crate::ToolError> {
-        constants::supported_programs().map(|programs| programs.as_slice())
+    // Light Protocol programs
+    fn supported_programs(&self) -> Result<&'static [PubkeyBase58], ToolError> {
+        constants::supported_programs()
     }
 
     fn analyze(
@@ -45,7 +52,9 @@ impl ProtocolAnalyzer for LightProtocol {
             Ok(programs) => programs,
             Err(_) => {
                 // If we can't get supported programs, add a warning and return
-                analysis.warnings.push(crate::models::analysis::AnalysisWarning::MalformedInstruction);
+                //TODO: 🟡 make normal import!
+                //TODO: 🔴 прокидывается ли ощибка дальше из supported_programs?
+                analysis.warnings.push(solana_tools_lite::models::analysis::AnalysisWarning::MalformedInstruction);
                 return;
             }
         };
@@ -62,28 +71,28 @@ impl ProtocolAnalyzer for LightProtocol {
 
             // Validate instruction has minimum required data length
             if !parsing::validate_instruction_length(&instr.data, constants::DISCRIMINATOR_SIZE) {
-                analysis.warnings.push(crate::models::analysis::AnalysisWarning::MalformedInstruction);
+                analysis.warnings.push(solana_tools_lite::models::analysis::AnalysisWarning::MalformedInstruction);
                 continue;
             }
 
             let discriminator = parsing::extract_discriminator(&instr.data);
 
             let action = match discriminator {
-                constants::DISCRIMINATOR_CREATE_MINT => LightProtocolAction::CreateMint,
-                constants::DISCRIMINATOR_MINT_TO => LightProtocolAction::MintTo,
-                constants::DISCRIMINATOR_TRANSFER => LightProtocolAction::Transfer,
+                constants::DISCRIMINATOR_CREATE_MINT => Action::CreateMint,
+                constants::DISCRIMINATOR_MINT_TO => Action::MintTo,
+                constants::DISCRIMINATOR_TRANSFER => Action::Transfer,
                 constants::DISCRIMINATOR_COMPRESS_SOL => {
                     let lamports = parsing::parse_amount_from_instruction(&instr.data);
-                    LightProtocolAction::CompressSol { lamports }
+                    Action::CompressSol { lamports }
                 }
                 constants::DISCRIMINATOR_COMPRESS_TOKEN => {
                     let amount = parsing::parse_amount_from_instruction(&instr.data);
-                    LightProtocolAction::CompressToken { amount }
+                    Action::CompressToken { amount }
                 }
-                constants::DISCRIMINATOR_DECOMPRESS => LightProtocolAction::Decompress,
-                constants::DISCRIMINATOR_STATE_UPDATE => LightProtocolAction::StateUpdate,
-                constants::DISCRIMINATOR_CLOSE_ACCOUNT => LightProtocolAction::CloseAccount,
-                _ => LightProtocolAction::Unknown { discriminator },
+                constants::DISCRIMINATOR_DECOMPRESS => Action::Decompress,
+                constants::DISCRIMINATOR_STATE_UPDATE => Action::StateUpdate,
+                constants::DISCRIMINATOR_CLOSE_ACCOUNT => Action::CloseAccount,
+                _ => Action::Unknown { discriminator },
             };
 
             // Signer involvement check: only count if signer is an account in this instruction
@@ -95,13 +104,17 @@ impl ProtocolAnalyzer for LightProtocol {
                 match action.privacy_impact() {
                     PrivacyImpact::Confidential => analysis.confidential_ops_count += 1,
                     PrivacyImpact::StorageCompression => analysis.storage_ops_count += 1,
+                    PrivacyImpact::Hybrid => {
+                        analysis.confidential_ops_count += 1;
+                        analysis.storage_ops_count += 1;
+                    }
                     _ => {}
                 }
             }
 
             analysis
                 .extension_actions
-                .push(AnalysisExtensionAction::LightProtocol(action));
+                .push(solana_tools_lite::models::extensions::AnalysisExtensionAction::new(std::sync::Arc::new(action)));
         }
     }
 
@@ -121,7 +134,7 @@ impl ProtocolAnalyzer for LightProtocol {
 
         notice.push_str(&format!(
             "Note: Network fee ({}) is always public",
-            crate::utils::format_sol(analysis.base_fee_lamports)
+            solana_tools_lite::utils::format_sol(analysis.base_fee_lamports)
         ));
 
         Some(notice)

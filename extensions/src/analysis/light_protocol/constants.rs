@@ -3,9 +3,7 @@
 /// This module contains all the program IDs, discriminators, and other constants
 /// used by the Light Protocol (ZK Compression) on Solana. These values are used
 /// to identify and parse Light Protocol instructions.
-use crate::models::pubkey_base58::PubkeyBase58;
-use crate::ToolError;
-use std::sync::OnceLock;
+use solana_tools_lite::{ToolError, models::pubkey_base58::PubkeyBase58};
 
 /// Light Protocol system program ID (verified Jan 2026).
 /// 
@@ -73,36 +71,47 @@ pub const DISCRIMINATOR_STATE_UPDATE: [u8; 8] = [81, 156, 178, 100, 94, 144, 128
 /// Discriminator for CloseAccount instruction.
 /// Closes a compressed account and reclaims rent.
 pub const DISCRIMINATOR_CLOSE_ACCOUNT: [u8; 8] = [125, 255, 149, 14, 110, 34, 72, 24];
-
-static SUPPORTED_PROGRAMS: OnceLock<Result<[PubkeyBase58; 3], ToolError>> = OnceLock::new();
-
 /// Returns the list of Light Protocol program IDs.
 /// 
-/// Uses lazy initialization with proper error handling. If any program ID
-/// fails to parse, returns a ToolError instead of panicking. This ensures
-/// robust error handling while maintaining type safety.
+/// Uses `OnceLock` to cache the parsed program IDs, ensuring they are only
+/// parsed once even with multiple calls. Subsequent calls return a reference
+/// to the cached slice with zero allocations.
 /// 
 /// # Returns
 /// 
-/// `Ok(&[PubkeyBase58; 3])` containing exactly three Light Protocol program IDs,
-/// or `Err(&ToolError)` if any program ID fails to parse.
+/// `Ok(&'static [PubkeyBase58])` containing exactly three Light Protocol program IDs,
+/// or `Err(ToolError)` if any program ID fails to parse.
 /// 
 /// # Errors
 /// 
 /// Returns `ToolError::ConfigurationError` if any of the hardcoded program ID strings
 /// cannot be parsed as valid base58 public keys. This indicates a bug in the code
 /// rather than user error.
-pub fn supported_programs() -> Result<&'static [PubkeyBase58; 3], &'static ToolError> {
-    SUPPORTED_PROGRAMS.get_or_init(|| {
+/// 
+/// # Thread Safety
+/// 
+/// This function is thread-safe. Multiple concurrent calls during initialization
+/// will coordinate via `OnceLock`, with only one thread performing the parsing.
+pub fn supported_programs() -> Result<&'static [PubkeyBase58], ToolError> {
+    use std::sync::OnceLock;
+    
+    static PROGRAMS: OnceLock<Result<Vec<PubkeyBase58>, ToolError>> = OnceLock::new();
+    
+    let result = PROGRAMS.get_or_init(|| {
         let light_system = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID)
-            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded LIGHT_SYSTEM_PROGRAM_ID is invalid: {}", e)))?;
+            .map_err(|_| ToolError::ConfigurationError("LIGHT_SYSTEM_PROGRAM_ID".to_string()))?;
         
         let account_compression = PubkeyBase58::try_from(ACCOUNT_COMPRESSION_PROGRAM_ID)
-            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded ACCOUNT_COMPRESSION_PROGRAM_ID is invalid: {}", e)))?;
+            .map_err(|_| ToolError::ConfigurationError("ACCOUNT_COMPRESSION_PROGRAM_ID".to_string()))?;
         
         let compressed_token = PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID)
-            .map_err(|e| ToolError::ConfigurationError(format!("Hardcoded COMPRESSED_TOKEN_PROGRAM_ID is invalid: {}", e)))?;
+            .map_err(|_| ToolError::ConfigurationError("COMPRESSED_TOKEN_PROGRAM_ID".to_string()))?;
         
-        Ok([light_system, account_compression, compressed_token])
-    }).as_ref()
+        Ok(vec![light_system, account_compression, compressed_token])
+    });
+    
+    match result {
+        Ok(vec) => Ok(vec.as_slice()),
+        Err(e) => Err(ToolError::ConfigurationError(format!("Failed to initialize Light Protocol programs: {}", e))),
+    }
 }

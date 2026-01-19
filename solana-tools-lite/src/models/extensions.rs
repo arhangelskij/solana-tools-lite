@@ -1,8 +1,5 @@
 use serde::Serialize;
-
-pub mod light_protocol;
-
-pub use light_protocol::LightProtocolAction;
+use std::sync::Arc;
 
 /// Privacy impact of a specific instruction or protocol action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -17,21 +14,47 @@ pub enum PrivacyImpact {
     Confidential,
 }
 
-/// A wrapper enum for all supported propriety/extension protocol actions.
-///
-/// This enum allows the analysis engine to treat different protocols uniformly.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(tag = "protocol", content = "action")]
-pub enum AnalysisExtensionAction {
-    /// Action detected from Light Protocol (ZK Compression).
-    LightProtocol(LightProtocolAction),
+/// Trait for protocol-specific actions detected during analysis.
+/// 
+/// Extensions implement this trait for their specific action types,
+/// allowing core to remain agnostic to specific protocol details.
+pub trait ExtensionAction: Send + Sync  {
+    /// Get the protocol name (e.g., "Light Protocol", "Arcium").
+    fn protocol_name(&self) -> &'static str;
+    
+    /// Get a human-readable description of this action.
+    fn description(&self) -> String;
+    
+    /// Get the privacy impact classification of this action.
+    fn privacy_impact(&self) -> PrivacyImpact;
 }
 
+//TODO: 🟡 18jan check if 
+
+/// Type-erased wrapper for extension actions.
+#[derive(Clone)]
+pub struct AnalysisExtensionAction(Arc<dyn ExtensionAction>);
+
 impl AnalysisExtensionAction {
-    /// Get the privacy impact of the underlying extension action.
+    pub fn new(action: Arc<dyn ExtensionAction>) -> Self {
+        Self(action)
+    }
+    
+    pub fn protocol_name(&self) -> &'static str {
+        self.0.protocol_name()
+    }
+    
+    pub fn description(&self) -> String {
+        self.0.description()
+    }
+    
     pub fn privacy_impact(&self) -> PrivacyImpact {
-        match self {
-            Self::LightProtocol(lp) => lp.privacy_impact(),
-        }
+        self.0.privacy_impact()
+    }
+}
+
+impl std::fmt::Debug for AnalysisExtensionAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.description())
     }
 }

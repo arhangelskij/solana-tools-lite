@@ -16,9 +16,14 @@ pub trait ProtocolAnalyzer: Send + Sync {
     /// 
     /// # Returns
     /// 
-    /// `Ok(&[PubkeyBase58])` containing the program IDs, or `Err(&ToolError)`
-    /// if the program IDs cannot be initialized.
-    fn supported_programs(&self) -> Result<&[PubkeyBase58], &ToolError>;
+    /// `Ok(&'static [PubkeyBase58])` containing the program IDs (cached after first call),
+    /// or `Err(ToolError)` if the program IDs cannot be initialized.
+    /// 
+    /// # Implementation Notes
+    /// 
+    /// Implementations should use `OnceLock` to cache the parsed program IDs,
+    /// ensuring parsing happens only once even with multiple calls.
+    fn supported_programs(&self) -> Result<&'static [PubkeyBase58], ToolError>;
 
     /// Quick check if the transaction contains relevant instructions.
     fn detect(&self, message: &Message) -> bool {

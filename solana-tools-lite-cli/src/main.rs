@@ -6,6 +6,10 @@ use solana_tools_lite_cli::shell::error::{fail_invalid_input, report_cli_error};
 use solana_tools_lite_cli::models::cmds::Commands;
 
 fn main() {
+    // Initialize protocol extensions if feature is enabled
+    #[cfg(feature = "protocol-extensions")]
+    extensions::init();
+    
     let cli = Cli::parse();
 
     // Global JSON resolution
