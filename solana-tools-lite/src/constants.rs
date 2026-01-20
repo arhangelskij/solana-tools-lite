@@ -37,7 +37,9 @@ pub mod programs {
     pub fn system_program() -> &'static PubkeyBase58 {
         SYSTEM_PROGRAM.get_or_init(|| {
             PubkeyBase58::try_from(SYSTEM_PROGRAM_ID)
-                .expect("SYSTEM_PROGRAM_ID must be valid base58 pubkey") //TODO: 🟡 remove expect
+                // Safe to unwrap: SYSTEM_PROGRAM_ID is a compile-time constant known to be valid base58.
+                // If this panics, it indicates a critical bug in the constant definition.
+                .expect("SYSTEM_PROGRAM_ID must be valid base58 pubkey")
         })
     }
 
