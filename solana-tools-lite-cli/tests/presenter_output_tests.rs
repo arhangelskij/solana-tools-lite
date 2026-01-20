@@ -416,3 +416,137 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
         "Should have unknown program warning"
     );
 }
+
+
+#[test]
+fn test_mock_protocol_single_instruction_presenter_output() {
+    // Initialize extensions
+    extensions::init();
+    
+    let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
+    let mock_program = PubkeyBase58::try_from("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ").unwrap();
+    
+    let instr = Instruction {
+        program_id_index: 1,
+        accounts: vec![0],
+        data: vec![42, 42, 42, 42, 42, 42, 42, 42],
+    };
+    
+    let message = Message::Legacy(MessageLegacy {
+        header: MessageHeader {
+            num_required_signatures: 1,
+            num_readonly_signed_accounts: 0,
+            num_readonly_unsigned_accounts: 0,
+        },
+        account_keys: vec![signer.clone(), mock_program],
+        recent_blockhash: HashBase58([5u8; 32]),
+        instructions: vec![instr],
+    });
+    
+    // Analyze transaction
+    let analysis = analyze_transaction(&message, &signer, None);
+    
+    // Use real presenter
+    let presentation = SignTxPresentation {
+        analysis: Some(&analysis),
+        summary_payload: None,
+    };
+    
+    eprintln!("\n=== MOCK PROTOCOL SINGLE INSTRUCTION ===");
+    let _ = presentation.present(false, false, true);
+    
+    // Verify Mock Protocol action
+    assert_eq!(analysis.extension_actions.len(), 1, "Should have 1 Mock Protocol action");
+    assert_eq!(
+        analysis.extension_actions[0].protocol_name(),
+        "Mock Protocol",
+        "Protocol name should be 'Mock Protocol'"
+    );
+    
+    // Verify Mock Protocol notice
+    assert_eq!(analysis.extension_notices.len(), 1, "Should have 1 notice");
+    assert!(
+        analysis.extension_notices[0].contains("MOCK PROTOCOL"),
+        "Notice should mention Mock Protocol"
+    );
+}
+
+#[test]
+fn test_light_and_mock_protocol_presenter_output() {
+    // Initialize extensions
+    extensions::init();
+    
+    let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
+    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let mock_program = PubkeyBase58::try_from("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ").unwrap();
+    
+    // Light Protocol CompressSol instruction
+    let mut light_data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
+    light_data.extend_from_slice(&2_000_000_000u64.to_le_bytes());
+    
+    // Mock Protocol instruction
+    let mock_data = vec![42, 42, 42, 42, 42, 42, 42, 42];
+    
+    let light_instr = Instruction {
+        program_id_index: 1,
+        accounts: vec![0, 2, 3],
+        data: light_data,
+    };
+    
+    let mock_instr = Instruction {
+        program_id_index: 4,
+        accounts: vec![0],
+        data: mock_data,
+    };
+    
+    let message = Message::Legacy(MessageLegacy {
+        header: MessageHeader {
+            num_required_signatures: 1,
+            num_readonly_signed_accounts: 0,
+            num_readonly_unsigned_accounts: 3,
+        },
+        account_keys: vec![
+            signer.clone(),
+            light_system_program,
+            PubkeyBase58([2u8; 32]),
+            PubkeyBase58([3u8; 32]),
+            mock_program,
+        ],
+        recent_blockhash: HashBase58([6u8; 32]),
+        instructions: vec![light_instr, mock_instr],
+    });
+    
+    // Analyze transaction
+    let analysis = analyze_transaction(&message, &signer, None);
+    
+    // Use real presenter
+    let presentation = SignTxPresentation {
+        analysis: Some(&analysis),
+        summary_payload: None,
+    };
+    
+    eprintln!("\n=== LIGHT PROTOCOL + MOCK PROTOCOL ===");
+    let _ = presentation.present(false, false, true);
+    
+    // Verify both protocols detected
+    assert_eq!(analysis.extension_actions.len(), 2, "Should have 2 protocol actions");
+    
+    // Verify action types
+    let protocol_names: Vec<&str> = analysis.extension_actions.iter()
+        .map(|a| a.protocol_name())
+        .collect();
+    
+    assert!(protocol_names.contains(&"Light Protocol"), "Should have Light Protocol");
+    assert!(protocol_names.contains(&"Mock Protocol"), "Should have Mock Protocol");
+    
+    // Verify both notices
+    assert_eq!(analysis.extension_notices.len(), 2, "Should have 2 notices");
+    assert!(
+        analysis.extension_notices.iter().any(|n| n.contains("ZK COMPRESSION")),
+        "Should have Light Protocol notice"
+    );
+    assert!(
+        analysis.extension_notices.iter().any(|n| n.contains("MOCK PROTOCOL")),
+        "Should have Mock Protocol notice"
+    );
+}

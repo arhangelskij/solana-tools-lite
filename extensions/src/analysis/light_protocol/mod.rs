@@ -1,9 +1,10 @@
 use solana_tools_lite::extensions::traits::ProtocolAnalyzer;
-use solana_tools_lite::models::analysis::TxAnalysis;
-use solana_tools_lite::models::extensions::PrivacyImpact;
+use solana_tools_lite::models::analysis::{TxAnalysis, AnalysisWarning};
+use solana_tools_lite::models::extensions::{PrivacyImpact, AnalysisExtensionAction};
 use solana_tools_lite::models::message::Message;
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::ToolError;
+use std::sync::Arc;
 
 pub mod constants;
 pub mod parsing;
@@ -50,11 +51,10 @@ impl ProtocolAnalyzer for LightProtocol {
     ) {
         let programs = match self.supported_programs() {
             Ok(programs) => programs,
-            Err(_) => {
-                // If we can't get supported programs, add a warning and return
-                //TODO: 🟡 make normal import!
-                //TODO: 🔴 прокидывается ли ощибка дальше из supported_programs?
-                analysis.warnings.push(solana_tools_lite::models::analysis::AnalysisWarning::MalformedInstruction);
+            Err(e) => {
+                // Configuration error - should never happen with valid program ID constants
+                // Indicates build-time misconfiguration or data corruption
+                eprintln!("[CRITICAL] Light Protocol: Failed to initialize program IDs: {}", e);
                 return;
             }
         };
@@ -71,7 +71,7 @@ impl ProtocolAnalyzer for LightProtocol {
 
             // Validate instruction has minimum required data length
             if !parsing::validate_instruction_length(&instr.data, constants::DISCRIMINATOR_SIZE) {
-                analysis.warnings.push(solana_tools_lite::models::analysis::AnalysisWarning::MalformedInstruction);
+                analysis.warnings.push(AnalysisWarning::MalformedInstruction);
                 continue;
             }
 
@@ -114,7 +114,7 @@ impl ProtocolAnalyzer for LightProtocol {
 
             analysis
                 .extension_actions
-                .push(solana_tools_lite::models::extensions::AnalysisExtensionAction::new(std::sync::Arc::new(action)));
+                .push(AnalysisExtensionAction::new(Arc::new(action)));
         }
     }
 
@@ -132,6 +132,7 @@ impl ProtocolAnalyzer for LightProtocol {
             notice.push_str("Please verify the integrity of the proof data source.\n");
         }
 
+        notice.push_str("\n");
         notice.push_str(&format!(
             "Note: Network fee ({}) is always public",
             solana_tools_lite::utils::format_sol(analysis.base_fee_lamports)

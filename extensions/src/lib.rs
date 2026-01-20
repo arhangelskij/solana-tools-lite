@@ -28,6 +28,7 @@ pub fn init() {
     
     let analyzers: Vec<Arc<dyn solana_tools_lite::extensions::traits::ProtocolAnalyzer>> = vec![
         Arc::new(analysis::light_protocol::LightProtocol),
+        Arc::new(analysis::mock_protocol::MockProtocol),
         // Future protocols can be added here:
         // Arc::new(analysis::arcium::Arcium),
     ];
