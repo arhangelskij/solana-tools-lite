@@ -114,7 +114,7 @@ fn test_detect_compress_sol() {
 #[test]
 fn test_ignore_system_program() {
     let analyzer = LightProtocol;
-    let program_id = programs::system_program();
+    let program_id = PubkeyBase58::try_from(programs::SYSTEM_PROGRAM_ID).unwrap();
     let data = vec![0u8; 8]; 
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);

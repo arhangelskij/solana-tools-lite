@@ -5,14 +5,13 @@ use solana_tools_lite::models::message::{Message, MessageAddressTableLookup, Mes
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::models::hash_base58::HashBase58;
 use solana_tools_lite::constants::programs;
-use solana_tools_lite::models::extensions::AnalysisExtensionAction;
 use std::collections::HashMap;
 
 #[test]
 fn analyze_legacy_system_transfer() {
     let signer = PubkeyBase58::from([1u8; 32]);
     let recipient = PubkeyBase58::from([2u8; 32]);
-    let system_program = programs::system_program().clone();
+    let system_program = PubkeyBase58::try_from(programs::SYSTEM_PROGRAM_ID).unwrap();
     let blockhash = HashBase58([0u8; 32]);
 
     let mut data = Vec::new();
@@ -75,7 +74,7 @@ fn analyze_v0_missing_lookup_tables_warns() {
 #[test]
 fn analyze_compute_budget_sets_priority_fee() {
     let signer = PubkeyBase58::from([9u8; 32]);
-    let program = programs::compute_budget_program().clone();
+    let program = PubkeyBase58::try_from(programs::COMPUTE_BUDGET_ID).unwrap();
     let other = PubkeyBase58::from([8u8; 32]);
 
     let mut data_limit = vec![2u8];
@@ -147,8 +146,8 @@ fn analyze_v0_missing_lookup_table_key_warns() {
 fn analyze_token_and_unknown_programs_warn() {
     let signer = PubkeyBase58::from([10u8; 32]);
     let other = PubkeyBase58::from([11u8; 32]);
-    let token_program = programs::token_program().clone();
-    let token_2022_program = programs::token_2022_program().clone();
+    let token_program = PubkeyBase58::try_from(programs::TOKEN_PROGRAM_ID).unwrap();
+    let token_2022_program = PubkeyBase58::try_from(programs::TOKEN_2022_PROGRAM_ID).unwrap();
     let unknown_program = PubkeyBase58::from([12u8; 32]);
 
     let msg = Message::Legacy(MessageLegacy {
