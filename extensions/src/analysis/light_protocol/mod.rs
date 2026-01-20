@@ -17,6 +17,7 @@ pub use models::LightProtocolAction;
 mod tests;
 
 use models::LightProtocolAction as Action;
+use constants::DISCRIMINATOR_SIZE;
 
 /// Analyzer for Light Protocol (ZK Compression).
 /// 
@@ -70,7 +71,7 @@ impl ProtocolAnalyzer for LightProtocol {
             }
 
             // Validate instruction has minimum required data length
-            if !parsing::validate_instruction_length(&instr.data, constants::DISCRIMINATOR_SIZE) {
+            if instr.data.len() < DISCRIMINATOR_SIZE {
                 analysis.warnings.push(AnalysisWarning::MalformedInstruction);
                 continue;
             }
@@ -82,11 +83,11 @@ impl ProtocolAnalyzer for LightProtocol {
                 constants::DISCRIMINATOR_MINT_TO => Action::MintTo,
                 constants::DISCRIMINATOR_TRANSFER => Action::Transfer,
                 constants::DISCRIMINATOR_COMPRESS_SOL => {
-                    let lamports = parsing::parse_amount_from_instruction(&instr.data);
+                    let lamports = parsing::parse_u64_at_offset(&instr.data, DISCRIMINATOR_SIZE);
                     Action::CompressSol { lamports }
                 }
                 constants::DISCRIMINATOR_COMPRESS_TOKEN => {
-                    let amount = parsing::parse_amount_from_instruction(&instr.data);
+                    let amount = parsing::parse_u64_at_offset(&instr.data, DISCRIMINATOR_SIZE);
                     Action::CompressToken { amount }
                 }
                 constants::DISCRIMINATOR_DECOMPRESS => Action::Decompress,
@@ -118,8 +119,9 @@ impl ProtocolAnalyzer for LightProtocol {
         }
     }
 
-    fn enrich_notice(&self, analysis: &TxAnalysis) -> Option<String> {
+    fn enrich_notice(&self, analysis: &mut TxAnalysis) {
         let mut notice = String::new();
+        
         notice.push_str("!!! ZK COMPRESSION NOTICE !!!\n");
         notice.push_str("This transaction uses ZK Compression (Light Protocol).\n");
         notice.push_str(
@@ -138,6 +140,6 @@ impl ProtocolAnalyzer for LightProtocol {
             solana_tools_lite::utils::format_sol(analysis.base_fee_lamports)
         ));
 
-        Some(notice)
+        analysis.extension_notices.push(notice);
     }
 }

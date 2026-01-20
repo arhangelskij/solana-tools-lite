@@ -5,8 +5,6 @@
 /// practices to avoid panics and handle malformed data gracefully.
 use super::constants::{DISCRIMINATOR_SIZE, U64_SIZE};
 
-//TODO:🔴 19jan почему парсится вручную без использования ядра?
-
 /// Safely parse a u64 value from instruction data at the given offset.
 /// 
 /// This function performs bounds checking and uses safe conversion methods
@@ -30,40 +28,6 @@ pub fn parse_u64_at_offset(data: &[u8], offset: usize) -> Option<u64> {
         .try_into()
         .ok()
         .map(u64::from_le_bytes)
-}
-
-/// Parse a u64 amount/lamports value from Light Protocol instruction data.
-/// 
-/// This is a convenience function that parses a u64 value immediately after
-/// the 8-byte discriminator in Light Protocol instructions.
-/// 
-/// # Arguments
-/// 
-/// * `data` - The complete instruction data including discriminator
-/// 
-/// # Returns
-/// 
-/// `Some(amount)` if the instruction contains valid amount data,
-/// `None` if the instruction is too short or parsing fails.
-pub fn parse_amount_from_instruction(data: &[u8]) -> Option<u64> {
-    parse_u64_at_offset(data, DISCRIMINATOR_SIZE)
-}
-
-/// Validate that instruction data has the minimum required length.
-/// 
-/// Light Protocol instructions must have at least an 8-byte discriminator.
-/// This function provides a consistent way to validate instruction length.
-/// 
-/// # Arguments
-/// 
-/// * `data` - The instruction data to validate
-/// * `min_length` - The minimum required length in bytes
-/// 
-/// # Returns
-/// 
-/// `true` if the data is long enough, `false` otherwise.
-pub fn validate_instruction_length(data: &[u8], min_length: usize) -> bool {
-    data.len() >= min_length
 }
 
 /// Extract discriminator from Light Protocol instruction data.

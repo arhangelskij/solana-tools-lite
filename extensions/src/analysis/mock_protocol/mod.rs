@@ -64,7 +64,7 @@ impl ProtocolAnalyzer for MockProtocol {
         }
     }
 
-    fn enrich_notice(&self, _analysis: &TxAnalysis) -> Option<String> {
+    fn enrich_notice(&self, analysis: &mut TxAnalysis) {
         let mut notice = String::new();
         notice.push_str("!!! MOCK PROTOCOL NOTICE !!!\n");
         notice.push_str("This is a test protocol for demonstrating multiple protocol support.\n");
@@ -75,6 +75,6 @@ impl ProtocolAnalyzer for MockProtocol {
         notice.push_str("- Independent protocol notices\n");
         notice.push_str("- Protocol-specific action detection");
 
-        Some(notice)
+        analysis.extension_notices.push(notice);
     }
 }

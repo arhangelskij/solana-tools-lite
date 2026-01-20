@@ -50,8 +50,6 @@ pub trait ProtocolAnalyzer: Send + Sync {
         analysis: &mut TxAnalysis,
     );
 
-    /// Optional rich text or notice to append to the summary.
-    fn enrich_notice(&self, _analysis: &TxAnalysis) -> Option<String> {
-        None
-    }
+    /// //TODO: 🟡 1) add doc 
+    fn enrich_notice(&self, analysis: &mut TxAnalysis);
 }

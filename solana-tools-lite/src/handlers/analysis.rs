@@ -129,15 +129,12 @@ pub fn analyze_transaction(
     // 4. Run protocol extensions (Plugins)
     let plugins = registry::get_all_analyzers();
     
-    //TODO: 🟡 check if we have 2 or more plugins
     for plugin in plugins {
         if plugin.detect(message) {
             plugin.analyze(message, &account_list, signer, &mut analysis);
+            plugin.enrich_notice(&mut analysis);
             
-            if let Some(notice) = plugin.enrich_notice(&analysis) {
-                analysis.extension_notices.push(notice);
-            }
-            
+            //TODO: 🔴 refactoring
             // Remove this plugin's programs from unknown warnings
             if let Ok(supported) = plugin.supported_programs() {
                 analysis.warnings.retain(|w| {
@@ -482,7 +479,6 @@ pub fn build_signing_summary(
         is_fee_payer,
         has_non_sol_assets: analysis.has_non_sol_assets,
         warnings: analysis.warnings.clone(),
-        //TODO: 🔴 18jan how presenter will be know what a program and it desc and notice?
         extension_actions: analysis.extension_actions.iter().map(|a| a.description()).collect(),
         extension_notices: analysis.extension_notices.clone(),
         confidential_ops_count: analysis.confidential_ops_count,

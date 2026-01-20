@@ -180,14 +180,14 @@ fn test_signer_not_involved() {
 fn test_enrich_notice_dynamic() {
     let analyzer = LightProtocol;
     let mut analysis = empty_analysis();
-    
+
     // Case 1: Only storage compression
     analysis.storage_ops_count = 1;
-    let notice = analyzer.enrich_notice(&analysis).unwrap();
-    assert!(!notice.contains("Valid proofs are required"));
+    analyzer.enrich_notice(&mut analysis);
+    assert!(analysis.extension_notices.iter().any(|notice| !notice.contains("Valid proofs are required")));
     
     // Case 2: Confidential ops present
     analysis.confidential_ops_count = 1;
-    let notice = analyzer.enrich_notice(&analysis).unwrap();
-    assert!(notice.contains("Valid proofs are required"));
+    analyzer.enrich_notice(&mut analysis);
+    assert!(analysis.extension_notices.iter().any(|notice| notice.contains("Valid proofs are required")));
 }
