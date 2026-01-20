@@ -93,7 +93,7 @@ pub fn analyze_transaction(
 
         let mut handled = false;
 
-//TODO: 🟡 mb refactoring
+        //TODO: 🟡 mb refactoring
         if program_id == programs::system_program() {
             handled = true;
             if let Some(lamports) = parse_system_transfer_amount(&instr.data) {
@@ -128,22 +128,14 @@ pub fn analyze_transaction(
 
     // 4. Run protocol extensions (Plugins)
     let plugins = registry::get_all_analyzers();
-    
+
     for plugin in plugins {
         if plugin.detect(message) {
             plugin.analyze(message, &account_list, signer, &mut analysis);
             plugin.enrich_notice(&mut analysis);
-            
-            //TODO: 🔴 refactoring
-            // Remove this plugin's programs from unknown warnings
+
             if let Ok(supported) = plugin.supported_programs() {
-                analysis.warnings.retain(|w| {
-                    if let AnalysisWarning::UnknownProgram { program_id } = w {
-                        !supported.contains(program_id)
-                    } else {
-                        true
-                    }
-                });
+                analysis.resolve_unknown_programs(supported);
             }
         }
     }
@@ -162,7 +154,7 @@ fn verify_signer_requirement(
     warnings: &mut Vec<AnalysisWarning>,
 ) {
     let num_required_signatures = message.header().num_required_signatures as usize;
-    
+
     // The first `num_required_signatures` accounts in the list are the signers.
     let signing_accounts = if accounts.len() >= num_required_signatures {
         &accounts[0..num_required_signatures]
@@ -173,7 +165,7 @@ fn verify_signer_requirement(
     let is_required = signing_accounts.iter().any(|pk| pk == signer);
 
     if !is_required {
-        warnings.push(AnalysisWarning::SignerNotRequired); 
+        warnings.push(AnalysisWarning::SignerNotRequired);
     }
 }
 
@@ -301,8 +293,12 @@ fn process_transfer(
         return;
     }
 
-    let Some(&from_idx) = instr.accounts.first() else { return };
-    let Some(&to_idx) = instr.accounts.get(1) else { return };
+    let Some(&from_idx) = instr.accounts.first() else {
+        return;
+    };
+    let Some(&to_idx) = instr.accounts.get(1) else {
+        return;
+    };
 
     let from = account_to_string(accounts, from_idx);
     let to = account_to_string(accounts, to_idx);
@@ -314,7 +310,9 @@ fn process_transfer(
 
     if from_is_signer {
         // Safe saturating add to prevent overflow in accumulation
-        state.total_sol_send_by_signer = state.total_sol_send_by_signer.saturating_add(lamports as u128);
+        state.total_sol_send_by_signer = state
+            .total_sol_send_by_signer
+            .saturating_add(lamports as u128);
     }
 
     state.transfers.push(TransferView {
@@ -331,7 +329,7 @@ fn finalize_analysis(
     mut warnings: Vec<AnalysisWarning>,
     message_version: &'static str,
 ) -> TxAnalysis {
-    /* TODO: 🟡 Refine CPI warning logic to avoid spam. 
+    /* TODO: 🟡 Refine CPI warning logic to avoid spam.
        Currently suppressed to avoid noise in transactions with common unknown programs (Jito, etc.).
     if !state.unknown_programs.is_empty() {
         warnings.push(AnalysisWarning::CpiLimit);
@@ -352,9 +350,11 @@ fn finalize_analysis(
         warnings.push(AnalysisWarning::UnknownProgram { program_id });
     }
     // Privacy Level Calculation
-    let has_confidential = state.confidential_ops_count > 0 
-        || warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));
-    
+    let has_confidential = state.confidential_ops_count > 0
+        || warnings
+            .iter()
+            .any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));
+
     let mut has_hybrid_action = false;
     let has_storage = state.storage_ops_count > 0;
 
@@ -364,7 +364,8 @@ fn finalize_analysis(
         }
     }
 
-    let has_public_mixing = state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty();
+    let has_public_mixing =
+        state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty();
 
     //TODO: switch to match
     let privacy_level = if has_hybrid_action {
@@ -398,13 +399,13 @@ fn finalize_analysis(
         let limit = state
             .cu_limit
             .unwrap_or(compute_budget::DEFAULT_COMPUTE_UNIT_LIMIT);
-        
+
         // fee = (price * limit) / 1_000_000
         let fee = (price_micro as u128)
             .checked_mul(limit as u128)
             .and_then(|prod| prod.checked_div(MICRO_LAMPORTS_PER_LAMPORT))
             .unwrap_or(0);
-            
+
         let estimated = state.cu_limit.is_none();
         (fee, estimated)
     });
@@ -455,9 +456,10 @@ pub fn build_signing_summary(
         } else {
             (0, false)
         };
-    
+
     // Safe addition for max cost
-    let max_cost = analysis.total_fee_lamports
+    let max_cost = analysis
+        .total_fee_lamports
         .checked_add(analysis.total_sol_send_by_signer)
         .ok_or_else(|| ToolError::InvalidInput("Total cost overflowed u128".into()))?;
 
@@ -479,7 +481,11 @@ pub fn build_signing_summary(
         is_fee_payer,
         has_non_sol_assets: analysis.has_non_sol_assets,
         warnings: analysis.warnings.clone(),
-        extension_actions: analysis.extension_actions.iter().map(|a| a.description()).collect(),
+        extension_actions: analysis
+            .extension_actions
+            .iter()
+            .map(|a| a.description())
+            .collect(),
         extension_notices: analysis.extension_notices.clone(),
         confidential_ops_count: analysis.confidential_ops_count,
         storage_ops_count: analysis.storage_ops_count,

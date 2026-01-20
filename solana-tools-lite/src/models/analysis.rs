@@ -30,6 +30,20 @@ pub struct TxAnalysis {
     pub has_non_sol_assets: bool,
 }
 
+impl TxAnalysis {
+    /// Removes UnknownProgram warnings for the given list of known programs.
+    pub fn resolve_unknown_programs(&mut self, known_programs: &[PubkeyBase58]) {
+        self.warnings.retain(|w| {
+            match w {
+                AnalysisWarning::UnknownProgram { program_id } => {
+                    !known_programs.contains(program_id)
+                },
+                _ => true
+            }
+        });
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TransferView {
     pub from: String,
