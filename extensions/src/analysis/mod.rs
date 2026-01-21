@@ -4,5 +4,5 @@ pub mod types;
 
 pub use types::ProgramId;
 pub use light_protocol::errors::LightError;
-pub use light_protocol::LightProtocolAction;
+pub use light_protocol::models::LightProtocolAction;
 pub use mock_protocol::MockProtocol;

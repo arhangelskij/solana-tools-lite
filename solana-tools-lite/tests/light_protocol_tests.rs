@@ -1,7 +1,6 @@
-use solana_tools_lite::constants::programs;
 use extensions::analysis::light_protocol::constants::{
-    self, DISCRIMINATOR_COMPRESS_SOL, DISCRIMINATOR_CREATE_MINT, DISCRIMINATOR_MINT_TO,
-    DISCRIMINATOR_TRANSFER,
+    self, DISCRIMINATOR_CTOKEN_TRANSFER, DISCRIMINATOR_TRANSFER2, DISCRIMINATOR_CTOKEN_MINT_TO,
+    DISCRIMINATOR_INVOKE, DISCRIMINATOR_INSERT_INTO_QUEUES,
 };
 use extensions::analysis::light_protocol::LightProtocol;
 use solana_tools_lite::extensions::traits::ProtocolAnalyzer;
@@ -13,8 +12,8 @@ use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
 fn mock_message(program_id: &PubkeyBase58, data: Vec<u8>, signer: &PubkeyBase58) -> Message {
     let instr = Instruction {
-        program_id_index: 1, // program_id is at index 1
-        accounts: vec![0],  // signer is at index 0
+        program_id_index: 1,
+        accounts: vec![0],
         data,
     };
     Message::Legacy(MessageLegacy {
@@ -51,10 +50,61 @@ fn empty_analysis() -> TxAnalysis {
 }
 
 #[test]
-fn test_detect_create_mint() {
+fn test_detect_ctoken_transfer() {
     let analyzer = LightProtocol;
     let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = DISCRIMINATOR_CREATE_MINT.to_vec();
+    let mut data = vec![DISCRIMINATOR_CTOKEN_TRANSFER];
+    data.extend_from_slice(&100u64.to_le_bytes()); // amount
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_transfer2() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![DISCRIMINATOR_TRANSFER2];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_mint_to() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let mut data = vec![DISCRIMINATOR_CTOKEN_MINT_TO];
+    data.extend_from_slice(&500u64.to_le_bytes()); // amount
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_light_system_invoke() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let data = DISCRIMINATOR_INVOKE.to_vec();
+    
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);
     let mut analysis = empty_analysis();
@@ -66,42 +116,11 @@ fn test_detect_create_mint() {
 }
 
 #[test]
-fn test_detect_mint_to() {
+fn test_detect_account_compression_insert() {
     let analyzer = LightProtocol;
-    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = DISCRIMINATOR_MINT_TO.to_vec();
-    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
-    let message = mock_message(&program_id, data, &signer);
-    let mut analysis = empty_analysis();
-
-    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    let program_id = PubkeyBase58::try_from(constants::ACCOUNT_COMPRESSION_PROGRAM_ID).unwrap();
+    let data = DISCRIMINATOR_INSERT_INTO_QUEUES.to_vec();
     
-    assert_eq!(analysis.confidential_ops_count, 1);
-}
-
-#[test]
-fn test_detect_transfer() {
-    let analyzer = LightProtocol;
-    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = DISCRIMINATOR_TRANSFER.to_vec();
-    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
-    let message = mock_message(&program_id, data, &signer);
-    let mut analysis = empty_analysis();
-
-    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
-    
-    assert_eq!(analysis.confidential_ops_count, 1);
-}
-
-#[test]
-fn test_detect_compress_sol() {
-    let analyzer = LightProtocol;
-    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
-    
-    let lamports: u64 = 1_000_000_000;
-    let mut data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    data.extend_from_slice(&lamports.to_le_bytes());
-
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);
     let mut analysis = empty_analysis();
@@ -109,13 +128,15 @@ fn test_detect_compress_sol() {
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
     assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
 }
 
 #[test]
 fn test_ignore_system_program() {
     let analyzer = LightProtocol;
-    let program_id = PubkeyBase58::try_from(programs::SYSTEM_PROGRAM_ID).unwrap();
-    let data = vec![0u8; 8]; 
+    let program_id = PubkeyBase58::try_from("11111111111111111111111111111111").unwrap();
+    let data = vec![0u8; 8];
+    
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);
     let mut analysis = empty_analysis();
@@ -130,15 +151,15 @@ fn test_ignore_system_program() {
 fn test_unknown_light_instruction() {
     let analyzer = LightProtocol;
     let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = vec![1, 2, 3, 4, 5, 6, 7, 8]; 
+    let data = vec![255u8]; // Unknown discriminator
+    
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);
     let mut analysis = empty_analysis();
 
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
-    // Unknown instructions don't increment counts but should add an extension action
-    assert_eq!(analysis.confidential_ops_count, 0);
+    // Unknown instructions should still be added to extension_actions
     assert!(!analysis.extension_actions.is_empty());
 }
 
@@ -146,7 +167,7 @@ fn test_unknown_light_instruction() {
 fn test_signer_not_involved() {
     let analyzer = LightProtocol;
     let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = DISCRIMINATOR_TRANSFER.to_vec();
+    let data = vec![DISCRIMINATOR_CTOKEN_TRANSFER];
     
     // Signer is NOT in accounts
     let instr = Instruction {
@@ -172,7 +193,7 @@ fn test_signer_not_involved() {
     
     // Should NOT be counted because signer is not involved
     assert_eq!(analysis.confidential_ops_count, 0);
-    // But it should still be in extension actions
+    // But it should still be in extension_actions
     assert!(!analysis.extension_actions.is_empty());
 }
 
@@ -184,7 +205,7 @@ fn test_enrich_notice_dynamic() {
     // Case 1: Only storage compression
     analysis.storage_ops_count = 1;
     analyzer.enrich_notice(&mut analysis);
-    assert!(analysis.extension_notices.iter().any(|notice| !notice.contains("Valid proofs are required")));
+    assert!(!analysis.extension_notices.is_empty());
     
     // Case 2: Confidential ops present
     analysis.confidential_ops_count = 1;

@@ -11,13 +11,10 @@ pub mod parsing;
 pub mod errors;
 pub mod models;
 
-pub use models::LightProtocolAction;
+pub use models::LightProtocolAction as Action;
 
 #[cfg(test)]
 mod tests;
-
-use models::LightProtocolAction as Action;
-use constants::DISCRIMINATOR_SIZE;
 
 /// Analyzer for Light Protocol (ZK Compression).
 /// 
@@ -53,13 +50,11 @@ impl ProtocolAnalyzer for LightProtocol {
         let programs = match self.supported_programs() {
             Ok(programs) => programs,
             Err(e) => {
-                // Configuration error - should never happen with valid program ID constants
-                // Indicates build-time misconfiguration or data corruption
                 eprintln!("[CRITICAL] Light Protocol: Failed to initialize program IDs: {}", e);
                 return;
             }
         };
-
+        
         for instr in message.instructions() {
             let program_id = match account_list.get(instr.program_id_index as usize) {
                 Some(pk) => pk,
@@ -71,30 +66,12 @@ impl ProtocolAnalyzer for LightProtocol {
             }
 
             // Validate instruction has minimum required data length
-            if instr.data.len() < DISCRIMINATOR_SIZE {
+            if instr.data.is_empty() {
                 analysis.warnings.push(AnalysisWarning::MalformedInstruction);
                 continue;
             }
 
-            let discriminator = parsing::extract_discriminator(&instr.data);
-
-            let action = match discriminator {
-                constants::DISCRIMINATOR_CREATE_MINT => Action::CreateMint,
-                constants::DISCRIMINATOR_MINT_TO => Action::MintTo,
-                constants::DISCRIMINATOR_TRANSFER => Action::Transfer,
-                constants::DISCRIMINATOR_COMPRESS_SOL => {
-                    let lamports = parsing::parse_u64_at_offset(&instr.data, DISCRIMINATOR_SIZE);
-                    Action::CompressSol { lamports }
-                }
-                constants::DISCRIMINATOR_COMPRESS_TOKEN => {
-                    let amount = parsing::parse_u64_at_offset(&instr.data, DISCRIMINATOR_SIZE);
-                    Action::CompressToken { amount }
-                }
-                constants::DISCRIMINATOR_DECOMPRESS => Action::Decompress,
-                constants::DISCRIMINATOR_STATE_UPDATE => Action::StateUpdate,
-                constants::DISCRIMINATOR_CLOSE_ACCOUNT => Action::CloseAccount,
-                _ => Action::Unknown { discriminator },
-            };
+            let action = parse_light_instruction(program_id, &instr.data);
 
             // Signer involvement check: only count if signer is an account in this instruction
             let signer_involved = instr.accounts.iter().any(|&idx| {
@@ -141,5 +118,113 @@ impl ProtocolAnalyzer for LightProtocol {
         ));
 
         analysis.extension_notices.push(notice);
+    }
+}
+
+/// Parse Light Protocol instruction based on program ID and data.
+/// 
+/// Handles both 1-byte discriminators (Compressed Token Program) and
+/// 8-byte discriminators (Light System, Account Compression, etc.).
+fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
+    let program_id_str = program_id.to_string();
+    
+    match program_id_str.as_str() {
+        // ====================================================================
+        // COMPRESSED TOKEN PROGRAM - 1-BYTE DISCRIMINATORS
+        // ====================================================================
+        constants::COMPRESSED_TOKEN_PROGRAM_ID => {
+            if let Some(discriminator) = parsing::extract_discriminator_u8(data) {
+                match discriminator {
+                    constants::DISCRIMINATOR_CTOKEN_TRANSFER => Action::CTokenTransfer,
+                    constants::DISCRIMINATOR_CTOKEN_APPROVE => Action::CTokenApprove,
+                    constants::DISCRIMINATOR_CTOKEN_REVOKE => Action::CTokenRevoke,
+                    constants::DISCRIMINATOR_CTOKEN_MINT_TO => Action::CTokenMintTo,
+                    constants::DISCRIMINATOR_CTOKEN_BURN => Action::CTokenBurn,
+                    constants::DISCRIMINATOR_CLOSE_TOKEN_ACCOUNT => Action::CloseTokenAccount,
+                    constants::DISCRIMINATOR_CTOKEN_FREEZE_ACCOUNT => Action::CTokenFreezeAccount,
+                    constants::DISCRIMINATOR_CTOKEN_THAW_ACCOUNT => Action::CTokenThawAccount,
+                    constants::DISCRIMINATOR_CTOKEN_TRANSFER_CHECKED => Action::CTokenTransferChecked,
+                    constants::DISCRIMINATOR_CTOKEN_MINT_TO_CHECKED => Action::CTokenMintToChecked,
+                    constants::DISCRIMINATOR_CTOKEN_BURN_CHECKED => Action::CTokenBurnChecked,
+                    constants::DISCRIMINATOR_CREATE_TOKEN_ACCOUNT => Action::CreateTokenAccount,
+                    constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT => Action::CreateAssociatedTokenAccount,
+                    constants::DISCRIMINATOR_TRANSFER2 => Action::Transfer2,
+                    constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT_IDEMPOTENT => Action::CreateAssociatedTokenAccountIdempotent,
+                    constants::DISCRIMINATOR_MINT_ACTION => Action::MintAction,
+                    constants::DISCRIMINATOR_CLAIM => Action::Claim,
+                    constants::DISCRIMINATOR_WITHDRAW_FUNDING_POOL => Action::WithdrawFundingPool,
+                    _ => {
+                        // Fallback for Anchor instructions (8-byte discriminators)
+                        if let Some(disc_8) = parsing::extract_discriminator_u64(data) {
+                            match disc_8 {
+                                // Anchor Freeze/Thaw
+                                [248, 198, 158, 145, 225, 117, 135, 200] => Action::Freeze,
+                                [90, 147, 75, 178, 85, 88, 4, 137] => Action::Thaw,
+                                _ => Action::UnknownEightByte { discriminator: disc_8 },
+                            }
+                        } else {
+                            Action::Unknown { discriminator }
+                        }
+                    }
+                }
+            } else {
+                Action::Unknown { discriminator: 0 }
+            }
+        }
+        
+        // ====================================================================
+        // LIGHT SYSTEM PROGRAM - 8-BYTE DISCRIMINATORS
+        // ====================================================================
+        constants::LIGHT_SYSTEM_PROGRAM_ID => {
+            if let Some(discriminator) = parsing::extract_discriminator_u64(data) {
+                match discriminator {
+                    constants::DISCRIMINATOR_INVOKE => Action::Invoke,
+                    constants::DISCRIMINATOR_INVOKE_CPI => Action::InvokeCpi,
+                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY => Action::InvokeCpiWithReadOnly,
+                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO => Action::InvokeCpiWithAccountInfo,
+                    _ => Action::UnknownEightByte { discriminator },
+                }
+            } else {
+                Action::Unknown { discriminator: 0 }
+            }
+        }
+        
+        // ====================================================================
+        // ACCOUNT COMPRESSION PROGRAM - 8-BYTE DISCRIMINATORS
+        // ====================================================================
+        constants::ACCOUNT_COMPRESSION_PROGRAM_ID => {
+            if let Some(discriminator) = parsing::extract_discriminator_u64(data) {
+                match discriminator {
+                    constants::DISCRIMINATOR_INSERT_INTO_QUEUES => Action::InsertIntoQueues,
+                    _ => Action::UnknownEightByte { discriminator },
+                }
+            } else {
+                Action::Unknown { discriminator: 0 }
+            }
+        }
+        
+        // ====================================================================
+        // LIGHT REGISTRY PROGRAM - 8-BYTE DISCRIMINATORS
+        // ====================================================================
+        constants::LIGHT_REGISTRY_ID => {
+            if let Some(discriminator) = parsing::extract_discriminator_u64(data) {
+                match discriminator {
+                    constants::DISCRIMINATOR_CREATE_CONFIG_COUNTER => Action::CreateConfigCounter,
+                    constants::DISCRIMINATOR_CREATE_COMPRESSIBLE_CONFIG => Action::CreateCompressibleConfig,
+                    _ => Action::UnknownEightByte { discriminator },
+                }
+            } else {
+                Action::Unknown { discriminator: 0 }
+            }
+        }
+        
+        // ====================================================================
+        // SPL NOOP PROGRAM - No discriminators
+        // ====================================================================
+        constants::SPL_NOOP_PROGRAM_ID => {
+            Action::Unknown { discriminator: 0 }
+        }
+        
+        _ => Action::Unknown { discriminator: 0 },
     }
 }
