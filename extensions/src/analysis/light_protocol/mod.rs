@@ -154,9 +154,17 @@ fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
                     constants::DISCRIMINATOR_CLAIM => Action::Claim,
                     constants::DISCRIMINATOR_WITHDRAW_FUNDING_POOL => Action::WithdrawFundingPool,
                     _ => {
-                        // Fallback for Anchor instructions (8-byte discriminators)
+                        // Fallback for Anchor/Token Interface instructions (8-byte discriminators)
                         if let Some(disc_8) = parsing::extract_discriminator_u64(data) {
                             match disc_8 {
+                                // Token Interface instructions
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => Action::TokenInterfaceMintTo,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER => Action::TokenInterfaceTransfer,
+                                constants::DISCRIMINATOR_BATCH_COMPRESS => Action::BatchCompress,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_APPROVE => Action::TokenInterfaceApprove,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_REVOKE => Action::TokenInterfaceRevoke,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_FREEZE => Action::TokenInterfaceFreeze,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_THAW => Action::TokenInterfaceThaw,
                                 // Anchor Freeze/Thaw
                                 [248, 198, 158, 145, 225, 117, 135, 200] => Action::Freeze,
                                 [90, 147, 75, 178, 85, 88, 4, 137] => Action::Thaw,

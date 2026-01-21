@@ -160,6 +160,34 @@ pub const DISCRIMINATOR_CREATE_COMPRESSIBLE_CONFIG: [u8; 8] = [13, 182, 188, 82,
 // TOKEN INTERFACE - 8-BYTE DISCRIMINATORS
 // ============================================================================
 
+/// Discriminator for MintTo instruction (8 bytes).
+/// Mint tokens via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO: [u8; 8] = [241, 34, 48, 186, 37, 179, 123, 192];
+
+/// Discriminator for Transfer instruction (8 bytes).
+/// Transfer tokens via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER: [u8; 8] = [163, 52, 200, 231, 140, 3, 69, 186];
+
+/// Discriminator for BatchCompress instruction (8 bytes).
+/// Batch compression of tokens.
+pub const DISCRIMINATOR_BATCH_COMPRESS: [u8; 8] = [65, 206, 101, 37, 147, 42, 221, 144];
+
+/// Discriminator for Approve instruction (8 bytes).
+/// Approve a delegate via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_APPROVE: [u8; 8] = [69, 74, 217, 36, 115, 117, 97, 76];
+
+/// Discriminator for Revoke instruction (8 bytes).
+/// Revoke a delegate via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_REVOKE: [u8; 8] = [170, 23, 31, 34, 133, 173, 93, 242];
+
+/// Discriminator for Freeze instruction (8 bytes).
+/// Freeze an account via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_FREEZE: [u8; 8] = [255, 91, 207, 84, 251, 194, 254, 63];
+
+/// Discriminator for Thaw instruction (8 bytes).
+/// Thaw an account via Token Interface.
+pub const DISCRIMINATOR_TOKEN_INTERFACE_THAW: [u8; 8] = [226, 249, 34, 57, 189, 21, 177, 101];
+
 /// Discriminator for CreateTokenPool instruction (8 bytes).
 /// Create a new token pool.
 pub const DISCRIMINATOR_CREATE_TOKEN_POOL: [u8; 8] = [23, 169, 27, 122, 147, 169, 209, 152];

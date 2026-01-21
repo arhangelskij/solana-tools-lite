@@ -77,6 +77,20 @@ pub enum LightProtocolAction {
     // TOKEN INTERFACE - 8-BYTE DISCRIMINATORS
     // ========================================================================
     
+    /// TokenInterfaceMintTo: Mint tokens via Token Interface.
+    TokenInterfaceMintTo,
+    /// TokenInterfaceTransfer: Transfer tokens via Token Interface.
+    TokenInterfaceTransfer,
+    /// BatchCompress: Batch compression of tokens.
+    BatchCompress,
+    /// TokenInterfaceApprove: Approve a delegate via Token Interface.
+    TokenInterfaceApprove,
+    /// TokenInterfaceRevoke: Revoke a delegate via Token Interface.
+    TokenInterfaceRevoke,
+    /// TokenInterfaceFreeze: Freeze an account via Token Interface.
+    TokenInterfaceFreeze,
+    /// TokenInterfaceThaw: Thaw an account via Token Interface.
+    TokenInterfaceThaw,
     /// CreateTokenPool: Create a new token pool.
     CreateTokenPool,
     /// AddTokenPool: Add a token pool.
@@ -134,6 +148,13 @@ impl LightProtocolAction {
             Self::CreateCompressibleConfig => "Create Compressible Config".to_string(),
             
             // Token Interface
+            Self::TokenInterfaceMintTo => "Mint Tokens (Token Interface)".to_string(),
+            Self::TokenInterfaceTransfer => "Transfer Tokens (Token Interface)".to_string(),
+            Self::BatchCompress => "Batch Compress Tokens".to_string(),
+            Self::TokenInterfaceApprove => "Approve Delegate (Token Interface)".to_string(),
+            Self::TokenInterfaceRevoke => "Revoke Delegate (Token Interface)".to_string(),
+            Self::TokenInterfaceFreeze => "Freeze Account (Token Interface)".to_string(),
+            Self::TokenInterfaceThaw => "Thaw Account (Token Interface)".to_string(),
             Self::CreateTokenPool => "Create Token Pool".to_string(),
             Self::AddTokenPool => "Add Token Pool".to_string(),
             
@@ -152,7 +173,9 @@ impl LightProtocolAction {
             // Confidential operations - fully private value transfers
             Self::CTokenTransfer | Self::CTokenTransferChecked |
             Self::Transfer2 | Self::CTokenMintTo | Self::CTokenMintToChecked |
-            Self::CTokenBurn | Self::CTokenBurnChecked => {
+            Self::CTokenBurn | Self::CTokenBurnChecked |
+            Self::TokenInterfaceMintTo | Self::TokenInterfaceTransfer |
+            Self::BatchCompress => {
                 PrivacyImpact::Confidential
             }
 
@@ -165,6 +188,8 @@ impl LightProtocolAction {
             Self::Invoke | Self::InvokeCpi | Self::InvokeCpiWithReadOnly | Self::InvokeCpiWithAccountInfo |
             Self::InsertIntoQueues |
             Self::CreateConfigCounter | Self::CreateCompressibleConfig |
+            Self::TokenInterfaceApprove | Self::TokenInterfaceRevoke |
+            Self::TokenInterfaceFreeze | Self::TokenInterfaceThaw |
             Self::CreateTokenPool | Self::AddTokenPool |
             Self::Freeze | Self::Thaw => {
                 PrivacyImpact::StorageCompression
