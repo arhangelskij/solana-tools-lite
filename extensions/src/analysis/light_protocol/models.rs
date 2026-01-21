@@ -35,6 +35,8 @@ pub enum LightProtocolAction {
     CreateAssociatedTokenAccount,
     /// Transfer2: Batch instruction for compressed token transfers and compression/decompression.
     Transfer2,
+    /// Decompress: Decompress compressed assets back to regular form.
+    Decompress,
     /// CreateAssociatedTokenAccountIdempotent: Idempotent creation of associated token account.
     CreateAssociatedTokenAccountIdempotent,
     /// MintAction: Batch instruction for operations on compressed mint accounts.
@@ -129,6 +131,7 @@ impl LightProtocolAction {
             Self::CreateTokenAccount => "Create Compressed Token Account".to_string(),
             Self::CreateAssociatedTokenAccount => "Create Associated Compressed Token Account".to_string(),
             Self::Transfer2 => "Batch Transfer Compressed Tokens".to_string(),
+            Self::Decompress => "Decompress Assets".to_string(),
             Self::CreateAssociatedTokenAccountIdempotent => "Create Associated Compressed Token Account (Idempotent)".to_string(),
             Self::MintAction => "Batch Mint Action".to_string(),
             Self::Claim => "Claim Rent".to_string(),
@@ -177,6 +180,11 @@ impl LightProtocolAction {
             Self::TokenInterfaceMintTo | Self::TokenInterfaceTransfer |
             Self::BatchCompress => {
                 PrivacyImpact::Confidential
+            }
+
+            // Hybrid operations - transition between public and private state
+            Self::Decompress => {
+                PrivacyImpact::Hybrid
             }
 
             // Storage compression operations - infrastructure management

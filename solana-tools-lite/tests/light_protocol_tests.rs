@@ -212,3 +212,51 @@ fn test_enrich_notice_dynamic() {
     analyzer.enrich_notice(&mut analysis);
     assert!(analysis.extension_notices.iter().any(|notice| notice.contains("Valid proofs are required")));
 }
+
+#[test]
+fn test_detect_token_interface_transfer() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_token_interface_mint_to() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_batch_compress() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_BATCH_COMPRESS.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
