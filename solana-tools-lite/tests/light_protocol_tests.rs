@@ -260,3 +260,419 @@ fn test_detect_batch_compress() {
     assert_eq!(analysis.confidential_ops_count, 1);
     assert!(!analysis.extension_actions.is_empty());
 }
+
+// ============================================================================
+// COMPREHENSIVE TESTS FOR ALL COMPRESSED TOKEN PROGRAM INSTRUCTIONS
+// ============================================================================
+
+#[test]
+fn test_detect_ctoken_approve() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_APPROVE];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_revoke() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_REVOKE];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_burn() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_BURN];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_close_token_account() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CLOSE_TOKEN_ACCOUNT];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_freeze_account() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_FREEZE_ACCOUNT];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_thaw_account() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_THAW_ACCOUNT];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_transfer_checked() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_TRANSFER_CHECKED];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_mint_to_checked() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_MINT_TO_CHECKED];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_ctoken_burn_checked() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CTOKEN_BURN_CHECKED];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_create_associated_token_account() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_create_associated_token_account_idempotent() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT_IDEMPOTENT];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_mint_action() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_MINT_ACTION];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_claim() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_CLAIM];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_withdraw_funding_pool() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = vec![constants::DISCRIMINATOR_WITHDRAW_FUNDING_POOL];
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+// ============================================================================
+// TESTS FOR LIGHT REGISTRY PROGRAM INSTRUCTIONS
+// ============================================================================
+
+#[test]
+fn test_detect_create_config_counter() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_REGISTRY_ID).unwrap();
+    let data = constants::DISCRIMINATOR_CREATE_CONFIG_COUNTER.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_create_compressible_config() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_REGISTRY_ID).unwrap();
+    let data = constants::DISCRIMINATOR_CREATE_COMPRESSIBLE_CONFIG.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+// ============================================================================
+// TESTS FOR TOKEN INTERFACE INSTRUCTIONS
+// ============================================================================
+
+#[test]
+fn test_detect_token_interface_approve() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_APPROVE.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_token_interface_revoke() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_REVOKE.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_token_interface_freeze() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_FREEZE.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_token_interface_thaw() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_THAW.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_create_token_pool() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_CREATE_TOKEN_POOL.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_add_token_pool() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_ADD_TOKEN_POOL.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+// ============================================================================
+// TESTS FOR LIGHT SYSTEM PROGRAM ADDITIONAL INSTRUCTIONS
+// ============================================================================
+
+#[test]
+fn test_detect_invoke_cpi() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_INVOKE_CPI.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_invoke_cpi_with_read_only() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}
+
+#[test]
+fn test_detect_invoke_cpi_with_account_info() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let data = constants::DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO.to_vec();
+    
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let message = mock_message(&program_id, data, &signer);
+    let mut analysis = empty_analysis();
+
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    assert_eq!(analysis.storage_ops_count, 1);
+    assert!(!analysis.extension_actions.is_empty());
+}

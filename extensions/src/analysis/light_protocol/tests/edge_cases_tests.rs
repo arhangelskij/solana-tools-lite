@@ -36,7 +36,7 @@ fn test_malformed_instruction_too_short() {
     let instr = Instruction {
         program_id_index: 1,
         accounts: vec![0],
-        data: vec![1, 2, 3], // Too short for discriminator
+        data: vec![], // Empty data
     };
     
     let message = Message::Legacy(MessageLegacy {
@@ -63,37 +63,6 @@ fn test_malformed_instruction_too_short() {
 }
 
 #[test]
-fn test_empty_instruction_data() {
-    let analyzer = LightProtocol;
-    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
-    
-    let instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0],
-        data: vec![], // Empty data
-    };
-    
-    let message = Message::Legacy(MessageLegacy {
-        header: MessageHeader {
-            num_required_signatures: 1,
-            num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 0,
-        },
-        account_keys: vec![signer.clone(), program_id],
-        recent_blockhash: HashBase58([0u8; 32]),
-        instructions: vec![instr],
-    });
-    
-    let mut analysis = empty_analysis();
-    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
-    
-    // Should add malformed instruction warning
-    assert!(analysis.warnings.iter().any(|w| matches!(w, AnalysisWarning::MalformedInstruction)));
-    assert!(analysis.extension_actions.is_empty());
-}
-
-#[test]
 fn test_invalid_discriminator() {
     let analyzer = LightProtocol;
     let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
@@ -102,7 +71,7 @@ fn test_invalid_discriminator() {
     let instr = Instruction {
         program_id_index: 1,
         accounts: vec![0],
-        data: vec![255, 255, 255, 255, 255, 255, 255, 255], // Invalid discriminator
+        data: vec![255], // Invalid 1-byte discriminator
     };
     
     let message = Message::Legacy(MessageLegacy {
@@ -136,17 +105,17 @@ fn test_multiple_instructions_counting() {
         Instruction {
             program_id_index: 1,
             accounts: vec![0],
-            data: constants::DISCRIMINATOR_TRANSFER.to_vec(),
+            data: vec![constants::DISCRIMINATOR_CTOKEN_TRANSFER],
         },
         Instruction {
             program_id_index: 1,
             accounts: vec![0],
-            data: constants::DISCRIMINATOR_MINT_TO.to_vec(),
+            data: vec![constants::DISCRIMINATOR_CTOKEN_MINT_TO],
         },
         Instruction {
             program_id_index: 1,
             accounts: vec![0],
-            data: constants::DISCRIMINATOR_CREATE_MINT.to_vec(),
+            data: vec![constants::DISCRIMINATOR_CREATE_TOKEN_ACCOUNT],
         },
     ];
     
@@ -166,12 +135,76 @@ fn test_multiple_instructions_counting() {
     
     // Should process all three instructions
     assert_eq!(analysis.extension_actions.len(), 3);
-    // Should count: 2 confidential (Transfer, MintTo) + 1 storage (CreateMint)
+    // Should count: 2 confidential (CTokenTransfer, CTokenMintTo) + 1 storage (CreateTokenAccount)
     assert_eq!(analysis.confidential_ops_count, 2);
     assert_eq!(analysis.storage_ops_count, 1);
     
     // Privacy level should reflect confidential operations
-    // Note: The final privacy level is calculated in the main analysis handler
-    // but we can verify the counts that influence it
     assert!(analysis.confidential_ops_count > 0, "Should have confidential operations");
+}
+
+#[test]
+fn test_signer_not_in_accounts() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    let other_account = PubkeyBase58::try_from("11111111111111111111111111111111").unwrap();
+    
+    let instr = Instruction {
+        program_id_index: 1,
+        accounts: vec![1], // Points to other_account, not signer
+        data: vec![constants::DISCRIMINATOR_CTOKEN_TRANSFER],
+    };
+    
+    let message = Message::Legacy(MessageLegacy {
+        header: MessageHeader {
+            num_required_signatures: 1,
+            num_readonly_signed_accounts: 0,
+            num_readonly_unsigned_accounts: 0,
+        },
+        account_keys: vec![signer.clone(), program_id.clone(), other_account],
+        recent_blockhash: HashBase58([0u8; 32]),
+        instructions: vec![instr],
+    });
+    
+    let mut analysis = empty_analysis();
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    // Should add extension action but not count it
+    assert_eq!(analysis.extension_actions.len(), 1);
+    assert_eq!(analysis.confidential_ops_count, 0);
+    assert_eq!(analysis.storage_ops_count, 0);
+}
+
+#[test]
+fn test_8byte_discriminator_in_compressed_token_program() {
+    let analyzer = LightProtocol;
+    let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
+    let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
+    
+    // Token Interface Transfer (8-byte discriminator)
+    let instr = Instruction {
+        program_id_index: 1,
+        accounts: vec![0],
+        data: constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER.to_vec(),
+    };
+    
+    let message = Message::Legacy(MessageLegacy {
+        header: MessageHeader {
+            num_required_signatures: 1,
+            num_readonly_signed_accounts: 0,
+            num_readonly_unsigned_accounts: 0,
+        },
+        account_keys: vec![signer.clone(), program_id],
+        recent_blockhash: HashBase58([0u8; 32]),
+        instructions: vec![instr],
+    });
+    
+    let mut analysis = empty_analysis();
+    analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
+    
+    // Should recognize Token Interface Transfer as confidential
+    assert_eq!(analysis.extension_actions.len(), 1);
+    assert_eq!(analysis.confidential_ops_count, 1);
+    assert_eq!(analysis.storage_ops_count, 0);
 }

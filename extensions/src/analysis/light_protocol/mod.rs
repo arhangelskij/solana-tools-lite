@@ -71,6 +71,7 @@ impl ProtocolAnalyzer for LightProtocol {
                 continue;
             }
 
+            //TODO: 🟡 move parse_light_instruction into parser
             let action = parse_light_instruction(program_id, &instr.data);
 
             // Signer involvement check: only count if signer is an account in this instruction
@@ -165,6 +166,8 @@ fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_REVOKE => Action::TokenInterfaceRevoke,
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_FREEZE => Action::TokenInterfaceFreeze,
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_THAW => Action::TokenInterfaceThaw,
+                                constants::DISCRIMINATOR_CREATE_TOKEN_POOL => Action::CreateTokenPool,
+                                constants::DISCRIMINATOR_ADD_TOKEN_POOL => Action::AddTokenPool,
                                 // Anchor Freeze/Thaw
                                 [248, 198, 158, 145, 225, 117, 135, 200] => Action::Freeze,
                                 [90, 147, 75, 178, 85, 88, 4, 137] => Action::Thaw,
