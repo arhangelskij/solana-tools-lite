@@ -8,15 +8,17 @@ use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::models::message::{Message, MessageHeader, MessageLegacy};
 use solana_tools_lite::models::instruction::Instruction;
 use solana_tools_lite::models::hash_base58::HashBase58;
-use extensions::analysis::light_protocol::constants::DISCRIMINATOR_COMPRESS_SOL;
+use extensions::analysis::light_protocol::constants::{DISCRIMINATOR_INVOKE, LIGHT_SYSTEM_PROGRAM_ID, COMPRESSED_TOKEN_PROGRAM_ID};
 use solana_tools_lite_cli::flows::presenter::Presentable;
 use solana_tools_lite_cli::flows::presenter::sign_tx_presenter::SignTxPresentation;
 
+//TODO: 🔴 fix tests
 fn build_light_compress_message(signer: &PubkeyBase58, amount_lamports: u64) -> Message {
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
     
-    // CompressSol instruction data: discriminator + amount
-    let mut data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
+    // Invoke instruction data: 8-byte discriminator
+    let mut data = DISCRIMINATOR_INVOKE.to_vec();
+    // In a real scenario, more data follows, but for mock analysis discriminator is enough
     data.extend_from_slice(&amount_lamports.to_le_bytes());
     
     let instr = Instruction {
@@ -69,9 +71,10 @@ fn test_light_protocol_single_instruction_presenter_output() {
         "Light Protocol",
         "Protocol name should be 'Light Protocol'"
     );
+    eprintln!("Action description: {}", analysis.extension_actions[0].description());
     assert!(
-        analysis.extension_actions[0].description().contains("Compress"),
-        "Action should be Compress"
+        analysis.extension_actions[0].description().contains("Invoke"),
+        "Action should be Invoke"
     );
     
     // Verify extension notices
@@ -88,14 +91,12 @@ fn test_light_protocol_multiple_instructions_presenter_output() {
     extensions::init();
     
     let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
     
-    // Two CompressSol instructions: 3 SOL + 2 SOL
-    let mut data1 = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    data1.extend_from_slice(&3_000_000_000u64.to_le_bytes());
+    // Two Invoke instructions
+    let data1 = DISCRIMINATOR_INVOKE.to_vec();
     
-    let mut data2 = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    data2.extend_from_slice(&2_000_000_000u64.to_le_bytes());
+    let data2 = DISCRIMINATOR_INVOKE.to_vec();
     
     let instr1 = Instruction {
         program_id_index: 1,
@@ -197,12 +198,11 @@ fn test_light_protocol_and_unknown_program_presenter_output() {
     extensions::init();
     
     let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
     let unknown_program = PubkeyBase58::try_from("JEKNVnkbo3jma5nREBBJCDoXFVeKkD56V3xKrvRmWxFG").unwrap();
     
-    // Light Protocol CompressSol instruction
-    let mut light_data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    light_data.extend_from_slice(&5_000_000_000u64.to_le_bytes());
+    // Light Protocol Invoke instruction
+    let light_data = DISCRIMINATOR_INVOKE.to_vec();
     
     let light_instr = Instruction {
         program_id_index: 1,
@@ -265,11 +265,12 @@ fn test_light_protocol_mixed_operations_presenter_output() {
     extensions::init();
     
     let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let compressed_token_program = PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
     
-    // CompressSol instruction (storage operation)
-    let mut compress_data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    compress_data.extend_from_slice(&3_000_000_000u64.to_le_bytes());
+    // Invoke instruction (storage operation)
+    let mut compress_data = DISCRIMINATOR_INVOKE.to_vec();
+    compress_data.extend_from_slice(&3_000_000_000u64.to_le_bytes()); //TODO: 🟡 check it
     
     // MintTo instruction (confidential operation)
     // DISCRIMINATOR_MINT_TO = [241, 34, 48, 186, 37, 179, 123, 192]
@@ -277,14 +278,14 @@ fn test_light_protocol_mixed_operations_presenter_output() {
     mint_data.extend_from_slice(&1_000_000_000u64.to_le_bytes());
     
     let compress_instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0, 2, 3],
+        program_id_index: 1, // Light System Program
+        accounts: vec![0, 3, 4],
         data: compress_data,
     };
     
     let mint_instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0, 2, 3],
+        program_id_index: 2, // Compressed Token Program
+        accounts: vec![0, 3, 4],
         data: mint_data,
     };
     
@@ -292,11 +293,12 @@ fn test_light_protocol_mixed_operations_presenter_output() {
         header: MessageHeader {
             num_required_signatures: 1,
             num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 2,
+            num_readonly_unsigned_accounts: 3,
         },
         account_keys: vec![
             signer.clone(),
             light_system_program,
+            compressed_token_program,
             PubkeyBase58([2u8; 32]),
             PubkeyBase58([3u8; 32]),
         ],
@@ -324,7 +326,7 @@ fn test_light_protocol_mixed_operations_presenter_output() {
         .map(|a| a.description())
         .collect();
     
-    assert!(descriptions.iter().any(|d| d.contains("Compress")), "Should have Compress action");
+    assert!(descriptions.iter().any(|d| d.contains("Invoke")), "Should have Invoke action");
     assert!(descriptions.iter().any(|d| d.contains("Mint")), "Should have Mint action");
 }
 
@@ -335,11 +337,12 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
     extensions::init();
     
     let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+    let compressed_token_program = PubkeyBase58::try_from(COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
     let unknown_program = PubkeyBase58::try_from("JEKNVnkbo3jma5nREBBJCDoXFVeKkD56V3xKrvRmWxFG").unwrap();
     
-    // CompressSol instruction (storage operation)
-    let mut compress_data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
+    // Invoke instruction (storage operation)
+    let mut compress_data = DISCRIMINATOR_INVOKE.to_vec();
     compress_data.extend_from_slice(&3_000_000_000u64.to_le_bytes());
     
     // MintTo instruction (confidential operation)
@@ -350,19 +353,19 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
     let unknown_instr_data = vec![1, 2, 3, 4];
     
     let compress_instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0, 2, 3],
+        program_id_index: 1, // Light System Program
+        accounts: vec![0, 4, 5],
         data: compress_data,
     };
     
     let mint_instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0, 2, 3],
+        program_id_index: 2, // Compressed Token Program
+        accounts: vec![0, 4, 5],
         data: mint_data,
     };
     
     let unknown_instr = Instruction {
-        program_id_index: 4,
+        program_id_index: 3, // Unknown Program
         accounts: vec![0],
         data: unknown_instr_data,
     };
@@ -371,14 +374,15 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
         header: MessageHeader {
             num_required_signatures: 1,
             num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 3,
+            num_readonly_unsigned_accounts: 4,
         },
         account_keys: vec![
             signer.clone(),
             light_system_program,
+            compressed_token_program,
+            unknown_program,
             PubkeyBase58([2u8; 32]),
             PubkeyBase58([3u8; 32]),
-            unknown_program,
         ],
         recent_blockhash: HashBase58([4u8; 32]),
         instructions: vec![compress_instr, mint_instr, unknown_instr],
@@ -404,7 +408,7 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
         .map(|a| a.description())
         .collect();
     
-    assert!(descriptions.iter().any(|d| d.contains("Compress")), "Should have Compress action");
+    assert!(descriptions.iter().any(|d| d.contains("Invoke")), "Should have Invoke action");
     assert!(descriptions.iter().any(|d| d.contains("Mint")), "Should have Mint action");
     
     // Verify unknown program warning still exists
@@ -477,12 +481,11 @@ fn test_light_and_mock_protocol_presenter_output() {
     extensions::init();
     
     let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from("Lighton6oQpVkeewmo2mcPTQQp7kYHr4fWpAgJyEmDX").unwrap();
+    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
     let mock_program = PubkeyBase58::try_from("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ").unwrap();
     
-    // Light Protocol CompressSol instruction
-    let mut light_data = DISCRIMINATOR_COMPRESS_SOL.to_vec();
-    light_data.extend_from_slice(&2_000_000_000u64.to_le_bytes());
+    // Light Protocol Invoke instruction
+    let light_data = DISCRIMINATOR_INVOKE.to_vec();
     
     // Mock Protocol instruction
     let mock_data = vec![42, 42, 42, 42, 42, 42, 42, 42];
@@ -549,4 +552,6 @@ fn test_light_and_mock_protocol_presenter_output() {
         analysis.extension_notices.iter().any(|n| n.contains("MOCK PROTOCOL")),
         "Should have Mock Protocol notice"
     );
+
+    //TODO: 🟡 add that we dont have any warnings
 }
