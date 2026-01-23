@@ -122,6 +122,13 @@ impl ProtocolAnalyzer for LightProtocol {
     }
 }
 
+/// Extract u64 amount from instruction data at specified offset.
+fn extract_u64_amount(data: &[u8], offset: usize) -> Option<u64> {
+    parsing::parse_u64_at_offset(data, offset)
+}
+
+// TODO: 🔴  move parse_light_instruction into parser
+
 /// Parse Light Protocol instruction based on program ID and data.
 /// 
 /// Handles both 1-byte discriminators (Compressed Token Program) and
@@ -136,32 +143,52 @@ fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
         constants::COMPRESSED_TOKEN_PROGRAM_ID => {
             if let Some(discriminator) = parsing::extract_discriminator_u8(data) {
                 match discriminator {
-                    constants::DISCRIMINATOR_CTOKEN_TRANSFER => Action::CTokenTransfer,
-                    constants::DISCRIMINATOR_CTOKEN_APPROVE => Action::CTokenApprove,
+                    constants::DISCRIMINATOR_CTOKEN_TRANSFER => Action::CTokenTransfer { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_CTOKEN_APPROVE => Action::CTokenApprove { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
                     constants::DISCRIMINATOR_CTOKEN_REVOKE => Action::CTokenRevoke,
-                    constants::DISCRIMINATOR_CTOKEN_MINT_TO => Action::CTokenMintTo,
-                    constants::DISCRIMINATOR_CTOKEN_BURN => Action::CTokenBurn,
+                    constants::DISCRIMINATOR_CTOKEN_MINT_TO => Action::CTokenMintTo { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_CTOKEN_BURN => Action::CTokenBurn { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
                     constants::DISCRIMINATOR_CLOSE_TOKEN_ACCOUNT => Action::CloseTokenAccount,
                     constants::DISCRIMINATOR_CTOKEN_FREEZE_ACCOUNT => Action::CTokenFreezeAccount,
                     constants::DISCRIMINATOR_CTOKEN_THAW_ACCOUNT => Action::CTokenThawAccount,
-                    constants::DISCRIMINATOR_CTOKEN_TRANSFER_CHECKED => Action::CTokenTransferChecked,
-                    constants::DISCRIMINATOR_CTOKEN_MINT_TO_CHECKED => Action::CTokenMintToChecked,
-                    constants::DISCRIMINATOR_CTOKEN_BURN_CHECKED => Action::CTokenBurnChecked,
+                    constants::DISCRIMINATOR_CTOKEN_TRANSFER_CHECKED => Action::CTokenTransferChecked { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_CTOKEN_MINT_TO_CHECKED => Action::CTokenMintToChecked { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_CTOKEN_BURN_CHECKED => Action::CTokenBurnChecked { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) 
+                    },
                     constants::DISCRIMINATOR_CREATE_TOKEN_ACCOUNT => Action::CreateTokenAccount,
                     constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT => Action::CreateAssociatedTokenAccount,
-                    constants::DISCRIMINATOR_TRANSFER2 => Action::Transfer2,
+                    constants::DISCRIMINATOR_TRANSFER2 => parse_transfer2(data),
                     constants::DISCRIMINATOR_CREATE_ASSOCIATED_TOKEN_ACCOUNT_IDEMPOTENT => Action::CreateAssociatedTokenAccountIdempotent,
                     constants::DISCRIMINATOR_MINT_ACTION => Action::MintAction,
                     constants::DISCRIMINATOR_CLAIM => Action::Claim,
-                    constants::DISCRIMINATOR_WITHDRAW_FUNDING_POOL => Action::WithdrawFundingPool,
+                    constants::DISCRIMINATOR_WITHDRAW_FUNDING_POOL => Action::WithdrawFundingPool { 
+                        amount: extract_u64_amount(data, constants::OFFSET_CTOKEN_AMOUNT) // Assuming standard layout after 1-byte discriminator
+                    },
                     _ => {
                         // Fallback for Anchor/Token Interface instructions (8-byte discriminators)
                         if let Some(disc_8) = parsing::extract_discriminator_u64(data) {
                             match disc_8 {
                                 // Token Interface instructions
-                                constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => Action::TokenInterfaceMintTo,
-                                constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER => Action::TokenInterfaceTransfer,
-                                constants::DISCRIMINATOR_BATCH_COMPRESS => Action::BatchCompress,
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => Action::TokenInterfaceMintTo { 
+                                    amount: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                                },
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER => Action::TokenInterfaceTransfer { 
+                                    amount: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                                },
+                                constants::DISCRIMINATOR_BATCH_COMPRESS => parse_batch_compress(data),
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_APPROVE => Action::TokenInterfaceApprove,
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_REVOKE => Action::TokenInterfaceRevoke,
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_FREEZE => Action::TokenInterfaceFreeze,
@@ -189,10 +216,18 @@ fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
         constants::LIGHT_SYSTEM_PROGRAM_ID => {
             if let Some(discriminator) = parsing::extract_discriminator_u64(data) {
                 match discriminator {
-                    constants::DISCRIMINATOR_INVOKE => Action::Invoke,
-                    constants::DISCRIMINATOR_INVOKE_CPI => Action::InvokeCpi,
-                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY => Action::InvokeCpiWithReadOnly,
-                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO => Action::InvokeCpiWithAccountInfo,
+                    constants::DISCRIMINATOR_INVOKE => Action::Invoke { 
+                        lamports: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_INVOKE_CPI => Action::InvokeCpi { 
+                        lamports: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY => Action::InvokeCpiWithReadOnly { 
+                        lamports: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                    },
+                    constants::DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO => Action::InvokeCpiWithAccountInfo { 
+                        lamports: extract_u64_amount(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                    },
                     _ => Action::UnknownEightByte { discriminator },
                 }
             } else {
@@ -235,7 +270,179 @@ fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> Action {
         constants::SPL_NOOP_PROGRAM_ID => {
             Action::Unknown { discriminator: 0 }
         }
-        
         _ => Action::Unknown { discriminator: 0 },
     }
+}
+
+
+// TODO: 23jan 🔴 move into local extension – codec(decoder)
+/// Deep parsing for Transfer2 instruction.
+fn parse_transfer2(data: &[u8]) -> Action {
+    let mut cursor = 1; // Skip discriminator
+    let mut total_amount: u64 = 0;
+
+    // Fixed fields (7 bytes)
+    // with_transaction_hash: bool, with_lamports_change_account_merkle_tree_index: bool,
+    // lamports_change_account_merkle_tree_index: u8, lamports_change_account_owner_index: u8,
+    // output_queue: u8, max_top_up: u16
+    if data.len() < cursor + 7 {
+        return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None };
+    }
+    cursor += 7;
+
+    // Helper to safely advance cursor
+    macro_rules! advance {
+        ($opt:expr) => {
+            match $opt {
+                Some(consumed) => cursor += consumed,
+                None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+            }
+        };
+    }
+
+    // cpi_context: Option<CompressedCpiContext>
+    if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            // Some(CompressedCpiContext)
+            cursor += 4; // programIndex
+            if let Some(&acc_disc) = data.get(cursor) {
+                cursor += 1;
+                if acc_disc == 1 {
+                    cursor += 8; // AccountContext (2 * u32)
+                }
+            } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+        }
+    } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+
+    // compressions: Option<Vec<Compression>>
+    if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            let (sum, consumed) = match parsing::parse_borsh_vec_amount(&data[cursor..], 31, 1) {
+                Some(res) => res,
+                None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+            };
+            total_amount = total_amount.saturating_add(sum);
+            cursor += consumed;
+        }
+    } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+
+    // proof: Option<CompressedProof>
+    if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            // skip proof: vec(u8), vec(vec(u8)), vec(u8)
+            advance!(parsing::skip_borsh_vec(&data[cursor..], 1)); // a
+            // b: vec(vec(u8))
+            let (b_len, b_consumed) = match parsing::parse_borsh_u32(&data[cursor..]) {
+                Some(res) => res,
+                None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+            };
+            cursor += b_consumed;
+            for _ in 0..b_len {
+                advance!(parsing::skip_borsh_vec(&data[cursor..], 1));
+            }
+            advance!(parsing::skip_borsh_vec(&data[cursor..], 1)); // c
+        }
+    } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+
+    // in_token_data: Vec<MultiInputTokenDataWithContext>
+    let (in_len, in_consumed) = match parsing::parse_borsh_u32(&data[cursor..]) {
+        Some(res) => res,
+        None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+    };
+    cursor += in_consumed;
+    for _ in 0..in_len {
+        let (amt, _) = match parsing::parse_borsh_u64(&data[cursor..]) {
+            Some(a) => a,
+            None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+        };
+        total_amount = total_amount.saturating_add(amt);
+        cursor += 8; // amount
+        if let Some(&_has_delegate) = data.get(cursor) {
+            cursor += 1;
+            if let Some(&opt_disc) = data.get(cursor) {
+                cursor += 1;
+                if opt_disc == 1 { cursor += 4; }
+            } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+        } else { return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None }; }
+        cursor += 4 + 4 + 1; // tokenIdx + poolIdx + bump
+    }
+
+    // out_token_data: Vec<MultiTokenTransferOutputData>
+    let (out_sum, out_consumed) = match parsing::parse_borsh_vec_amount(&data[cursor..], 21, 0) {
+        Some(res) => res,
+        None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
+    };
+    total_amount = total_amount.saturating_add(out_sum);
+    cursor += out_consumed;
+
+    // in_lamports: Option<Vec<u64>>
+    let in_lamports = match parsing::parse_borsh_option_vec_u64(&data[cursor..]) {
+        Some((opt_vec, len)) => {
+            cursor += len;
+            opt_vec.map(|v| v.iter().sum())
+        }
+        None => None,
+    };
+
+    // out_lamports: Option<Vec<u64>>
+    let out_lamports = match parsing::parse_borsh_option_vec_u64(&data[cursor..]) {
+        Some((opt_vec, _)) => {
+            opt_vec.map(|v| v.iter().sum())
+        }
+        None => None,
+    };
+
+    Action::Transfer2 {
+        in_lamports,
+        out_lamports,
+        amount: Some(total_amount),
+    }
+}
+
+// TODO: 23jan 🔴 move into local extension – codec(decoder)
+/// Deep parsing for BatchCompress instruction.
+fn parse_batch_compress(data: &[u8]) -> Action {
+    let mut cursor = 8; // Skip discriminator
+    let mut sum_amounts: Option<u64> = None;
+
+    // pubkeys: Vec<[u8; 32]>
+    if let Some(consumed) = parsing::skip_borsh_vec(&data[cursor..], 32) {
+        cursor += consumed;
+    } else {
+        return Action::BatchCompress { amount: None };
+    }
+
+    // amounts: Option<Vec<u64>>
+    if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            if let Some((v, len)) = parsing::parse_borsh_vec_u64(&data[cursor..]) {
+                sum_amounts = Some(v.iter().sum());
+                cursor += len;
+            }
+        }
+    } else { return Action::BatchCompress { amount: None }; }
+
+    // lamports: Option<u64>
+    if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            cursor += 8;
+        }
+    } else { return Action::BatchCompress { amount: sum_amounts }; }
+
+    // amount: Option<u64>
+    let priority_amount = if let Some(&disc) = data.get(cursor) {
+        cursor += 1;
+        if disc == 1 {
+            parsing::parse_u64_at_offset(data, cursor)
+        } else {
+            None
+        }
+    } else { None };
+
+    Action::BatchCompress { amount: priority_amount.or(sum_amounts) }
 }

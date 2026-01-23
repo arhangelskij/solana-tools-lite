@@ -41,6 +41,16 @@ pub const U64_SIZE: usize = 8;
 pub const U16_SIZE: usize = 2;
 
 // ============================================================================
+// INSTRUCTION DATA OFFSETS
+// ============================================================================
+
+/// Offset for amount in CToken instructions (1 byte discriminator + amount).
+pub const OFFSET_CTOKEN_AMOUNT: usize = 1;
+
+/// Offset for amount in Token Interface instructions (8 byte discriminator + amount).
+pub const OFFSET_TOKEN_INTERFACE_AMOUNT: usize = 8;
+
+// ============================================================================
 // COMPRESSED TOKEN PROGRAM - 1-BYTE DISCRIMINATORS
 // ============================================================================
 

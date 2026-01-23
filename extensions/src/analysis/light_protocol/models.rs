@@ -8,15 +8,15 @@ pub enum LightProtocolAction {
     // ========================================================================
     
     /// CTokenTransfer: SPL-compatible transfer of compressed tokens.
-    CTokenTransfer,
+    CTokenTransfer { amount: Option<u64> },
     /// CTokenApprove: Approve a delegate for compressed token operations.
-    CTokenApprove,
+    CTokenApprove { amount: Option<u64> },
     /// CTokenRevoke: Revoke a delegate's approval.
     CTokenRevoke,
     /// CTokenMintTo: Mint compressed tokens to a recipient.
-    CTokenMintTo,
+    CTokenMintTo { amount: Option<u64> },
     /// CTokenBurn: Burn compressed tokens.
-    CTokenBurn,
+    CTokenBurn { amount: Option<u64> },
     /// CloseTokenAccount: Close a compressed token account.
     CloseTokenAccount,
     /// CTokenFreezeAccount: Freeze a compressed token account.
@@ -24,19 +24,21 @@ pub enum LightProtocolAction {
     /// CTokenThawAccount: Thaw a frozen compressed token account.
     CTokenThawAccount,
     /// CTokenTransferChecked: Transfer with decimals validation (SPL compatible).
-    CTokenTransferChecked,
+    CTokenTransferChecked { amount: Option<u64> },
     /// CTokenMintToChecked: Mint with decimals validation.
-    CTokenMintToChecked,
+    CTokenMintToChecked { amount: Option<u64> },
     /// CTokenBurnChecked: Burn with decimals validation.
-    CTokenBurnChecked,
+    CTokenBurnChecked { amount: Option<u64> },
     /// CreateTokenAccount: Create a new compressed token account.
     CreateTokenAccount,
     /// CreateAssociatedTokenAccount: Create an associated token account for compressed tokens.
     CreateAssociatedTokenAccount,
     /// Transfer2: Batch instruction for compressed token transfers and compression/decompression.
-    Transfer2,
-    /// Decompress: Decompress compressed assets back to regular form.
-    Decompress,
+    Transfer2 { 
+        in_lamports: Option<u64>, 
+        out_lamports: Option<u64>,
+        amount: Option<u64>
+    },
     /// CreateAssociatedTokenAccountIdempotent: Idempotent creation of associated token account.
     CreateAssociatedTokenAccountIdempotent,
     /// MintAction: Batch instruction for operations on compressed mint accounts.
@@ -44,20 +46,20 @@ pub enum LightProtocolAction {
     /// Claim: Claim rent for past completed epochs from compressible token account.
     Claim,
     /// WithdrawFundingPool: Withdraw funds from pool PDA.
-    WithdrawFundingPool,
+    WithdrawFundingPool { amount: Option<u64> },
     
     // ========================================================================
     // LIGHT SYSTEM PROGRAM - 8-BYTE DISCRIMINATORS
     // ========================================================================
     
     /// Invoke: Basic invocation of Light System Program.
-    Invoke,
+    Invoke { lamports: Option<u64> },
     /// InvokeCpi: Invocation with Cross-Program Invocation support.
-    InvokeCpi,
+    InvokeCpi { lamports: Option<u64> },
     /// InvokeCpiWithReadOnly: CPI invocation with read-only accounts.
-    InvokeCpiWithReadOnly,
+    InvokeCpiWithReadOnly { lamports: Option<u64> },
     /// InvokeCpiWithAccountInfo: CPI invocation with AccountInfo support.
-    InvokeCpiWithAccountInfo,
+    InvokeCpiWithAccountInfo { lamports: Option<u64> },
     
     // ========================================================================
     // ACCOUNT COMPRESSION PROGRAM - 8-BYTE DISCRIMINATORS
@@ -80,11 +82,11 @@ pub enum LightProtocolAction {
     // ========================================================================
     
     /// TokenInterfaceMintTo: Mint tokens via Token Interface.
-    TokenInterfaceMintTo,
+    TokenInterfaceMintTo { amount: Option<u64> },
     /// TokenInterfaceTransfer: Transfer tokens via Token Interface.
-    TokenInterfaceTransfer,
+    TokenInterfaceTransfer { amount: Option<u64> },
     /// BatchCompress: Batch compression of tokens.
-    BatchCompress,
+    BatchCompress { amount: Option<u64> },
     /// TokenInterfaceApprove: Approve a delegate via Token Interface.
     TokenInterfaceApprove,
     /// TokenInterfaceRevoke: Revoke a delegate via Token Interface.
@@ -117,31 +119,101 @@ impl LightProtocolAction {
     pub fn description(&self) -> String {
         match self {
             // Compressed Token Program
-            Self::CTokenTransfer => "Transfer Compressed Tokens".to_string(),
-            Self::CTokenApprove => "Approve Compressed Token Delegate".to_string(),
+            Self::CTokenTransfer { amount } => {
+                match amount {
+                    Some(amt) => format!("Transfer Compressed Tokens ({} amount)", amt),
+                    None => "Transfer Compressed Tokens".to_string(),
+                }
+            }
+            Self::CTokenApprove { amount } => {
+                match amount {
+                    Some(amt) => format!("Approve Compressed Token Delegate ({} amount)", amt),
+                    None => "Approve Compressed Token Delegate".to_string(),
+                }
+            }
             Self::CTokenRevoke => "Revoke Compressed Token Delegate".to_string(),
-            Self::CTokenMintTo => "Mint Compressed Tokens".to_string(),
-            Self::CTokenBurn => "Burn Compressed Tokens".to_string(),
+            Self::CTokenMintTo { amount } => {
+                match amount {
+                    Some(amt) => format!("Mint Compressed Tokens ({} amount)", amt),
+                    None => "Mint Compressed Tokens".to_string(),
+                }
+            }
+            Self::CTokenBurn { amount } => {
+                match amount {
+                    Some(amt) => format!("Burn Compressed Tokens ({} amount)", amt),
+                    None => "Burn Compressed Tokens".to_string(),
+                }
+            }
             Self::CloseTokenAccount => "Close Compressed Token Account".to_string(),
             Self::CTokenFreezeAccount => "Freeze Compressed Token Account".to_string(),
             Self::CTokenThawAccount => "Thaw Compressed Token Account".to_string(),
-            Self::CTokenTransferChecked => "Transfer Compressed Tokens (Checked)".to_string(),
-            Self::CTokenMintToChecked => "Mint Compressed Tokens (Checked)".to_string(),
-            Self::CTokenBurnChecked => "Burn Compressed Tokens (Checked)".to_string(),
+            Self::CTokenTransferChecked { amount } => {
+                match amount {
+                    Some(amt) => format!("Transfer Compressed Tokens Checked ({} amount)", amt),
+                    None => "Transfer Compressed Tokens (Checked)".to_string(),
+                }
+            }
+            Self::CTokenMintToChecked { amount } => {
+                match amount {
+                    Some(amt) => format!("Mint Compressed Tokens Checked ({} amount)", amt),
+                    None => "Mint Compressed Tokens (Checked)".to_string(),
+                }
+            }
+            Self::CTokenBurnChecked { amount } => {
+                match amount {
+                    Some(amt) => format!("Burn Compressed Tokens Checked ({} amount)", amt),
+                    None => "Burn Compressed Tokens (Checked)".to_string(),
+                }
+            }
             Self::CreateTokenAccount => "Create Compressed Token Account".to_string(),
             Self::CreateAssociatedTokenAccount => "Create Associated Compressed Token Account".to_string(),
-            Self::Transfer2 => "Batch Transfer Compressed Tokens".to_string(),
-            Self::Decompress => "Decompress Assets".to_string(),
+            Self::Transfer2 { in_lamports, out_lamports, amount } => {
+                let mut parts = Vec::new();
+                if let Some(amt) = amount { parts.push(format!("{} amount", amt)); }
+                if let Some(l) = in_lamports { parts.push(format!("{} in_lamports", l)); }
+                if let Some(l) = out_lamports { parts.push(format!("{} out_lamports", l)); }
+                
+                if parts.is_empty() {
+                    "Batch Transfer Compressed Tokens".to_string()
+                } else {
+                    format!("Batch Transfer Compressed Tokens ({})", parts.join(", "))
+                }
+            }
             Self::CreateAssociatedTokenAccountIdempotent => "Create Associated Compressed Token Account (Idempotent)".to_string(),
             Self::MintAction => "Batch Mint Action".to_string(),
             Self::Claim => "Claim Rent".to_string(),
-            Self::WithdrawFundingPool => "Withdraw Funding Pool".to_string(),
+            Self::WithdrawFundingPool { amount } => {
+                match amount {
+                    Some(amt) => format!("Withdraw Funding Pool ({} amount)", amt),
+                    None => "Withdraw Funding Pool".to_string(),
+                }
+            }
             
             // Light System Program
-            Self::Invoke => "Light System Invoke".to_string(),
-            Self::InvokeCpi => "Light System Invoke (CPI)".to_string(),
-            Self::InvokeCpiWithReadOnly => "Light System Invoke (CPI with Read-Only)".to_string(),
-            Self::InvokeCpiWithAccountInfo => "Light System Invoke (CPI with AccountInfo)".to_string(),
+            Self::Invoke { lamports } => {
+                match lamports {
+                    Some(l) => format!("Light System Invoke ({} lamports)", l),
+                    None => "Light System Invoke".to_string(),
+                }
+            }
+            Self::InvokeCpi { lamports } => {
+                match lamports {
+                    Some(l) => format!("Light System Invoke (CPI) ({} lamports)", l),
+                    None => "Light System Invoke (CPI)".to_string(),
+                }
+            }
+            Self::InvokeCpiWithReadOnly { lamports } => {
+                match lamports {
+                    Some(l) => format!("Light System Invoke (CPI with Read-Only) ({} lamports)", l),
+                    None => "Light System Invoke (CPI with Read-Only)".to_string(),
+                }
+            }
+            Self::InvokeCpiWithAccountInfo { lamports } => {
+                match lamports {
+                    Some(l) => format!("Light System Invoke (CPI with AccountInfo) ({} lamports)", l),
+                    None => "Light System Invoke (CPI with AccountInfo)".to_string(),
+                }
+            }
             
             // Account Compression Program
             Self::InsertIntoQueues => "Insert Into Merkle Tree Queues".to_string(),
@@ -151,9 +223,24 @@ impl LightProtocolAction {
             Self::CreateCompressibleConfig => "Create Compressible Config".to_string(),
             
             // Token Interface
-            Self::TokenInterfaceMintTo => "Mint Tokens (Token Interface)".to_string(),
-            Self::TokenInterfaceTransfer => "Transfer Tokens (Token Interface)".to_string(),
-            Self::BatchCompress => "Batch Compress Tokens".to_string(),
+            Self::TokenInterfaceMintTo { amount } => {
+                match amount {
+                    Some(amt) => format!("Mint Tokens Interface ({} amount)", amt),
+                    None => "Mint Tokens (Token Interface)".to_string(),
+                }
+            }
+            Self::TokenInterfaceTransfer { amount } => {
+                match amount {
+                    Some(amt) => format!("Transfer Tokens Interface ({} amount)", amt),
+                    None => "Transfer Tokens (Token Interface)".to_string(),
+                }
+            }
+            Self::BatchCompress { amount } => {
+                match amount {
+                    Some(amt) => format!("Batch Compress Tokens ({} amount)", amt),
+                    None => "Batch Compress Tokens".to_string(),
+                }
+            }
             Self::TokenInterfaceApprove => "Approve Delegate (Token Interface)".to_string(),
             Self::TokenInterfaceRevoke => "Revoke Delegate (Token Interface)".to_string(),
             Self::TokenInterfaceFreeze => "Freeze Account (Token Interface)".to_string(),
@@ -174,26 +261,22 @@ impl LightProtocolAction {
     pub fn privacy_impact(&self) -> PrivacyImpact {
         match self {
             // Confidential operations - fully private value transfers
-            Self::CTokenTransfer | Self::CTokenTransferChecked |
-            Self::Transfer2 | Self::CTokenMintTo | Self::CTokenMintToChecked |
-            Self::CTokenBurn | Self::CTokenBurnChecked |
-            Self::TokenInterfaceMintTo | Self::TokenInterfaceTransfer |
-            Self::BatchCompress => {
+            Self::CTokenTransfer { .. } | Self::CTokenTransferChecked { .. } |
+            Self::Transfer2 { .. } | Self::CTokenMintTo { .. } | Self::CTokenMintToChecked { .. } |
+            Self::CTokenBurn { .. } | Self::CTokenBurnChecked { .. } |
+            Self::TokenInterfaceMintTo { .. } | Self::TokenInterfaceTransfer { .. } |
+            Self::BatchCompress { .. } => {
                 PrivacyImpact::Confidential
             }
 
-            // Hybrid operations - transition between public and private state
-            Self::Decompress => {
-                PrivacyImpact::Hybrid
-            }
 
             // Storage compression operations - infrastructure management
             Self::CreateTokenAccount | Self::CreateAssociatedTokenAccount |
             Self::CreateAssociatedTokenAccountIdempotent | Self::CloseTokenAccount |
             Self::CTokenFreezeAccount | Self::CTokenThawAccount |
-            Self::CTokenApprove | Self::CTokenRevoke |
-            Self::MintAction | Self::Claim | Self::WithdrawFundingPool |
-            Self::Invoke | Self::InvokeCpi | Self::InvokeCpiWithReadOnly | Self::InvokeCpiWithAccountInfo |
+            Self::CTokenApprove { .. } | Self::CTokenRevoke |
+            Self::MintAction | Self::Claim | Self::WithdrawFundingPool { .. } |
+            Self::Invoke { .. } | Self::InvokeCpi { .. } | Self::InvokeCpiWithReadOnly { .. } | Self::InvokeCpiWithAccountInfo { .. } |
             Self::InsertIntoQueues |
             Self::CreateConfigCounter | Self::CreateCompressibleConfig |
             Self::TokenInterfaceApprove | Self::TokenInterfaceRevoke |

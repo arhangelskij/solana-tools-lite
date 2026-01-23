@@ -21,9 +21,6 @@ pub mod compute_budget {
 }
 
 pub mod programs {
-    use crate::models::pubkey_base58::PubkeyBase58;
-    use std::sync::OnceLock;
-
     pub const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
     pub const COMPUTE_BUDGET_ID: &str = "ComputeBudget111111111111111111111111111111";
     pub const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
