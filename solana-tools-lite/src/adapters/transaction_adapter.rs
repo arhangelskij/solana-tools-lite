@@ -21,6 +21,15 @@ impl TryFrom<InputTransaction> for Transaction {
     type Error = TransactionParseError;
 
     fn try_from(input: InputTransaction) -> Result<Self, Self::Error> {
+        Transaction::try_from(&input)
+    }
+}
+
+
+impl TryFrom<&InputTransaction> for Transaction {
+    type Error = TransactionParseError;
+
+    fn try_from(input: &InputTransaction) -> Result<Self, Self::Error> {
         match input {
             InputTransaction::Base64(s) => {
                 // Decode Base64-encoded raw Solana transaction bytes

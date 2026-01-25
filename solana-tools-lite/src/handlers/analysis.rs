@@ -61,7 +61,7 @@ enum ComputeBudgetAction {
 /// Analyze an input transaction (raw, unsigned) to produce fee estimates, transfers, and warnings.
 /// This function handles the conversion from InputTransaction to Message internally.
 pub fn analyze_input_transaction(
-    input_tx: InputTransaction,
+    input_tx: &InputTransaction,
     signer: &PubkeyBase58,
     tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
 ) -> Result<TxAnalysis> {
