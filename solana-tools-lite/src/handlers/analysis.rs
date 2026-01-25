@@ -9,9 +9,12 @@ use crate::models::instruction::Instruction;
 use crate::models::message::{Message, MessageAddressTableLookup};
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::Transaction;
+use crate::models::input_transaction::InputTransaction;
 use crate::ToolError;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use crate::Result;
+
 
 // --- Constants ---
 const ESTIMATED_BASE_FEE_PER_SIGNATURE: u64 = 5000;
@@ -53,6 +56,19 @@ enum ComputeBudgetAction {
     SetLimit(u32),
     SetPrice(u64),
     None,
+}
+
+/// Analyze an input transaction (raw, unsigned) to produce fee estimates, transfers, and warnings.
+/// This function handles the conversion from InputTransaction to Message internally.
+pub fn analyze_input_transaction(
+    input_tx: InputTransaction,
+    signer: &PubkeyBase58,
+    tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
+) -> Result<TxAnalysis> {
+    let tx: Transaction = Transaction::try_from(input_tx)?;
+    tx.message.sanitize()?;
+
+    Ok(analyze_transaction(&tx.message, signer, tables))
 }
 
 /// Analyze a message to produce fee estimates, transfers, and warnings.
