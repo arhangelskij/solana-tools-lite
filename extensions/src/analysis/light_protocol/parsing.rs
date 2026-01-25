@@ -423,9 +423,7 @@ pub fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> super:
                                 constants::DISCRIMINATOR_CREATE_TOKEN_POOL => Action::CreateTokenPool,
                                 constants::DISCRIMINATOR_ADD_TOKEN_POOL => Action::AddTokenPool,
                                 constants::DISCRIMINATOR_CTOKEN_FREEZE => Action::CTokenFreeze,
-                                // Anchor Freeze/Thaw
-                                [248, 198, 158, 145, 225, 117, 135, 200] => Action::Freeze,
-                                [90, 147, 75, 178, 85, 88, 4, 137] => Action::Thaw,
+                                
                                 _ => Action::UnknownEightByte { discriminator: disc_8 },
                             }
                         } else {
