@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 pub mod constants;
 pub mod parsing;
-pub mod errors;
 pub mod models;
 
 pub use models::LightProtocolAction as Action;

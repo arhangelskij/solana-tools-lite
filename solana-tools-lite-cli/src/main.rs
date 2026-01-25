@@ -126,6 +126,22 @@ fn main() {
                 report_cli_error("sign-tx", e);
             }
         }
+
+        Commands::Analyze {
+            input,
+            lookup_tables,
+            pubkey,
+            summary_json,
+        } => {
+            if let Err(e) = flows::analyze::execute(
+                Some(input.as_str()),
+                pubkey.as_deref(),
+                lookup_tables.as_deref(),
+                *summary_json,
+            ) {
+                report_cli_error("analyze", e);
+            }
+        }
     }
 }
 
