@@ -56,17 +56,19 @@ fn test_privacy_hierarchy_hybrid_mixed_confidential() {
 }
 
 #[test]
-fn test_privacy_hierarchy_hybrid_bridge_exit() {
+fn test_privacy_hierarchy_confidential_takes_precedence_over_storage() {
     let mut analysis = empty_analysis();
-    // Decompress is a Hybrid impact action
+    // Invoke is a StorageCompression action
     analysis.extension_actions.push(
-        AnalysisExtensionAction::new(Arc::new(LightProtocolAction::Decompress))
+        AnalysisExtensionAction::new(Arc::new(LightProtocolAction::Invoke { lamports: None }))
     );
-    // Simulate what analyze() does for Hybrid actions
+    // When both confidential and storage ops are present (no public mixing),
+    // confidential takes precedence
     analysis.confidential_ops_count = 1;
     analysis.storage_ops_count = 1;
     analysis.recalculate_privacy_level();
-    assert_eq!(analysis.privacy_level, PrivacyLevel::Hybrid); //TODO: 🟡 check it if Hybrid!
+
+    assert_eq!(analysis.privacy_level, PrivacyLevel::Confidential);
 }
 
 #[test]
@@ -80,14 +82,4 @@ fn test_privacy_hierarchy_public_only() {
     });
     analysis.recalculate_privacy_level();
     assert_eq!(analysis.privacy_level, PrivacyLevel::Public);
-}
-
-#[test]
-fn test_privacy_hierarchy_confidential_takes_precedence_over_storage() {
-    let mut analysis = empty_analysis();
-    analysis.confidential_ops_count = 1;
-    analysis.storage_ops_count = 1;
-    analysis.recalculate_privacy_level();
-    // No public mixing, so it's Confidential
-    assert_eq!(analysis.privacy_level, PrivacyLevel::Confidential);
 }

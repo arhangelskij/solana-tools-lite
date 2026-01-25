@@ -25,6 +25,11 @@ pub trait ProtocolAnalyzer: Send + Sync {
     /// ensuring parsing happens only once even with multiple calls.
     fn supported_programs(&self) -> Result<&'static [PubkeyBase58], ToolError>;
 
+    /// Get description for a program ID.
+    fn program_description(&self, _program_id: &PubkeyBase58) -> Option<&'static str> {
+        None
+    }
+
     /// Quick check if the transaction contains relevant instructions.
     fn detect(&self, message: &Message) -> bool {
         let supported = match self.supported_programs() {
@@ -39,6 +44,17 @@ pub trait ProtocolAnalyzer: Send + Sync {
                 false
             }
         })
+    }
+
+    /// Check if any of the protocol's programs are present in the transaction's account keys.
+    /// This detects potential CPI interactions even when the program is not directly invoked.
+    fn detect_in_accounts(&self, message: &Message) -> bool {
+        let supported = match self.supported_programs() {
+            Ok(programs) => programs,
+            Err(_) => return false,
+        };
+        
+        message.account_keys().iter().any(|pk| supported.contains(pk))
     }
 
     /// Deep analysis with access to the full message and mutable analysis state.

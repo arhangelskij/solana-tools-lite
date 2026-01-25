@@ -5,20 +5,20 @@
 /// to identify and parse Light Protocol instructions.
 use solana_tools_lite::{ToolError, models::pubkey_base58::PubkeyBase58};
 
-/// Light Protocol system program ID (verified Jan 2026).
+/// Light Protocol system program ID
 /// 
 /// This program handles core Light Protocol operations including SOL compression
 /// and system-level state management.
 
 pub const LIGHT_SYSTEM_PROGRAM_ID: &str = "SySTEM1eSU2p4BGQfQpimFEWWSC1XDFeun3Nqzz3rT7";
 
-/// Account compression program ID (verified Jan 2026).
+/// Account compression program ID
 /// 
 /// This program manages the compressed account state and merkle tree operations
 /// that enable ZK compression functionality.
 pub const ACCOUNT_COMPRESSION_PROGRAM_ID: &str = "compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq";
 
-/// Compressed token program ID (verified Jan 2026).
+/// Compressed token program ID
 /// 
 /// This program handles compressed SPL token operations including minting,
 /// transferring, and managing compressed token accounts.
@@ -79,11 +79,11 @@ pub const DISCRIMINATOR_CTOKEN_BURN: u8 = 8;
 pub const DISCRIMINATOR_CLOSE_TOKEN_ACCOUNT: u8 = 9;
 
 /// Discriminator for CTokenFreezeAccount instruction (1 byte).
-/// Freeze a compressed token account.
+/// Freeze a decompressed token account.  
 pub const DISCRIMINATOR_CTOKEN_FREEZE_ACCOUNT: u8 = 10;
 
 /// Discriminator for CTokenThawAccount instruction (1 byte).
-/// Thaw a frozen compressed token account.
+/// Thaw a frozen decompressed token account.
 pub const DISCRIMINATOR_CTOKEN_THAW_ACCOUNT: u8 = 11;
 
 /// Discriminator for CTokenTransferChecked instruction (1 byte).
@@ -146,6 +146,15 @@ pub const DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY: [u8; 8] = [86, 47, 163, 166, 
 /// CPI invocation with AccountInfo support.
 pub const DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO: [u8; 8] = [228, 34, 128, 84, 47, 139, 86, 240];
 
+/// Discriminator for InitCpiContextAccount instruction (8 bytes).  
+/// Initialize a CPI context account for cross-program invocations.
+pub const DISCRIMINATOR_INIT_CPI_CONTEXT_ACCOUNT_INSTRUCTION: [u8; 8] = [233, 112, 71, 66, 121, 33, 178, 188];
+
+
+/// Discriminator for ReInitCpiContextAccount instruction (8 bytes).  
+/// Reinitialize a CPI context account to upgrade from legacy to current version.  
+pub const DISCRIMINATOR_RE_INIT_CPI_CONTEXT_ACCOUNT_INSTRUCTION: [u8; 8] = [187, 147, 22, 142, 104, 180, 136, 190];
+
 // ============================================================================
 // ACCOUNT COMPRESSION PROGRAM - 8-BYTE DISCRIMINATORS
 // ============================================================================
@@ -153,6 +162,22 @@ pub const DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO: [u8; 8] = [228, 34, 128, 8
 /// Discriminator for InsertIntoQueues instruction (8 bytes).
 /// Insert compressed data into merkle tree queues.
 pub const DISCRIMINATOR_INSERT_INTO_QUEUES: [u8; 8] = [180, 143, 159, 153, 35, 46, 248, 163];
+
+/// Discriminator for InitializeCompressionConfig instruction (8 bytes).
+/// Initialize the compression configuration.
+pub const DISCRIMINATOR_INITIALIZE_COMPRESSION_CONFIG: [u8; 8] = [133, 228, 12, 169, 56, 76, 222, 61];
+
+/// Discriminator for UpdateCompressionConfig instruction (8 bytes).
+/// Update the compression configuration.
+pub const DISCRIMINATOR_UPDATE_COMPRESSION_CONFIG: [u8; 8] = [135, 215, 243, 81, 163, 146, 33, 70];
+
+/// Discriminator for DecompressAccountsIdempotent instruction (8 bytes).
+/// Idempotently decompress accounts.
+pub const DISCRIMINATOR_DECOMPRESS_ACCOUNTS_IDEMPOTENT: [u8; 8] = [114, 67, 61, 123, 234, 31, 1, 112];
+
+/// Discriminator for CompressAccountsIdempotent instruction (8 bytes).
+/// Idempotently compress accounts.
+pub const DISCRIMINATOR_COMPRESS_ACCOUNTS_IDEMPOTENT: [u8; 8] = [70, 236, 171, 120, 164, 93, 113, 181];
 
 // ============================================================================
 // LIGHT REGISTRY PROGRAM - 8-BYTE DISCRIMINATORS
@@ -165,6 +190,30 @@ pub const DISCRIMINATOR_CREATE_CONFIG_COUNTER: [u8; 8] = [221, 9, 219, 187, 215,
 /// Discriminator for CreateCompressibleConfig instruction (8 bytes).
 /// Create a new compressible config with specified parameters.
 pub const DISCRIMINATOR_CREATE_COMPRESSIBLE_CONFIG: [u8; 8] = [13, 182, 188, 82, 224, 82, 11, 174];
+
+/// Discriminator for Claim instruction (8 bytes).
+/// Claim rewards or rent.
+pub const DISCRIMINATOR_REGISTRY_CLAIM: [u8; 8] = [62, 198, 214, 193, 213, 159, 108, 210];
+
+/// Discriminator for CompressAndClose instruction (8 bytes).
+/// Compress and close an account.
+pub const DISCRIMINATOR_COMPRESS_AND_CLOSE: [u8; 8] = [96, 94, 135, 18, 121, 42, 213, 117];
+
+/// Discriminator for RegisterForester instruction (8 bytes).
+/// Register a forester.
+pub const DISCRIMINATOR_REGISTER_FORESTER: [u8; 8] = [62, 47, 240, 103, 84, 200, 226, 73];
+
+/// Discriminator for RegisterForesterEpoch instruction (8 bytes).
+/// Register a forester for an epoch.
+pub const DISCRIMINATOR_REGISTER_FORESTER_EPOCH: [u8; 8] = [43, 120, 253, 194, 109, 192, 101, 188];
+
+/// Discriminator for FinalizeRegistration instruction (8 bytes).
+/// Finalize forester registration.
+pub const DISCRIMINATOR_FINALIZE_REGISTRATION: [u8; 8] = [230, 188, 172, 96, 204, 247, 98, 227];
+
+/// Discriminator for ReportWork instruction (8 bytes).
+/// Report work done by forester.
+pub const DISCRIMINATOR_REPORT_WORK: [u8; 8] = [170, 110, 232, 47, 145, 213, 138, 162];
 
 // ============================================================================
 // TOKEN INTERFACE - 8-BYTE DISCRIMINATORS
@@ -194,10 +243,6 @@ pub const DISCRIMINATOR_TOKEN_INTERFACE_REVOKE: [u8; 8] = [170, 23, 31, 34, 133,
 /// Freeze an account via Token Interface.
 pub const DISCRIMINATOR_TOKEN_INTERFACE_FREEZE: [u8; 8] = [255, 91, 207, 84, 251, 194, 254, 63];
 
-/// Discriminator for Thaw instruction (8 bytes).
-/// Thaw an account via Token Interface.
-pub const DISCRIMINATOR_TOKEN_INTERFACE_THAW: [u8; 8] = [226, 249, 34, 57, 189, 21, 177, 101];
-
 /// Discriminator for CreateTokenPool instruction (8 bytes).
 /// Create a new token pool.
 pub const DISCRIMINATOR_CREATE_TOKEN_POOL: [u8; 8] = [23, 169, 27, 122, 147, 169, 209, 152];
@@ -205,6 +250,19 @@ pub const DISCRIMINATOR_CREATE_TOKEN_POOL: [u8; 8] = [23, 169, 27, 122, 147, 169
 /// Discriminator for AddTokenPool instruction (8 bytes).
 /// Add a token pool.
 pub const DISCRIMINATOR_ADD_TOKEN_POOL: [u8; 8] = [114, 143, 210, 73, 96, 115, 1, 228];
+
+// ============================================================================
+// Compressed Token Program - 8-BYTE DISCRIMINATORS
+// ============================================================================
+
+/// Discriminator for Freeze instruction (8 bytes).
+/// Freeze a compressed token account.
+pub const DISCRIMINATOR_CTOKEN_FREEZE: [u8; 8] = [112, 230, 105, 101, 145, 202, 157, 97];
+
+/// Discriminator for Thaw instruction (8 bytes).
+/// Thaw an account via Token Interface.
+pub const DISCRIMINATOR_CTOKEN_THAW: [u8; 8] = [226, 249, 34, 57, 189, 21, 177, 101];
+
 /// Returns the list of Light Protocol program IDs.
 /// 
 /// Uses `OnceLock` to cache the parsed program IDs, ensuring they are only

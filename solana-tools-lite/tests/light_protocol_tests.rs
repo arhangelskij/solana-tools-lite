@@ -581,7 +581,7 @@ fn test_detect_token_interface_freeze() {
 fn test_detect_token_interface_thaw() {
     let analyzer = LightProtocol;
     let program_id = PubkeyBase58::try_from(constants::COMPRESSED_TOKEN_PROGRAM_ID).unwrap();
-    let data = constants::DISCRIMINATOR_TOKEN_INTERFACE_THAW.to_vec();
+    let data = constants::DISCRIMINATOR_CTOKEN_THAW.to_vec();
     
     let signer = PubkeyBase58::try_from("54pMAtV1S7S9B6V95eU7x6fA5Fz5xY6gR8H9N7V1p2A3").unwrap();
     let message = mock_message(&program_id, data, &signer);

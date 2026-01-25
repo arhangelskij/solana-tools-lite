@@ -60,6 +60,10 @@ pub enum LightProtocolAction {
     InvokeCpiWithReadOnly { lamports: Option<u64> },
     /// InvokeCpiWithAccountInfo: CPI invocation with AccountInfo support.
     InvokeCpiWithAccountInfo { lamports: Option<u64> },
+    /// InitCpiContextAccount: Initialize a CPI context account.
+    InitCpiContextAccount,
+    /// ReInitCpiContextAccount: Reinitialize a CPI context account.
+    ReInitCpiContextAccount,
     
     // ========================================================================
     // ACCOUNT COMPRESSION PROGRAM - 8-BYTE DISCRIMINATORS
@@ -67,6 +71,14 @@ pub enum LightProtocolAction {
     
     /// InsertIntoQueues: Insert compressed data into merkle tree queues.
     InsertIntoQueues,
+    /// InitializeCompressionConfig: Initialize the compression configuration.
+    InitializeCompressionConfig,
+    /// UpdateCompressionConfig: Update the compression configuration.
+    UpdateCompressionConfig,
+    /// DecompressAccountsIdempotent: Idempotently decompress accounts.
+    DecompressAccountsIdempotent,
+    /// CompressAccountsIdempotent: Idempotently compress accounts.
+    CompressAccountsIdempotent,
     
     // ========================================================================
     // LIGHT REGISTRY PROGRAM - 8-BYTE DISCRIMINATORS
@@ -76,6 +88,18 @@ pub enum LightProtocolAction {
     CreateConfigCounter,
     /// CreateCompressibleConfig: Create a new compressible config.
     CreateCompressibleConfig,
+    /// RegistryClaim: Claim rewards or rent.
+    RegistryClaim,
+    /// CompressAndClose: Compress and close an account.
+    CompressAndClose,
+    /// RegisterForester: Register a forester.
+    RegisterForester,
+    /// RegisterForesterEpoch: Register a forester for an epoch.
+    RegisterForesterEpoch,
+    /// FinalizeRegistration: Finalize forester registration.
+    FinalizeRegistration,
+    /// ReportWork: Report work done by forester.
+    ReportWork,
     
     // ========================================================================
     // TOKEN INTERFACE - 8-BYTE DISCRIMINATORS
@@ -99,6 +123,11 @@ pub enum LightProtocolAction {
     CreateTokenPool,
     /// AddTokenPool: Add a token pool.
     AddTokenPool,
+    
+    /// Freeze: Freeze a compressed token account (8-byte discriminator).
+    CTokenFreeze,
+    /// Thaw: Thaw a compressed token account (8-byte discriminator).
+    CTokenThaw,
     
     // ========================================================================
     // ANCHOR INSTRUCTIONS - 8-BYTE DISCRIMINATORS
@@ -214,13 +243,25 @@ impl LightProtocolAction {
                     None => "Light System Invoke (CPI with AccountInfo)".to_string(),
                 }
             }
+            Self::InitCpiContextAccount => "Initialize CPI Context Account".to_string(),
+            Self::ReInitCpiContextAccount => "Reinitialize CPI Context Account".to_string(),
             
             // Account Compression Program
             Self::InsertIntoQueues => "Insert Into Merkle Tree Queues".to_string(),
+            Self::InitializeCompressionConfig => "Initialize Compression Config".to_string(),
+            Self::UpdateCompressionConfig => "Update Compression Config".to_string(),
+            Self::DecompressAccountsIdempotent => "Decompress Accounts (Idempotent)".to_string(),
+            Self::CompressAccountsIdempotent => "Compress Accounts (Idempotent)".to_string(),
             
             // Light Registry Program
             Self::CreateConfigCounter => "Create Config Counter".to_string(),
             Self::CreateCompressibleConfig => "Create Compressible Config".to_string(),
+            Self::RegistryClaim => "Claim Rewards/Rent (Registry)".to_string(),
+            Self::CompressAndClose => "Compress And Close Account".to_string(),
+            Self::RegisterForester => "Register Forester".to_string(),
+            Self::RegisterForesterEpoch => "Register Forester Epoch".to_string(),
+            Self::FinalizeRegistration => "Finalize Forester Registration".to_string(),
+            Self::ReportWork => "Report Forester Work".to_string(),
             
             // Token Interface
             Self::TokenInterfaceMintTo { amount } => {
@@ -248,7 +289,9 @@ impl LightProtocolAction {
             Self::CreateTokenPool => "Create Token Pool".to_string(),
             Self::AddTokenPool => "Add Token Pool".to_string(),
             
-            // Anchor Instructions
+            // Freeze/Thaw
+            Self::CTokenFreeze => "Freeze Compressed Token Account (8-byte)".to_string(),
+            Self::CTokenThaw => "Thaw Compressed Token Account (8-byte)".to_string(),
             Self::Freeze => "Freeze Account (Anchor)".to_string(),
             Self::Thaw => "Thaw Account (Anchor)".to_string(),
             
@@ -269,7 +312,6 @@ impl LightProtocolAction {
                 PrivacyImpact::Confidential
             }
 
-
             // Storage compression operations - infrastructure management
             Self::CreateTokenAccount | Self::CreateAssociatedTokenAccount |
             Self::CreateAssociatedTokenAccountIdempotent | Self::CloseTokenAccount |
@@ -277,12 +319,16 @@ impl LightProtocolAction {
             Self::CTokenApprove { .. } | Self::CTokenRevoke |
             Self::MintAction | Self::Claim | Self::WithdrawFundingPool { .. } |
             Self::Invoke { .. } | Self::InvokeCpi { .. } | Self::InvokeCpiWithReadOnly { .. } | Self::InvokeCpiWithAccountInfo { .. } |
-            Self::InsertIntoQueues |
+            Self::InitCpiContextAccount | Self::ReInitCpiContextAccount |
+            Self::InsertIntoQueues | Self::InitializeCompressionConfig | Self::UpdateCompressionConfig |
+            Self::DecompressAccountsIdempotent | Self::CompressAccountsIdempotent |
             Self::CreateConfigCounter | Self::CreateCompressibleConfig |
+            Self::RegistryClaim | Self::CompressAndClose | Self::RegisterForester |
+            Self::RegisterForesterEpoch | Self::FinalizeRegistration | Self::ReportWork |
             Self::TokenInterfaceApprove | Self::TokenInterfaceRevoke |
             Self::TokenInterfaceFreeze | Self::TokenInterfaceThaw |
             Self::CreateTokenPool | Self::AddTokenPool |
-            Self::Freeze | Self::Thaw => {
+            Self::Freeze | Self::Thaw | Self::CTokenFreeze | Self::CTokenThaw => {
                 PrivacyImpact::StorageCompression
             }
 

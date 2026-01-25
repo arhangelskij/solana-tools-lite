@@ -6,7 +6,7 @@
 /// Tests verify that Transfer2 instructions are correctly parsed
 /// to extract in_lamports, out_lamports, and aggregated amounts.
 
-use crate::analysis::light_protocol::parse_light_instruction;
+use crate::analysis::light_protocol::parsing::parse_light_instruction;
 use crate::analysis::light_protocol::models::LightProtocolAction;
 use crate::analysis::light_protocol::constants;
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;

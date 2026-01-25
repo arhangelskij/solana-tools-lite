@@ -135,13 +135,52 @@ pub fn analyze_transaction(
     let plugins = registry::get_all_analyzers();
 
     for plugin in plugins {
-        if plugin.detect(message) {
+        // Check if protocol is involved either via direct instructions or account presence
+        let has_instructions = plugin.detect(message);
+        let in_accounts = plugin.detect_in_accounts(message);
+        
+        if has_instructions {
+            // Full analysis when protocol is directly invoked
             plugin.analyze(message, &account_list, signer, &mut analysis);
             plugin.enrich_notice(&mut analysis);
 
             if let Ok(supported) = plugin.supported_programs() {
                 analysis.resolve_unknown_programs(supported);
             }
+        } else if in_accounts {
+            // Protocol present in accounts but not directly invoked (potential CPI)
+            // Find and list which specific programs are present
+            let supported = match plugin.supported_programs() {
+                Ok(programs) => programs,
+                Err(_) => continue,
+            };
+
+            //TODO: 🔴 check it and test
+            let found_programs: Vec<String> = account_list
+                .iter()
+                .filter(|pk| supported.contains(pk))
+                .map(|pk| {
+                    let addr = pk.to_string();
+                    let program_desc = plugin
+                        .program_description(pk)
+                        .unwrap_or("Unknown Program");
+                    format!("  {} ({})", addr, program_desc)
+                })
+                .collect();
+            //TODO: 🟡 layout
+            let programs_list = found_programs.join("\n");
+            let protocol_name = plugin.name();
+            
+            let notice = format!(
+                "PROTOCOL INTERACTION DETECTED:\n\
+                {} programs found in transaction accounts:\n\
+                {}\n\
+                \nThis may indicate Cross-Program Invocation (CPI) usage.",
+                protocol_name, programs_list
+            );
+            analysis.extension_notices.push(notice);
+            
+            analysis.resolve_unknown_programs(supported);
         }
     }
 
