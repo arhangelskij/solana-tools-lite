@@ -1,4 +1,4 @@
-use solana_tools_lite::handlers::analysis::parse_lookup_tables;
+use solana_tools_lite::serde::parse_lookup_tables;
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use std::collections::HashMap;
 

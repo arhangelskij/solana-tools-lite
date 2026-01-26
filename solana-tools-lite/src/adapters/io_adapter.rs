@@ -3,7 +3,7 @@ use crate::codec::serialize_transaction;
 use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
 use crate::crypto::helpers::parse_signing_key_content;
 use crate::errors::IoError;
-use crate::handlers::analysis::parse_lookup_tables;
+use crate::serde::parse_lookup_tables;
 use crate::layers::io as io_layer;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
 use crate::models::pubkey_base58::PubkeyBase58;

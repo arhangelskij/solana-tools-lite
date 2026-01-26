@@ -383,7 +383,7 @@ fn finalize_analysis(
     };
 
     // Fee Calculation with Overflow Protection
-    let sig_count = signature_count(message) as u128;
+    let sig_count = message.header().num_required_signatures as u128;
     let base_fee_lamports = (ESTIMATED_BASE_FEE_PER_SIGNATURE as u128)
         .checked_mul(sig_count)
         .unwrap_or(u128::MAX); // Cap at MAX if crazy overflow
@@ -483,39 +483,6 @@ pub fn build_signing_summary(
         confidential_ops_count: analysis.confidential_ops_count,
         storage_ops_count: analysis.storage_ops_count,
     })
-}
-
-// TODO: move parse into helpers or parsing module
-
-pub fn parse_lookup_tables(
-    json: &str,
-) -> Result<HashMap<PubkeyBase58, Vec<PubkeyBase58>>, ToolError> {
-    let raw: HashMap<String, Vec<String>> = serde_json::from_str(json)
-        .map_err(|e| ToolError::InvalidInput(format!("invalid lookup tables JSON: {e}")))?;
-
-    let mut out = HashMap::new();
-    for (table_key, addresses) in raw {
-        let table_pk = PubkeyBase58::try_from(table_key.as_str()).map_err(|e| {
-            ToolError::InvalidInput(format!("invalid lookup table key {table_key}: {e}"))
-        })?;
-
-        let mut parsed = Vec::with_capacity(addresses.len());
-        for addr in addresses {
-            let pk = PubkeyBase58::try_from(addr.as_str()).map_err(|e| {
-                ToolError::InvalidInput(format!(
-                    "invalid lookup address {addr} for table {table_key}: {e}"
-                ))
-            })?;
-            parsed.push(pk);
-        }
-        out.insert(table_pk, parsed);
-    }
-
-    Ok(out)
-}
-
-fn signature_count(message: &Message) -> usize {
-    message.header().num_required_signatures as usize
 }
 
 fn account_to_string(accounts: &[PubkeyBase58], index: u8) -> String {
