@@ -1,4 +1,4 @@
-use crate::codec::serialize_transaction;
+use crate::codec::{serialize_transaction, decode_system_transfer_amount, decode_compute_budget, ComputeBudgetAction};
 use crate::constants::{compute_budget, programs};
 use crate::extensions::registry;
 use crate::models::analysis::{
@@ -19,17 +19,6 @@ use crate::Result;
 // --- Constants ---
 const ESTIMATED_BASE_FEE_PER_SIGNATURE: u64 = 5000;
 const MICRO_LAMPORTS_PER_LAMPORT: u128 = 1_000_000;
-
-// System Program
-const SYSTEM_TRANSFER_TAG: u32 = 2;
-const SYSTEM_TRANSFER_DATA_LEN: usize = 12; // tag (4) + lamports (8)
-
-// Compute Budget
-const COMPUTE_BUDGET_SET_UNIT_LIMIT: u8 = 2;
-const COMPUTE_BUDGET_SET_UNIT_PRICE: u8 = 3;
-const COMPUTE_BUDGET_TAG_LEN: usize = 1;
-const COMPUTE_UNIT_LIMIT_LEN: usize = 4;
-const COMPUTE_UNIT_PRICE_LEN: usize = 8;
 
 // Limits for Anti-DoS
 const MAX_TRANSFERS_TO_DISPLAY: usize = 50;
@@ -52,11 +41,7 @@ struct AnalysisState {
     is_fee_payer: bool,
 }
 
-enum ComputeBudgetAction {
-    SetLimit(u32),
-    SetPrice(u64),
-    None,
-}
+
 
 /// Analyze an input transaction (raw, unsigned) to produce fee estimates, transfers, and warnings.
 /// This function handles the conversion from InputTransaction to Message internally.
@@ -111,7 +96,7 @@ pub fn analyze_transaction(
         
         let handled = match program_id_str.as_str() {
             programs::SYSTEM_PROGRAM_ID => {
-                if let Some(lamports) = parse_system_transfer_amount(&instr.data) {
+                if let Some(lamports) = decode_system_transfer_amount(&instr.data) {
                     // Ensure we have at least 2 accounts (from, to)
                     if instr.accounts.len() >= 2 {
                         state.saw_system_transfer = true;
@@ -121,7 +106,7 @@ pub fn analyze_transaction(
                 true
             }
             programs::COMPUTE_BUDGET_ID => {
-                match parse_compute_budget(&instr.data) {
+                match decode_compute_budget(&instr.data) {
                     ComputeBudgetAction::SetLimit(l) => state.cu_limit = Some(l),
                     ComputeBudgetAction::SetPrice(p) => state.cu_price_micro = Some(p),
                     ComputeBudgetAction::None => {}
@@ -216,13 +201,10 @@ fn verify_signer_requirement(
     let num_required_signatures = message.header().num_required_signatures as usize;
 
     // The first `num_required_signatures` accounts in the list are the signers.
-    let signing_accounts = if accounts.len() >= num_required_signatures {
-        &accounts[0..num_required_signatures]
-    } else {
-        &accounts[..] // Should not happen for valid messages, but safety first
-    };
-
-    let is_required = signing_accounts.iter().any(|pk| pk == signer);
+    let is_required = accounts
+        .iter()
+        .take(num_required_signatures)
+        .any(|pk| pk == signer);
 
     if !is_required {
         warnings.push(AnalysisWarning::SignerNotRequired);
@@ -303,43 +285,7 @@ fn resolve_v0_accounts(
     combined
 }
 
-fn parse_system_transfer_amount(data: &[u8]) -> Option<u64> {
-    if data.len() < SYSTEM_TRANSFER_DATA_LEN {
-        return None;
-    }
-    // Safe slice access checked by len check above
-    let kind = u32::from_le_bytes(data[0..4].try_into().ok()?);
-    if kind == SYSTEM_TRANSFER_TAG {
-        return Some(u64::from_le_bytes(data[4..12].try_into().ok()?));
-    }
-    None
-}
 
-fn parse_compute_budget(data: &[u8]) -> ComputeBudgetAction {
-    if data.is_empty() {
-        return ComputeBudgetAction::None;
-    }
-    match data[0] {
-        COMPUTE_BUDGET_SET_UNIT_LIMIT => {
-            if data.len() >= COMPUTE_BUDGET_TAG_LEN + COMPUTE_UNIT_LIMIT_LEN {
-                // Strict parsing: if try_into fails (shouldn't due to len check), return None
-                if let Ok(bytes) = data[1..5].try_into() {
-                    return ComputeBudgetAction::SetLimit(u32::from_le_bytes(bytes));
-                }
-            }
-            ComputeBudgetAction::None
-        }
-        COMPUTE_BUDGET_SET_UNIT_PRICE => {
-            if data.len() >= COMPUTE_BUDGET_TAG_LEN + COMPUTE_UNIT_PRICE_LEN {
-                if let Ok(bytes) = data[1..9].try_into() {
-                    return ComputeBudgetAction::SetPrice(u64::from_le_bytes(bytes));
-                }
-            }
-            ComputeBudgetAction::None
-        }
-        _ => ComputeBudgetAction::None,
-    }
-}
 
 fn process_transfer(
     state: &mut AnalysisState,
@@ -427,26 +373,13 @@ fn finalize_analysis(
     let has_public_mixing =
         state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty();
 
-    //TODO: switch to match
-    let privacy_level = if has_hybrid_action {
-        // Any explicit Hybrid action (like Decompress/bridge exit) forces Hybrid.
-        PrivacyLevel::Hybrid
-    } else if has_confidential {
-        // Confidential operations exist.
-        if has_public_mixing {
-            PrivacyLevel::Hybrid
-        } else {
-            PrivacyLevel::Confidential
-        }
-    } else if has_storage {
-        // Only storage compression (entrance/internal) exists.
-        if has_public_mixing {
-            PrivacyLevel::Hybrid
-        } else {
-            PrivacyLevel::Compressed
-        }
-    } else {
-        PrivacyLevel::Public
+    let privacy_level = match (has_hybrid_action, has_confidential, has_storage, has_public_mixing) {
+        (true, _, _, _) => PrivacyLevel::Hybrid,
+        (_, true, _, true)  => PrivacyLevel::Hybrid,
+        (_, true, _, false) => PrivacyLevel::Confidential,
+        (_, _, true, true)  => PrivacyLevel::Hybrid,
+        (_, _, true, false) => PrivacyLevel::Compressed,
+        _ => PrivacyLevel::Public,
     };
 
     // Fee Calculation with Overflow Protection
@@ -552,6 +485,8 @@ pub fn build_signing_summary(
     })
 }
 
+// TODO: move parse into helpers or parsing module
+
 pub fn parse_lookup_tables(
     json: &str,
 ) -> Result<HashMap<PubkeyBase58, Vec<PubkeyBase58>>, ToolError> {
@@ -587,5 +522,5 @@ fn account_to_string(accounts: &[PubkeyBase58], index: u8) -> String {
     accounts
         .get(index as usize)
         .map(|pk| pk.to_string())
-        .unwrap_or_else(|| format!("<unresolved:#{}>", index))
+        .unwrap_or_else(|| format!("<unresolved: #{}>", index))
 }
