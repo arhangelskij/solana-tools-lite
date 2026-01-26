@@ -74,7 +74,7 @@ fn emit_summary(analysis: &TxAnalysis) {
             );
         }
     } else {
-        eprintln!("Priority Fee:   0.000 SOL (0 lamports)");
+        eprintln!("Priority Fee:   {} (0 lamports)", format_sol(0));
     }
     
     if let Some(price) = analysis.compute_unit_price_micro {
