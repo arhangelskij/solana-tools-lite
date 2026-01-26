@@ -48,7 +48,7 @@ struct AnalysisState {
 pub fn analyze_input_transaction(
     input_tx: &InputTransaction,
     signer: &PubkeyBase58,
-    tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
+    tables: Option<&Vec<PubkeyBase58>>,
 ) -> Result<TxAnalysis> {
     let tx: Transaction = Transaction::try_from(input_tx)?;
     tx.message.sanitize()?;
@@ -60,7 +60,7 @@ pub fn analyze_input_transaction(
 pub fn analyze_transaction(
     message: &Message,
     signer: &PubkeyBase58,
-    tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
+    tables: Option<&Vec<PubkeyBase58>>,
 ) -> TxAnalysis {
     let mut warnings = Vec::new();
 
@@ -138,7 +138,13 @@ pub fn analyze_transaction(
     for plugin in plugins {
         // Check if protocol is involved either via direct instructions or account presence
         let has_instructions = plugin.detect(message);
-        let in_accounts = plugin.detect_in_accounts(message);
+        
+        // Also check in resolved account_list (includes lookup tables)
+        let supported = match plugin.supported_programs() {
+            Ok(programs) => programs,
+            Err(_) => &[],
+        };
+        let in_resolved_accounts = account_list.iter().any(|pk| supported.contains(pk));
         
         if has_instructions {
             // Full analysis when protocol is directly invoked
@@ -148,7 +154,7 @@ pub fn analyze_transaction(
             if let Ok(supported) = plugin.supported_programs() {
                 analysis.resolve_unknown_programs(supported);
             }
-        } else if in_accounts {
+        } else if in_resolved_accounts {
             // Protocol present in accounts but not directly invoked (potential CPI)
             // Find and list which specific programs are present
             let supported = match plugin.supported_programs() {
@@ -213,7 +219,7 @@ fn verify_signer_requirement(
 
 fn resolve_message_components<'a>(
     message: &'a Message,
-    tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
+    tables: Option<&Vec<PubkeyBase58>>,
     warnings: &mut Vec<AnalysisWarning>,
 ) -> (
     Cow<'a, [PubkeyBase58]>,
@@ -245,41 +251,25 @@ fn resolve_message_components<'a>(
 fn resolve_v0_accounts(
     static_keys: &[PubkeyBase58],
     lookups: &[MessageAddressTableLookup],
-    tables: Option<&HashMap<PubkeyBase58, Vec<PubkeyBase58>>>,
+    tables: Option<&Vec<PubkeyBase58>>,
     warnings: &mut Vec<AnalysisWarning>,
 ) -> Vec<PubkeyBase58> {
     let mut combined = static_keys.to_vec();
-    let mut missing_tables: HashSet<PubkeyBase58> = HashSet::new();
 
-    if let Some(map) = tables {
+    if let Some(all_accounts) = tables {
+        // Iterate through lookups and add accounts by index
         for lut in lookups {
-            let Some(entries) = map.get(&lut.account_key) else {
-                missing_tables.insert(lut.account_key.clone());
-                continue;
-            };
-
-            let mut push_index = |idx: u8| {
-                let i = idx as usize;
-                if let Some(pk) = entries.get(i) {
-                    combined.push(pk.clone());
-                } else {
-                    missing_tables.insert(lut.account_key.clone());
-                }
-            };
-
             for idx in &lut.writable_indexes {
-                push_index(*idx);
+                if let Some(pk) = all_accounts.get(*idx as usize) {
+                    combined.push(pk.clone());
+                }
             }
             for idx in &lut.readonly_indexes {
-                push_index(*idx);
+                if let Some(pk) = all_accounts.get(*idx as usize) {
+                    combined.push(pk.clone());
+                }
             }
         }
-    } else if !lookups.is_empty() {
-        return combined;
-    }
-
-    for key in missing_tables {
-        warnings.push(AnalysisWarning::LookupTableMissing(key));
     }
 
     combined

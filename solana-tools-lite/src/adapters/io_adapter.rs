@@ -98,10 +98,10 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     crate::serde::input_tx::parse_input_transaction(Some(&raw)).map_err(ToolError::from)
 }
 
-/// Read lookup tables JSON from file or stdin ("-") and parse into typed map.
+/// Read lookup tables JSON from file or stdin ("-") and parse into account list.
 pub fn read_lookup_tables(
     path: &str,
-) -> Result<std::collections::HashMap<PubkeyBase58, Vec<PubkeyBase58>>> {
+) -> Result<Vec<PubkeyBase58>> {
     let raw = read_input(Some(path)).map_err(ToolError::Io)?;
     parse_lookup_tables(&raw)
 }

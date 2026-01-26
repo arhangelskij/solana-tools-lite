@@ -51,7 +51,7 @@ pub fn execute(
     // 4) Optional: expand v0 accounts with lookup tables
     let tables = lookup_tables_path.map(read_lookup_tables).transpose()?;
 
-    // 5) ANALYZE BEFORE SIGNING: analyze unsigned transaction via analyze_input_transaction
+    // 5) Analyze unsigned transaction via analyze_input_transaction
     let analysis = analyze_input_transaction(&input_tx, &signing_pubkey, tables.as_ref())?;
     let analysis_presenter = SignTxPresentation {
         analysis: Some(&analysis),

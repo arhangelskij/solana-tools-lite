@@ -1,39 +1,50 @@
 use crate::ToolError;
 use crate::models::pubkey_base58::PubkeyBase58;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
-/// Parse lookup tables from JSON format.
+/// Lookup table entry from Solana RPC.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LookupTableEntry {
+    #[serde(default)]
+    pub writable: Vec<String>,
+    #[serde(default)]
+    pub readonly: Vec<String>,
+}
+
+/// Parse lookup tables from Solana RPC format.
 ///
 /// Expected format:
 /// ```json
 /// {
-///   "table_address": ["account1", "account2", ...],
-///   ...
+///   "readonly": ["account1", "account2", ...],
+///   "writable": ["account3", "account4", ...]
 /// }
 /// ```
+///
+/// Returns a combined list of all accounts (writable + readonly).
 pub fn parse_lookup_tables(
     json: &str,
-) -> Result<HashMap<PubkeyBase58, Vec<PubkeyBase58>>, ToolError> {
-    let raw: HashMap<String, Vec<String>> = serde_json::from_str(json)
+) -> Result<Vec<PubkeyBase58>, ToolError> {
+    let entry: LookupTableEntry = serde_json::from_str(json)
         .map_err(|e| ToolError::InvalidInput(format!("invalid lookup tables JSON: {e}")))?;
 
-    let mut out = HashMap::new();
-    for (table_key, addresses) in raw {
-        let table_pk = PubkeyBase58::try_from(table_key.as_str()).map_err(|e| {
-            ToolError::InvalidInput(format!("invalid lookup table key {table_key}: {e}"))
+    let mut all_accounts = Vec::new();
+    
+    // Parse writable accounts
+    for addr in entry.writable {
+        let pk = PubkeyBase58::try_from(addr.as_str()).map_err(|e| {
+            ToolError::InvalidInput(format!("invalid writable address {addr}: {e}"))
         })?;
-
-        let mut parsed = Vec::with_capacity(addresses.len());
-        for addr in addresses {
-            let pk = PubkeyBase58::try_from(addr.as_str()).map_err(|e| {
-                ToolError::InvalidInput(format!(
-                    "invalid lookup address {addr} for table {table_key}: {e}"
-                ))
-            })?;
-            parsed.push(pk);
-        }
-        out.insert(table_pk, parsed);
+        all_accounts.push(pk);
+    }
+    
+    // Parse readonly accounts
+    for addr in entry.readonly {
+        let pk = PubkeyBase58::try_from(addr.as_str()).map_err(|e| {
+            ToolError::InvalidInput(format!("invalid readonly address {addr}: {e}"))
+        })?;
+        all_accounts.push(pk);
     }
 
-    Ok(out)
+    Ok(all_accounts)
 }
