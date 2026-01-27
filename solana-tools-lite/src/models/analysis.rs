@@ -80,6 +80,7 @@ pub struct SigningSummary {
 pub enum AnalysisWarning {
     LookupTablesNotProvided,
     LookupTableMissing(PubkeyBase58),
+    LookupTableNotProvided,
     TokenTransferDetected(TokenProgramKind),
     UnknownProgram { program_id: PubkeyBase58 },
     SignerNotRequired,

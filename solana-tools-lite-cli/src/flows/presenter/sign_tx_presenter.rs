@@ -147,6 +147,9 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
         AnalysisWarning::LookupTablesNotProvided => {
             "Address table lookups present but --tables was not provided; looked-up accounts will be shown as raw indexes".to_string()
         }
+        AnalysisWarning::LookupTableNotProvided => {
+            "Address table lookups present but lookup table was not provided; some accounts may be unresolved".to_string()
+        }
         AnalysisWarning::LookupTableMissing(key) => {
             format!("Lookup table {} missing or incomplete; some accounts may be unresolved", key)
         }

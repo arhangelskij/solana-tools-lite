@@ -10,9 +10,10 @@ use crate::models::message::{Message, MessageAddressTableLookup};
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::Transaction;
 use crate::models::input_transaction::InputTransaction;
+use crate::serde::{LookupTableEntry};
 use crate::ToolError;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use crate::Result;
 
 
@@ -48,7 +49,7 @@ struct AnalysisState {
 pub fn analyze_input_transaction(
     input_tx: &InputTransaction,
     signer: &PubkeyBase58,
-    tables: Option<&Vec<PubkeyBase58>>,
+    tables: Option<&LookupTableEntry>,
 ) -> Result<TxAnalysis> {
     let tx: Transaction = Transaction::try_from(input_tx)?;
     tx.message.sanitize()?;
@@ -60,7 +61,7 @@ pub fn analyze_input_transaction(
 pub fn analyze_transaction(
     message: &Message,
     signer: &PubkeyBase58,
-    tables: Option<&Vec<PubkeyBase58>>,
+    tables: Option<&LookupTableEntry>,
 ) -> TxAnalysis {
     let mut warnings = Vec::new();
 
@@ -76,7 +77,7 @@ pub fn analyze_transaction(
 
     if let Some(lookups) = address_lookups {
         if !lookups.is_empty() && tables.is_none() {
-            warnings.push(AnalysisWarning::LookupTablesNotProvided);
+            warnings.push(AnalysisWarning::LookupTablesNotProvided); //TODO: 🟡 double 
         }
     }
 
@@ -144,6 +145,7 @@ pub fn analyze_transaction(
             Ok(programs) => programs,
             Err(_) => &[],
         };
+        
         let in_resolved_accounts = account_list.iter().any(|pk| supported.contains(pk));
         
         if has_instructions {
@@ -162,7 +164,7 @@ pub fn analyze_transaction(
                 Err(_) => continue,
             };
 
-            //TODO: 🔴 check it and test
+            // Gather found programs for notice
             let found_programs: Vec<String> = account_list
                 .iter()
                 .filter(|pk| supported.contains(pk))
@@ -174,20 +176,23 @@ pub fn analyze_transaction(
                     format!("  {} ({})", addr, program_desc)
                 })
                 .collect();
-            //TODO: 🟡 layout
-            let programs_list = found_programs.join("\n");
-            let protocol_name = plugin.name();
             
-            let notice = format!(
-                "PROTOCOL INTERACTION DETECTED:\n\
-                {} programs found in transaction accounts:\n\
-                {}\n\
-                \nThis may indicate Cross-Program Invocation (CPI) usage.",
-                protocol_name, programs_list
-            );
-            analysis.extension_notices.push(notice);
-            
-            analysis.resolve_unknown_programs(supported);
+            // Only add notice if we actually found matching programs
+            if !found_programs.is_empty() {
+                let programs_list = found_programs.join("\n");
+                let protocol_name = plugin.name();
+                
+                let notice = format!(
+                    "PROTOCOL INTERACTION DETECTED:\n\
+                    {} programs found in transaction accounts:\n\
+                    {}\n\
+                    \nThis may indicate Cross-Program Invocation (CPI) usage.",
+                    protocol_name, programs_list
+                );
+                analysis.extension_notices.push(notice);
+                
+                analysis.resolve_unknown_programs(supported);
+            }
         }
     }
 
@@ -219,7 +224,7 @@ fn verify_signer_requirement(
 
 fn resolve_message_components<'a>(
     message: &'a Message,
-    tables: Option<&Vec<PubkeyBase58>>,
+    tables: Option<&LookupTableEntry>,
     warnings: &mut Vec<AnalysisWarning>,
 ) -> (
     Cow<'a, [PubkeyBase58]>,
@@ -251,31 +256,25 @@ fn resolve_message_components<'a>(
 fn resolve_v0_accounts(
     static_keys: &[PubkeyBase58],
     lookups: &[MessageAddressTableLookup],
-    tables: Option<&Vec<PubkeyBase58>>,
+    table: Option<&LookupTableEntry>,
     warnings: &mut Vec<AnalysisWarning>,
 ) -> Vec<PubkeyBase58> {
-    let mut combined = static_keys.to_vec();
+    let extra_capacity = table.map_or(0, |t| t.writable.len() + t.readonly.len());
+    let mut combined = Vec::with_capacity(static_keys.len() + extra_capacity);
 
-    if let Some(all_accounts) = tables {
-        // Iterate through lookups and add accounts by index
-        for lut in lookups {
-            for idx in &lut.writable_indexes {
-                if let Some(pk) = all_accounts.get(*idx as usize) {
-                    combined.push(pk.clone());
-                }
-            }
-            for idx in &lut.readonly_indexes {
-                if let Some(pk) = all_accounts.get(*idx as usize) {
-                    combined.push(pk.clone());
-                }
-            }
-        }
+    combined.extend_from_slice(static_keys);
+
+    if let Some(lut_entry) = table {
+        // Add all writable accounts from the lookup table
+        combined.extend_from_slice(&lut_entry.writable);
+        // Add all readonly accounts from the lookup table
+        combined.extend_from_slice(&lut_entry.readonly);
+    } else if !lookups.is_empty() {
+        warnings.push(AnalysisWarning::LookupTableNotProvided);
     }
 
     combined
 }
-
-
 
 fn process_transfer(
     state: &mut AnalysisState,

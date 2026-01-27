@@ -5,7 +5,6 @@ use solana_tools_lite::models::message::{Message, MessageAddressTableLookup, Mes
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::models::hash_base58::HashBase58;
 use solana_tools_lite::constants::programs;
-use std::collections::HashMap;
 
 #[test]
 fn analyze_legacy_system_transfer() {
@@ -133,7 +132,10 @@ fn analyze_v0_missing_lookup_table_key_warns() {
         }],
     });
 
-    let tables: HashMap<PubkeyBase58, Vec<PubkeyBase58>> = HashMap::new();
+    let tables = crate::serde::LookupTableEntry {
+        writable: vec![],
+        readonly: vec![],
+    };
     let analysis = analyze_transaction(&msg, &signer, Some(&tables));
 
     assert!(analysis
