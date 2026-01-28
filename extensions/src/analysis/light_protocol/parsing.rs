@@ -410,10 +410,10 @@ pub fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> super:
                             match disc_8 {
                                 // Token Interface instructions
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => Action::TokenInterfaceMintTo { 
-                                    amount: parse_u64_at_offset(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                                    amount: None 
                                 },
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER => Action::TokenInterfaceTransfer { 
-                                    amount: parse_u64_at_offset(data, constants::OFFSET_TOKEN_INTERFACE_AMOUNT) 
+                                    amount: None 
                                 },
                                 constants::DISCRIMINATOR_BATCH_COMPRESS => parse_batch_compress(data),
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_APPROVE => Action::TokenInterfaceApprove,
