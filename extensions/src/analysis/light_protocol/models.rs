@@ -53,13 +53,13 @@ pub enum LightProtocolAction {
     // ========================================================================
     
     /// Invoke: Basic invocation of Light System Program.
-    Invoke { lamports: Option<u64> },
+    Invoke { lamports: Option<u64>, from_index: Option<u8>, to_index: Option<u8> },
     /// InvokeCpi: Invocation with Cross-Program Invocation support.
-    InvokeCpi { lamports: Option<u64> },
+    InvokeCpi { lamports: Option<u64>, from_index: Option<u8>, to_index: Option<u8> },
     /// InvokeCpiWithReadOnly: CPI invocation with read-only accounts.
-    InvokeCpiWithReadOnly { lamports: Option<u64> },
+    InvokeCpiWithReadOnly { lamports: Option<u64>, from_index: Option<u8>, to_index: Option<u8> },
     /// InvokeCpiWithAccountInfo: CPI invocation with AccountInfo support.
-    InvokeCpiWithAccountInfo { lamports: Option<u64> },
+    InvokeCpiWithAccountInfo { lamports: Option<u64>, from_index: Option<u8>, to_index: Option<u8> },
     /// InitCpiContextAccount: Initialize a CPI context account.
     InitCpiContextAccount,
     /// ReInitCpiContextAccount: Reinitialize a CPI context account.
@@ -219,25 +219,25 @@ impl LightProtocolAction {
             }
             
             // Light System Program
-            Self::Invoke { lamports } => {
+            Self::Invoke { lamports, .. } => {
                 match lamports {
                     Some(l) => format!("Light System Invoke ({} lamports)", l),
                     None => "Light System Invoke".to_string(),
                 }
             }
-            Self::InvokeCpi { lamports } => {
+            Self::InvokeCpi { lamports, .. } => {
                 match lamports {
                     Some(l) => format!("Light System Invoke (CPI) ({} lamports)", l),
                     None => "Light System Invoke (CPI)".to_string(),
                 }
             }
-            Self::InvokeCpiWithReadOnly { lamports } => {
+            Self::InvokeCpiWithReadOnly { lamports, .. } => {
                 match lamports {
                     Some(l) => format!("Light System Invoke (CPI with Read-Only) ({} lamports)", l),
                     None => "Light System Invoke (CPI with Read-Only)".to_string(),
                 }
             }
-            Self::InvokeCpiWithAccountInfo { lamports } => {
+            Self::InvokeCpiWithAccountInfo { lamports, .. } => {
                 match lamports {
                     Some(l) => format!("Light System Invoke (CPI with AccountInfo) ({} lamports)", l),
                     None => "Light System Invoke (CPI with AccountInfo)".to_string(),

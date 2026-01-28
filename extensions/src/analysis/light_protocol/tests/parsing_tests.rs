@@ -331,3 +331,101 @@ fn test_skip_borsh_vec_large_element_size() {
     let result = parsing::skip_borsh_vec(&data, 16); // element_size = 16
     assert_eq!(result, Some(20)); // 4 (length) + 16 (1 * 16)
 }
+
+
+// ============================================================================
+// Tests for parse_light_instruction - Invoke
+// ============================================================================
+
+#[test]
+fn test_parse_invoke_compress_sol() {
+    use crate::analysis::light_protocol::parsing::parse_light_instruction;
+    use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
+    use crate::analysis::light_protocol::models::LightProtocolAction;
+    
+    // Real data from demo_compress_sol.b64
+    // Discriminator: 1a10a90715caf219 (Invoke)
+    // Action: 43 (Compress SOL)
+    // Amount: 00e1f505 (little-endian) = 100_000_000 lamports = 0.1 SOL
+    let data: &[u8] = &[
+        0x1a, 0x10, 0xa9, 0x07, 0x15, 0xca, 0xf2, 0x19, // discriminator
+        0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // action + padding
+        0x01, 0x00, 0x00, 0x00, // proof length
+        0x36, 0x41, 0x33, 0xbf, 0x5f, 0xab, 0x28, 0x6d, 0x4a, 0x72, 0x93, 0xfc, 0x3c, 0x2b, 0x59, 0x5d,
+        0x9f, 0xa1, 0x16, 0x4d, 0x24, 0x8c, 0xf6, 0xe2, 0x88, 0xdd, 0x5a, 0x1f, 0x7b, 0xdb, 0x09, 0x41,
+        0x00, 0xe1, 0xf5, 0x05, 0x00, 0x00, 0x00, 0x00, // amount: 100_000_000 lamports
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0xe1, 0xf5, 0x05, 0x00, 0x00, 0x00, 0x00, 0x01,
+    ];
+    
+    let program_id = PubkeyBase58::try_from("SySTEM1eSU2p4BGQfQpimFEWWSC1XDFeun3Nqzz3rT7").unwrap();
+    let action = parse_light_instruction(&program_id, data);
+    
+    match action {
+        LightProtocolAction::Invoke { lamports, from_index, to_index } => {
+            // 0.1 SOL = 100_000_000 lamports
+            assert_eq!(lamports, Some(100_000_000), "Should parse 0.1 SOL (100_000_000 lamports)");
+            assert_eq!(from_index, Some(0));
+            assert_eq!(to_index, None);
+        }
+        _ => panic!("Expected Invoke action, got {:?}", action),
+    }
+}
+
+#[test]
+fn test_parse_invoke_cpi_variants() {
+    use crate::analysis::light_protocol::parsing::parse_light_instruction;
+    use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
+    use crate::analysis::light_protocol::models::LightProtocolAction;
+    use crate::analysis::light_protocol::constants;
+
+    let program_id = PubkeyBase58::try_from(constants::LIGHT_SYSTEM_PROGRAM_ID).unwrap();
+
+    // Helper to create test data with trailing bytes
+    let create_data = |disc: [u8; 8], lamports: u64, is_compress: bool| {
+        let mut data = vec![0u8; 50]; // Mock some data
+        data[0..8].copy_from_slice(&disc);
+        // Add trailing bytes: [Option disc, u64 lamports, bool is_compress]
+        let mut trailing = vec![1u8]; // Some
+        trailing.extend_from_slice(&lamports.to_le_bytes());
+        trailing.push(if is_compress { 1 } else { 0 });
+        data.extend_from_slice(&trailing);
+        data
+    };
+
+    // 1. InvokeCpi
+    let data_cpi = create_data(constants::DISCRIMINATOR_INVOKE_CPI, 500_000, true);
+    let action_cpi = parse_light_instruction(&program_id, &data_cpi);
+    match action_cpi {
+        LightProtocolAction::InvokeCpi { lamports, from_index, to_index } => {
+            assert_eq!(lamports, Some(500_000));
+            assert_eq!(from_index, Some(0));
+            assert_eq!(to_index, None);
+        }
+        _ => panic!("Expected InvokeCpi, got {:?}", action_cpi),
+    }
+
+    // 2. InvokeCpiWithReadOnly
+    let data_ro = create_data(constants::DISCRIMINATOR_INVOKE_CPI_WITH_READ_ONLY, 1_000_000, false);
+    let action_ro = parse_light_instruction(&program_id, &data_ro);
+    match action_ro {
+        LightProtocolAction::InvokeCpiWithReadOnly { lamports, from_index, to_index } => {
+            assert_eq!(lamports, Some(1_000_000));
+            assert_eq!(from_index, None);
+            assert_eq!(to_index, Some(0));
+        }
+        _ => panic!("Expected InvokeCpiWithReadOnly, got {:?}", action_ro),
+    }
+
+    // 3. InvokeCpiWithAccountInfo
+    let data_ai = create_data(constants::DISCRIMINATOR_INVOKE_CPI_WITH_ACCOUNT_INFO, 2_000_000, true);
+    let action_ai = parse_light_instruction(&program_id, &data_ai);
+    match action_ai {
+        LightProtocolAction::InvokeCpiWithAccountInfo { lamports, from_index, to_index } => {
+            assert_eq!(lamports, Some(2_000_000));
+            assert_eq!(from_index, Some(0));
+            assert_eq!(to_index, None);
+        }
+        _ => panic!("Expected InvokeCpiWithAccountInfo, got {:?}", action_ai),
+    }
+}

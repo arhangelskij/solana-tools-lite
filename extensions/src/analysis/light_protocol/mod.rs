@@ -85,6 +85,41 @@ impl ProtocolAnalyzer for LightProtocol {
             //TODO: 🟡 move parse_light_instruction into parser
             let action = parsing::parse_light_instruction(program_id, &instr.data);
 
+            // Record SOL transfers if action provides them
+            match &action {
+                Action::Invoke { lamports: Some(l), from_index, to_index } |
+                Action::InvokeCpi { lamports: Some(l), from_index, to_index } |
+                Action::InvokeCpiWithReadOnly { lamports: Some(l), from_index, to_index } |
+                Action::InvokeCpiWithAccountInfo { lamports: Some(l), from_index, to_index } => {
+                    let from = match from_index {
+                        Some(idx) => account_list.get(*idx as usize).map(|pk| pk.to_string()).unwrap_or_else(|| "Unknown".to_string()),
+                        None => "Compressed State".to_string(),
+                    };
+                    let to = match to_index {
+                        Some(idx) => account_list.get(*idx as usize).map(|pk| pk.to_string()).unwrap_or_else(|| "Unknown".to_string()),
+                        None => "Compressed State".to_string(),
+                    };
+                    
+                    analysis.transfers.push(solana_tools_lite::models::analysis::TransferView {
+                        from: from.clone(),
+                        to,
+                        lamports: *l,
+                        from_is_signer: match from_index {
+                            Some(idx) => account_list.get(*idx as usize).map(|pk| pk == signer).unwrap_or(false),
+                            None => false,
+                        },
+                    });
+
+                    // Track total SOL sent by signer if applicable
+                    if let Some(idx) = from_index {
+                        if account_list.get(*idx as usize).map(|pk| pk == signer).unwrap_or(false) {
+                            analysis.total_sol_send_by_signer += *l as u128;
+                        }
+                    }
+                }
+                _ => {}
+            }
+
             // Signer involvement check: only count if signer is an account in this instruction
             let signer_involved = instr.accounts.iter().any(|&idx| {
                 account_list.get(idx as usize).map(|pk| pk == signer).unwrap_or(false)

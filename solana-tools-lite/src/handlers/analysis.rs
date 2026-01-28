@@ -63,7 +63,7 @@ pub fn analyze_transaction(
     signer: &PubkeyBase58,
     tables: Option<&LookupTableEntry>,
 ) -> TxAnalysis {
-    let mut warnings = Vec::new();
+    let mut warnings = Vec::new(); //TODO: 🟡 for test
 
     // 1. Resolve message components
     let (account_list, instructions, message_version, address_lookups) =
@@ -263,6 +263,7 @@ fn resolve_v0_accounts(
     let mut combined = Vec::with_capacity(static_keys.len() + extra_capacity);
 
     combined.extend_from_slice(static_keys);
+    eprintln!("[DEBUG] Static keys ({}): {:?}", static_keys.len(), static_keys);
 
     if let Some(lut_entry) = table {
         // Add all writable accounts from the lookup table
@@ -273,6 +274,7 @@ fn resolve_v0_accounts(
         warnings.push(AnalysisWarning::LookupTableNotProvided);
     }
 
+    eprintln!("[DEBUG] Combined accounts ({}): {:?}", combined.len(), combined);
     combined
 }
 

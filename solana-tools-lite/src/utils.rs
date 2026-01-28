@@ -7,15 +7,18 @@ pub fn hex_encode(data: &[u8]) -> String {
 /// Shows up to 9 decimals for very small amounts, otherwise 3 decimals.
 /// Removes trailing zeros after decimal point.
 pub fn format_sol(lamports: u128) -> String {
-    let sol = lamports as f64 / crate::constants::LAMPORTS_PER_SOL;
+    if lamports == 0 {
+        return "0 SOL".to_string();
+    }
     
-    let formatted = if lamports > 0 && sol < 0.001 {
-        format!("{:.9}", sol)
+    let whole = lamports / 1_000_000_000;
+    let frac = lamports % 1_000_000_000;
+    
+    if frac == 0 {
+        format!("{} SOL", whole)
     } else {
-        format!("{:.3}", sol)
-    };
-    
-    // Trim trailing zeros and decimal point if needed
-    let trimmed = formatted.trim_end_matches('0').trim_end_matches('.');
-    format!("{} SOL", trimmed)
+        let frac_str = format!("{:09}", frac);
+        let trimmed_frac = frac_str.trim_end_matches('0');
+        format!("{}.{} SOL", whole, trimmed_frac)
+    }
 }
