@@ -324,13 +324,6 @@ fn finalize_analysis(
     mut warnings: Vec<AnalysisWarning>,
     message_version: &'static str,
 ) -> TxAnalysis {
-    /* TODO: 🟡 Refine CPI warning logic to avoid spam.
-       Currently suppressed to avoid noise in transactions with common unknown programs (Jito, etc.).
-    if !state.unknown_programs.is_empty() {
-        warnings.push(AnalysisWarning::CpiLimit);
-    }
-    */
-
     if state.saw_token_spl {
         warnings.push(AnalysisWarning::TokenTransferDetected(
             TokenProgramKind::SplToken,

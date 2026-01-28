@@ -1,7 +1,6 @@
 use crate::ToolError;
 use crate::models::pubkey_base58::PubkeyBase58;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Lookup table entry from Solana RPC.
 /// Stores writable and readonly accounts for sequential offset processing.
