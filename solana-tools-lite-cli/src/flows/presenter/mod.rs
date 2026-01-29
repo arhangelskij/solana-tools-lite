@@ -4,7 +4,7 @@ pub use presenter_trait::Presentable;
 mod base58_presenter;
 mod gen_presenter;
 mod sign_presenter;
-pub mod sign_tx_presenter; //TODO: 🟡 pub for tests!
+pub mod sign_tx_presenter;
 mod verify_presenter;
 mod utils;
 

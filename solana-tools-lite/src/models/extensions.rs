@@ -29,8 +29,6 @@ pub trait ExtensionAction: Send + Sync  {
     fn privacy_impact(&self) -> PrivacyImpact;
 }
 
-//TODO: 🟡 18jan check if 
-
 /// Type-erased wrapper for extension actions.
 #[derive(Clone)]
 pub struct AnalysisExtensionAction(Arc<dyn ExtensionAction>);

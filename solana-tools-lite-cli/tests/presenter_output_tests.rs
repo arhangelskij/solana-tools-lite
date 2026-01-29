@@ -12,7 +12,6 @@ use extensions::analysis::light_protocol::constants::{DISCRIMINATOR_INVOKE, DISC
 use solana_tools_lite_cli::flows::presenter::Presentable;
 use solana_tools_lite_cli::flows::presenter::sign_tx_presenter::SignTxPresentation;
 
-//TODO: 🔴 fix tests
 fn build_light_compress_message(signer: &PubkeyBase58, amount_lamports: u64) -> Message {
     let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
     
@@ -270,7 +269,7 @@ fn test_light_protocol_mixed_operations_presenter_output() {
     
     // Invoke instruction (storage operation)
     let mut compress_data = DISCRIMINATOR_INVOKE.to_vec();
-    compress_data.extend_from_slice(&3_000_000_000u64.to_le_bytes()); //TODO: 🟡 check it
+    compress_data.extend_from_slice(&3_000_000_000u64.to_le_bytes());
     
     // MintTo instruction (confidential operation)
     // DISCRIMINATOR_MINT_TO = [241, 34, 48, 186, 37, 179, 123, 192]
