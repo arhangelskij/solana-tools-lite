@@ -409,9 +409,7 @@ pub fn parse_light_instruction(program_id: &PubkeyBase58, data: &[u8]) -> super:
                         if let Some(disc_8) = extract_discriminator_u64(data) {
                             match disc_8 {
                                 // Token Interface instructions
-                                constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => Action::TokenInterfaceMintTo { 
-                                    amount: None 
-                                },
+                                constants::DISCRIMINATOR_TOKEN_INTERFACE_MINT_TO => parse_token_interface_mint_to(data),
                                 constants::DISCRIMINATOR_TOKEN_INTERFACE_TRANSFER => Action::TokenInterfaceTransfer { 
                                     amount: None 
                                 },
@@ -829,4 +827,31 @@ fn parse_invoke_cpi_with_account_info(data: &[u8]) -> super::models::LightProtoc
     }
 
     Action::InvokeCpiWithAccountInfo { lamports: None, from_index: None, to_index: None }
+}
+
+/// Parse Token Interface MintTo instruction.
+fn parse_token_interface_mint_to(data: &[u8]) -> super::models::LightProtocolAction {
+    use super::models::LightProtocolAction as Action;
+    
+    let mut cursor = 8; // Skip discriminator
+    
+    // proof: Vec<[u8; 32]>
+    if let Some(consumed) = skip_borsh_vec(&data[cursor..], 32) {
+        cursor += consumed;
+    } else {
+        // Fallback or attempt Vec<u8> if fixed-size skip fails
+        if let Some(consumed) = skip_borsh_vec(&data[cursor..], 1) {
+            cursor += consumed;
+        } else {
+            return Action::TokenInterfaceMintTo { amount: None };
+        }
+    }
+    
+    // amounts: Vec<u64>
+    if let Some((amounts, _consumed)) = parse_borsh_vec_u64(&data[cursor..]) {
+        let total_amount = amounts.iter().sum();
+        Action::TokenInterfaceMintTo { amount: Some(total_amount) }
+    } else {
+        Action::TokenInterfaceMintTo { amount: None }
+    }
 }
