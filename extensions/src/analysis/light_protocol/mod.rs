@@ -120,21 +120,22 @@ impl ProtocolAnalyzer for LightProtocol {
                 _ => {}
             }
 
-            // Signer involvement check: only count if signer is an account in this instruction
-            let signer_involved = instr.accounts.iter().any(|&idx| {
-                account_list.get(idx as usize).map(|pk| pk == signer).unwrap_or(false)
-            });
+            //TODO: 🟡 delete after testing
+            // // Signer involvement check: only count if signer is an account in this instruction
+            // let _signer_involved = instr.accounts.iter().any(|&idx| {
+            //     account_list.get(idx as usize).map(|pk| pk == signer).unwrap_or(false)
+            // });
 
-            if signer_involved {
-                match action.privacy_impact() {
-                    PrivacyImpact::Confidential => analysis.confidential_ops_count += 1,
-                    PrivacyImpact::StorageCompression => analysis.storage_ops_count += 1,
-                    PrivacyImpact::Hybrid => {
-                        analysis.confidential_ops_count += 1;
-                        analysis.storage_ops_count += 1;
-                    }
-                    _ => {}
+            // Count privacy impact regardless of signer involvement
+            // Privacy level should reflect the transaction's actual operations, not the signer's role
+            match action.privacy_impact() {
+                PrivacyImpact::Confidential => analysis.confidential_ops_count += 1,
+                PrivacyImpact::StorageCompression => analysis.storage_ops_count += 1,
+                PrivacyImpact::Hybrid => {
+                    analysis.confidential_ops_count += 1;
+                    analysis.storage_ops_count += 1;
                 }
+                _ => {}
             }
 
             analysis
