@@ -78,7 +78,6 @@ pub struct SigningSummary {
 
 #[derive(Debug, Clone, Serialize)]
 pub enum AnalysisWarning {
-    LookupTablesNotProvided,
     LookupTableMissing(PubkeyBase58),
     LookupTableNotProvided,
     TokenTransferDetected(TokenProgramKind),

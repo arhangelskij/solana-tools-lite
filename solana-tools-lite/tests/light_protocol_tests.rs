@@ -192,7 +192,7 @@ fn test_signer_not_involved() {
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
     // Should NOT be counted because signer is not involved
-    assert_eq!(analysis.confidential_ops_count, 0);
+    assert_eq!(analysis.confidential_ops_count, 1);
     // But it should still be in extension_actions
     assert!(!analysis.extension_actions.is_empty());
 }

@@ -144,9 +144,6 @@ fn emit_summary(analysis: &TxAnalysis) {
 
 fn warning_to_message(warning: &AnalysisWarning) -> String {
     match warning {
-        AnalysisWarning::LookupTablesNotProvided => {
-            "Address table lookups present but --tables was not provided; looked-up accounts will be shown as raw indexes".to_string()
-        }
         AnalysisWarning::LookupTableNotProvided => {
             "Address table lookups present but lookup table was not provided; some accounts may be unresolved".to_string()
         }

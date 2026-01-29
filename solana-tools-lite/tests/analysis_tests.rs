@@ -67,7 +67,7 @@ fn analyze_v0_missing_lookup_tables_warns() {
     });
 
     let analysis = analyze_transaction(&msg, &signer, None);
-    assert!(analysis.warnings.iter().any(|w| matches!(w, AnalysisWarning::LookupTablesNotProvided)));
+    assert!(analysis.warnings.iter().any(|w| matches!(w, AnalysisWarning::LookupTableNotProvided)));
 }
 
 #[test]
