@@ -157,6 +157,7 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
             let label = match kind {
                 TokenProgramKind::SplToken => "Token Program",
                 TokenProgramKind::Token2022 => "Token-2022 Program",
+                TokenProgramKind::AssociatedToken => "Associated Token Program",
             };
             format!(
                 "{} transfer detected; amounts are shown as raw u64 (offline mode cannot infer decimals)",

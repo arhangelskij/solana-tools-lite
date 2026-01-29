@@ -29,8 +29,7 @@ const MAX_TRANSFERS_TO_DISPLAY: usize = 50;
 struct AnalysisState {
     transfers: Vec<TransferView>,
     total_sol_send_by_signer: u128,
-    saw_token_spl: bool,
-    saw_token_2022: bool,
+    detected_programs: HashSet<TokenProgramKind>,
     saw_system_transfer: bool,
     unknown_programs: HashSet<PubkeyBase58>,
     cu_price_micro: Option<u64>,
@@ -109,11 +108,15 @@ pub fn analyze_transaction(
                 true
             }
             programs::TOKEN_PROGRAM_ID => {
-                state.saw_token_spl = true;
+                state.detected_programs.insert(TokenProgramKind::SplToken);
                 true
             }
             programs::TOKEN_2022_PROGRAM_ID => {
-                state.saw_token_2022 = true;
+                state.detected_programs.insert(TokenProgramKind::Token2022);
+                true
+            }
+            programs::ASSOCIATED_TOKEN_PROGRAM_ID => {
+                state.detected_programs.insert(TokenProgramKind::AssociatedToken);
                 true
             }
             _ => false,
@@ -318,15 +321,8 @@ fn finalize_analysis(
     mut warnings: Vec<AnalysisWarning>,
     message_version: &'static str,
 ) -> TxAnalysis {
-    if state.saw_token_spl {
-        warnings.push(AnalysisWarning::TokenTransferDetected(
-            TokenProgramKind::SplToken,
-        ));
-    }
-    if state.saw_token_2022 {
-        warnings.push(AnalysisWarning::TokenTransferDetected(
-            TokenProgramKind::Token2022,
-        ));
+    for &kind in &state.detected_programs {
+        warnings.push(AnalysisWarning::TokenTransferDetected(kind));
     }
     for program_id in state.unknown_programs {
         warnings.push(AnalysisWarning::UnknownProgram { program_id });
@@ -347,7 +343,7 @@ fn finalize_analysis(
     }
 
     let has_public_mixing =
-        state.saw_system_transfer || state.saw_token_spl || !state.transfers.is_empty();
+        state.saw_system_transfer || !state.detected_programs.is_empty() || !state.transfers.is_empty();
 
     let privacy_level = match (has_hybrid_action, has_confidential, has_storage, has_public_mixing) {
         (true, _, _, _) => PrivacyLevel::Hybrid,
@@ -399,7 +395,7 @@ fn finalize_analysis(
         confidential_ops_count: state.confidential_ops_count,
         storage_ops_count: state.storage_ops_count,
         is_fee_payer: state.is_fee_payer,
-        has_non_sol_assets: state.saw_token_spl || state.saw_token_2022,
+        has_non_sol_assets: !state.detected_programs.is_empty(),
     }
 }
 

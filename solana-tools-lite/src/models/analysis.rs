@@ -89,10 +89,11 @@ pub enum AnalysisWarning {
     MalformedInstruction,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
 pub enum TokenProgramKind {
     SplToken,
     Token2022,
+    AssociatedToken,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
