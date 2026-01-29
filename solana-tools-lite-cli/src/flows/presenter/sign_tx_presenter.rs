@@ -34,6 +34,7 @@ impl Presentable for SignTxPresentation<'_> {
 
 fn emit_summary(analysis: &TxAnalysis) {
     for (i, t) in analysis.transfers.iter().enumerate() {
+        eprintln!("==================================================");
         eprintln!("Instruction #{}: System Program (Transfer)", i + 1);
         eprintln!(
             "  From:   {}{}",

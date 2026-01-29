@@ -1,21 +1,23 @@
-use crate::codec::{serialize_transaction, decode_system_transfer_amount, decode_compute_budget, ComputeBudgetAction};
+use crate::Result;
+use crate::ToolError;
+use crate::codec::{
+    ComputeBudgetAction, decode_compute_budget, decode_system_transfer_amount,
+    serialize_transaction,
+};
 use crate::constants::{compute_budget, programs};
-use crate::extensions::registry;
 use crate::models::analysis::{
     AnalysisWarning, PrivacyLevel, SigningSummary, TokenProgramKind, TransferView, TxAnalysis,
 };
 use crate::models::extensions::{AnalysisExtensionAction, PrivacyImpact};
+use crate::models::input_transaction::InputTransaction;
 use crate::models::instruction::Instruction;
 use crate::models::message::{Message, MessageAddressTableLookup};
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::models::transaction::Transaction;
-use crate::models::input_transaction::InputTransaction;
-use crate::serde::{LookupTableEntry};
-use crate::ToolError;
+use crate::serde::LookupTableEntry;
 use std::borrow::Cow;
 use std::collections::HashSet;
-use crate::Result;
-
+use crate::extensions::registry;
 
 // --- Constants ---
 const ESTIMATED_BASE_FEE_PER_SIGNATURE: u64 = 5000;
@@ -40,8 +42,6 @@ struct AnalysisState {
     storage_ops_count: usize,
     is_fee_payer: bool,
 }
-
-
 
 /// Analyze an input transaction (raw, unsigned) to produce fee estimates, transfers, and warnings.
 /// This function handles the conversion from InputTransaction to Message internally.
@@ -87,7 +87,7 @@ pub fn analyze_transaction(
         };
 
         let program_id_str = program_id.to_string();
-        
+
         let handled = match program_id_str.as_str() {
             programs::SYSTEM_PROGRAM_ID => {
                 if let Some(lamports) = decode_system_transfer_amount(&instr.data) {
@@ -116,7 +116,9 @@ pub fn analyze_transaction(
                 true
             }
             programs::ASSOCIATED_TOKEN_PROGRAM_ID => {
-                state.detected_programs.insert(TokenProgramKind::AssociatedToken);
+                state
+                    .detected_programs
+                    .insert(TokenProgramKind::AssociatedToken);
                 true
             }
             _ => false,
@@ -131,67 +133,7 @@ pub fn analyze_transaction(
     let mut analysis = finalize_analysis(message, state, warnings, message_version);
 
     // 4. Run protocol extensions (Plugins)
-    let plugins = registry::get_all_analyzers();
-
-    for plugin in plugins {
-        // Check if protocol is involved either via direct instructions or account presence
-        let has_instructions = plugin.detect(message);
-        
-        // Also check in resolved account_list (includes lookup tables)
-        let supported = match plugin.supported_programs() {
-            Ok(programs) => programs,
-            Err(_) => &[],
-        };
-        
-        let in_resolved_accounts = account_list.iter().any(|pk| supported.contains(pk));
-        
-        if has_instructions {
-            // Full analysis when protocol is directly invoked
-            plugin.analyze(message, &account_list, signer, &mut analysis);
-            plugin.enrich_notice(&mut analysis);
-
-            if let Ok(supported) = plugin.supported_programs() {
-                analysis.resolve_unknown_programs(supported);
-            }
-        } else if in_resolved_accounts {
-            // Protocol present in accounts but not directly invoked (potential CPI)
-            // Find and list which specific programs are present
-            let supported = match plugin.supported_programs() {
-                Ok(programs) => programs,
-                Err(_) => continue,
-            };
-
-            // Gather found programs for notice
-            let found_programs: Vec<String> = account_list
-                .iter()
-                .filter(|pk| supported.contains(pk))
-                .map(|pk| {
-                    let addr = pk.to_string();
-                    let program_desc = plugin
-                        .program_description(pk)
-                        .unwrap_or("Unknown Program");
-                    format!("  {} ({})", addr, program_desc)
-                })
-                .collect();
-            
-            // Only add notice if we actually found matching programs
-            if !found_programs.is_empty() {
-                let programs_list = found_programs.join("\n");
-                let protocol_name = plugin.name();
-                
-                let notice = format!(
-                    "PROTOCOL INTERACTION DETECTED:\n\
-                    {} programs found in transaction accounts:\n\
-                    {}\n\
-                    \nThis may indicate Cross-Program Invocation (CPI) usage.",
-                    protocol_name, programs_list
-                );
-                analysis.extension_notices.push(notice);
-                
-                analysis.resolve_unknown_programs(supported);
-            }
-        }
-    }
+    process_analysis_extensions(message, &account_list, signer, &mut analysis);
 
     // Refresh privacy level after plugins
     analysis.recalculate_privacy_level();
@@ -342,14 +284,20 @@ fn finalize_analysis(
         }
     }
 
-    let has_public_mixing =
-        state.saw_system_transfer || !state.detected_programs.is_empty() || !state.transfers.is_empty();
+    let has_public_mixing = state.saw_system_transfer
+        || !state.detected_programs.is_empty()
+        || !state.transfers.is_empty();
 
-    let privacy_level = match (has_hybrid_action, has_confidential, has_storage, has_public_mixing) {
+    let privacy_level = match (
+        has_hybrid_action,
+        has_confidential,
+        has_storage,
+        has_public_mixing,
+    ) {
         (true, _, _, _) => PrivacyLevel::Hybrid,
-        (_, true, _, true)  => PrivacyLevel::Hybrid,
+        (_, true, _, true) => PrivacyLevel::Hybrid,
         (_, true, _, false) => PrivacyLevel::Confidential,
-        (_, _, true, true)  => PrivacyLevel::Hybrid,
+        (_, _, true, true) => PrivacyLevel::Hybrid,
         (_, _, true, false) => PrivacyLevel::Compressed,
         _ => PrivacyLevel::Public,
     };
@@ -462,4 +410,72 @@ fn account_to_string(accounts: &[PubkeyBase58], index: u8) -> String {
         .get(index as usize)
         .map(|pk| pk.to_string())
         .unwrap_or_else(|| format!("<unresolved: #{}>", index))
+}
+
+/// Runs all registered analysis extensions (plugins) on the transaction.
+fn process_analysis_extensions(
+    message: &Message,
+    account_list: &[PubkeyBase58],
+    signer: &PubkeyBase58,
+    analysis: &mut TxAnalysis,
+) {
+    let plugins = registry::get_all_analyzers();
+
+    for plugin in plugins {
+        // Check if protocol is involved either via direct instructions or account presence
+        let has_instructions = plugin.detect(message);
+        
+        // Also check in resolved account_list (includes lookup tables)
+        let supported = match plugin.supported_programs() {
+            Ok(programs) => programs,
+            Err(_) => &[],
+        };
+        
+        let in_resolved_accounts = account_list.iter().any(|pk| supported.contains(pk));
+        
+        if has_instructions {
+            // Full analysis when protocol is directly invoked
+            plugin.analyze(message, account_list, signer, analysis);
+            plugin.enrich_notice(analysis);
+
+            if let Ok(supported) = plugin.supported_programs() {
+                analysis.resolve_unknown_programs(supported);
+            }
+        } else if in_resolved_accounts {
+            // Protocol present in accounts but not directly invoked (potential CPI)
+            // Find and list which specific programs are present
+            let supported = match plugin.supported_programs() {
+                Ok(programs) => programs,
+                Err(_) => continue,
+            };
+
+            // Gather found programs for notice
+            let found_programs: Vec<String> = account_list
+                .iter()
+                .filter(|pk| supported.contains(pk))
+                .map(|pk| {
+                    let addr = pk.to_string();
+                    let program_desc = plugin.program_description(pk).unwrap_or("Unknown Program");
+                    format!("  {} ({})", addr, program_desc)
+                })
+                .collect();
+
+            // Only add notice if we actually found matching programs
+            if !found_programs.is_empty() {
+                let programs_list = found_programs.join("\n");
+                let protocol_name = plugin.name();
+
+                let notice = format!(
+                    "PROTOCOL INTERACTION DETECTED:\n\
+                    {} programs found in transaction accounts:\n\
+                    {}\n\
+                    \nThis may indicate Cross-Program Invocation (CPI) usage.",
+                    protocol_name, programs_list
+                );
+                analysis.extension_notices.push(notice);
+
+                analysis.resolve_unknown_programs(supported);
+            }
+        }
+    }
 }
