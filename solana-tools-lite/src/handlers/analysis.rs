@@ -63,7 +63,7 @@ pub fn analyze_transaction(
     signer: &PubkeyBase58,
     tables: Option<&LookupTableEntry>,
 ) -> TxAnalysis {
-    let mut warnings = Vec::new(); //TODO: 🟡 for test
+    let mut warnings = Vec::new();
 
     // 1. Resolve message components
     let (account_list, instructions, message_version, _) =

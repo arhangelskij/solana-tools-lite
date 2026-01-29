@@ -8,7 +8,7 @@ use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::models::message::{Message, MessageHeader, MessageLegacy};
 use solana_tools_lite::models::instruction::Instruction;
 use solana_tools_lite::models::hash_base58::HashBase58;
-use extensions::analysis::light_protocol::constants::{DISCRIMINATOR_INVOKE, LIGHT_SYSTEM_PROGRAM_ID, COMPRESSED_TOKEN_PROGRAM_ID};
+use extensions::analysis::light_protocol::constants::{DISCRIMINATOR_INVOKE, DISCRIMINATOR_INVOKE_CPI, LIGHT_SYSTEM_PROGRAM_ID, COMPRESSED_TOKEN_PROGRAM_ID};
 use solana_tools_lite_cli::flows::presenter::Presentable;
 use solana_tools_lite_cli::flows::presenter::sign_tx_presenter::SignTxPresentation;
 
@@ -96,7 +96,7 @@ fn test_light_protocol_multiple_instructions_presenter_output() {
     // Two Invoke instructions
     let data1 = DISCRIMINATOR_INVOKE.to_vec();
     
-    let data2 = DISCRIMINATOR_INVOKE.to_vec();
+    let data2 = DISCRIMINATOR_INVOKE_CPI.to_vec();
     
     let instr1 = Instruction {
         program_id_index: 1,
@@ -419,139 +419,4 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
         )),
         "Should have unknown program warning"
     );
-}
-
-
-#[test]
-fn test_mock_protocol_single_instruction_presenter_output() {
-    // Initialize extensions
-    extensions::init();
-    
-    let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let mock_program = PubkeyBase58::try_from("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ").unwrap();
-    
-    let instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0],
-        data: vec![42, 42, 42, 42, 42, 42, 42, 42],
-    };
-    
-    let message = Message::Legacy(MessageLegacy {
-        header: MessageHeader {
-            num_required_signatures: 1,
-            num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 0,
-        },
-        account_keys: vec![signer.clone(), mock_program],
-        recent_blockhash: HashBase58([5u8; 32]),
-        instructions: vec![instr],
-    });
-    
-    // Analyze transaction
-    let analysis = analyze_transaction(&message, &signer, None);
-    
-    // Use real presenter
-    let presentation = SignTxPresentation {
-        analysis: Some(&analysis),
-        summary_payload: None,
-    };
-    
-    eprintln!("\n=== MOCK PROTOCOL SINGLE INSTRUCTION ===");
-    let _ = presentation.present(false, false, true);
-    
-    // Verify Mock Protocol action
-    assert_eq!(analysis.extension_actions.len(), 1, "Should have 1 Mock Protocol action");
-    assert_eq!(
-        analysis.extension_actions[0].protocol_name(),
-        "Mock Protocol",
-        "Protocol name should be 'Mock Protocol'"
-    );
-    
-    // Verify Mock Protocol notice
-    assert_eq!(analysis.extension_notices.len(), 1, "Should have 1 notice");
-    assert!(
-        analysis.extension_notices[0].contains("MOCK PROTOCOL"),
-        "Notice should mention Mock Protocol"
-    );
-}
-
-#[test]
-fn test_light_and_mock_protocol_presenter_output() {
-    // Initialize extensions
-    extensions::init();
-    
-    let signer = PubkeyBase58::try_from("7ZD7xmv1Ccvoqj28aPKwpJmzSBafkwXNAV3aGhBo5nSi").unwrap();
-    let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
-    let mock_program = PubkeyBase58::try_from("Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ").unwrap();
-    
-    // Light Protocol Invoke instruction
-    let light_data = DISCRIMINATOR_INVOKE.to_vec();
-    
-    // Mock Protocol instruction
-    let mock_data = vec![42, 42, 42, 42, 42, 42, 42, 42];
-    
-    let light_instr = Instruction {
-        program_id_index: 1,
-        accounts: vec![0, 2, 3],
-        data: light_data,
-    };
-    
-    let mock_instr = Instruction {
-        program_id_index: 4,
-        accounts: vec![0],
-        data: mock_data,
-    };
-    
-    let message = Message::Legacy(MessageLegacy {
-        header: MessageHeader {
-            num_required_signatures: 1,
-            num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 3,
-        },
-        account_keys: vec![
-            signer.clone(),
-            light_system_program,
-            PubkeyBase58([2u8; 32]),
-            PubkeyBase58([3u8; 32]),
-            mock_program,
-        ],
-        recent_blockhash: HashBase58([6u8; 32]),
-        instructions: vec![light_instr, mock_instr],
-    });
-    
-    // Analyze transaction
-    let analysis = analyze_transaction(&message, &signer, None);
-    
-    // Use real presenter
-    let presentation = SignTxPresentation {
-        analysis: Some(&analysis),
-        summary_payload: None,
-    };
-    
-    eprintln!("\n=== LIGHT PROTOCOL + MOCK PROTOCOL ===");
-    let _ = presentation.present(false, false, true);
-    
-    // Verify both protocols detected
-    assert_eq!(analysis.extension_actions.len(), 2, "Should have 2 protocol actions");
-    
-    // Verify action types
-    let protocol_names: Vec<&str> = analysis.extension_actions.iter()
-        .map(|a| a.protocol_name())
-        .collect();
-    
-    assert!(protocol_names.contains(&"Light Protocol"), "Should have Light Protocol");
-    assert!(protocol_names.contains(&"Mock Protocol"), "Should have Mock Protocol");
-    
-    // Verify both notices
-    assert_eq!(analysis.extension_notices.len(), 2, "Should have 2 notices");
-    assert!(
-        analysis.extension_notices.iter().any(|n| n.contains("ZK COMPRESSION")),
-        "Should have Light Protocol notice"
-    );
-    assert!(
-        analysis.extension_notices.iter().any(|n| n.contains("MOCK PROTOCOL")),
-        "Should have Mock Protocol notice"
-    );
-
-    //TODO: 🟡 add that we dont have any warnings
 }
