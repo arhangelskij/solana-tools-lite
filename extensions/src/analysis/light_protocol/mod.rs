@@ -9,6 +9,7 @@ use std::sync::Arc;
 pub mod constants;
 pub mod parsing;
 pub mod models;
+pub mod decoder;
 
 pub use models::LightProtocolAction as Action;
 
@@ -82,7 +83,6 @@ impl ProtocolAnalyzer for LightProtocol {
                 continue;
             }
 
-            //TODO: 🟡 move parse_light_instruction into parser
             let action = parsing::parse_light_instruction(program_id, &instr.data);
 
             // Record SOL transfers if action provides them

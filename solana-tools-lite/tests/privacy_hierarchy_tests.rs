@@ -60,7 +60,7 @@ fn test_privacy_hierarchy_confidential_takes_precedence_over_storage() {
     let mut analysis = empty_analysis();
     // Invoke is a StorageCompression action
     analysis.extension_actions.push(
-        AnalysisExtensionAction::new(Arc::new(LightProtocolAction::Invoke { lamports: None }))
+        AnalysisExtensionAction::new(Arc::new(LightProtocolAction::Invoke { lamports: None, from_index: None, to_index: None }))
     );
     // When both confidential and storage ops are present (no public mixing),
     // confidential takes precedence

@@ -40,6 +40,11 @@ pub const U64_SIZE: usize = 8;
 /// Used for parsing max_top_up and other u16 values.
 pub const U16_SIZE: usize = 2;
 
+/// Size of 8-byte discriminator in bytes.
+/// 
+/// Used for parsing Light Protocol instruction discriminators.
+pub const DISCRIMINATOR_SIZE: usize = 8;
+
 // ============================================================================
 // INSTRUCTION DATA OFFSETS
 // ============================================================================

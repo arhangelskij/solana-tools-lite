@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Lookup table entry from Solana RPC.
 /// Stores writable and readonly accounts for sequential offset processing.
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct LookupTableEntry {
     #[serde(default)]
     pub writable: Vec<PubkeyBase58>,

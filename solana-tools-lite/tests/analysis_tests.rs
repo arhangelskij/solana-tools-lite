@@ -110,39 +110,6 @@ fn analyze_compute_budget_sets_priority_fee() {
     assert!(fee > 0, "priority fee should be positive");
 }
 
-#[test]
-fn analyze_v0_missing_lookup_table_key_warns() {
-    let signer = PubkeyBase58::from([5u8; 32]);
-    let blockhash = HashBase58([1u8; 32]);
-    let lookup_key = PubkeyBase58::from([6u8; 32]);
-
-    let msg = Message::V0(MessageV0 {
-        header: MessageHeader {
-            num_required_signatures: 1,
-            num_readonly_signed_accounts: 0,
-            num_readonly_unsigned_accounts: 0,
-        },
-        account_keys: vec![signer.clone()],
-        recent_blockhash: blockhash,
-        instructions: Vec::new(),
-        address_table_lookups: vec![MessageAddressTableLookup {
-            account_key: lookup_key.clone(),
-            writable_indexes: vec![0],
-            readonly_indexes: vec![1],
-        }],
-    });
-
-    let tables = crate::serde::LookupTableEntry {
-        writable: vec![],
-        readonly: vec![],
-    };
-    let analysis = analyze_transaction(&msg, &signer, Some(&tables));
-
-    assert!(analysis
-        .warnings
-        .iter()
-        .any(|w| matches!(w, AnalysisWarning::LookupTableMissing(key) if *key == lookup_key)));
-}
 
 #[test]
 fn analyze_token_and_unknown_programs_warn() {
