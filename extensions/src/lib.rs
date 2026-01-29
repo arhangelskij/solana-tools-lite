@@ -35,5 +35,4 @@ pub fn init() {
     solana_tools_lite::extensions::registry::register(analyzers);
 }
 
-pub use analysis::ProgramId;
 pub use analysis::LightProtocolAction;
