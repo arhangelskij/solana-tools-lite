@@ -66,7 +66,7 @@ pub fn analyze_transaction(
     let mut warnings = Vec::new(); //TODO: 🟡 for test
 
     // 1. Resolve message components
-    let (account_list, instructions, message_version, address_lookups) =
+    let (account_list, instructions, message_version, _) =
         resolve_message_components(message, tables, &mut warnings);
 
     // [Security Check] Verify if the provided signer is actually required to sign
@@ -74,12 +74,6 @@ pub fn analyze_transaction(
 
     // [Fee Payer Check] The first account in any Solana message is the fee payer.
     let is_fee_payer = account_list.first().map(|pk| pk == signer).unwrap_or(false);
-
-    if let Some(lookups) = address_lookups {
-        if !lookups.is_empty() && tables.is_none() {
-            warnings.push(AnalysisWarning::LookupTablesNotProvided); //TODO: 🟡 double 
-        }
-    }
 
     // 2. Process instructions
     let mut state = AnalysisState {

@@ -170,9 +170,9 @@ fn test_signer_not_in_accounts() {
     let mut analysis = empty_analysis();
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
-    // Should add extension action but not count it
+    // Should add extension action and count it (privacy level depends on tx content, not signer role)
     assert_eq!(analysis.extension_actions.len(), 1);
-    assert_eq!(analysis.confidential_ops_count, 0);
+    assert_eq!(analysis.confidential_ops_count, 1);
     assert_eq!(analysis.storage_ops_count, 0);
 }
 
