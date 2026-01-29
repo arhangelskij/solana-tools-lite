@@ -150,36 +150,36 @@ impl LightProtocolAction {
             // Compressed Token Program
             Self::CTokenTransfer { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Transfer ({} amount)", amt),
-                    None => "Compressed Token: Transfer".to_string(),
+                    Some(amt) => format!("Compressed Token - Transfer ({} amount)", amt),
+                    None => "Compressed Token - Transfer".to_string(),
                 }
             }
             Self::CTokenApprove { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Approve Delegate ({} amount)", amt),
-                    None => "Compressed Token: Approve Delegate".to_string(),
+                    Some(amt) => format!("Compressed Token - Approve Delegate ({} amount)", amt),
+                    None => "Compressed Token - Approve Delegate".to_string(),
                 }
             }
-            Self::CTokenRevoke => "Compressed Token: Revoke Delegate".to_string(),
+            Self::CTokenRevoke => "Compressed Token - Revoke Delegate".to_string(),
             Self::CTokenMintTo { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Mint ({} amount)", amt),
-                    None => "Compressed Token: Mint".to_string(),
+                    Some(amt) => format!("Compressed Token - Mint ({} amount)", amt),
+                    None => "Compressed Token - Mint".to_string(),
                 }
             }
             Self::CTokenBurn { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Burn ({} amount)", amt),
-                    None => "Compressed Token: Burn".to_string(),
+                    Some(amt) => format!("Compressed Token - Burn ({} amount)", amt),
+                    None => "Compressed Token - Burn".to_string(),
                 }
             }
-            Self::CloseTokenAccount => "Compressed Token: Close Account".to_string(),
-            Self::CTokenFreezeAccount => "Compressed Token: Freeze Account".to_string(),
-            Self::CTokenThawAccount => "Compressed Token: Thaw Account".to_string(),
+            Self::CloseTokenAccount => "Compressed Token - Close Account".to_string(),
+            Self::CTokenFreezeAccount => "Compressed Token - Freeze Account".to_string(),
+            Self::CTokenThawAccount => "Compressed Token - Thaw Account".to_string(),
             Self::CTokenTransferChecked { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Transfer (Checked) ({} amount)", amt),
-                    None => "Compressed Token: Transfer (Checked)".to_string(),
+                    Some(amt) => format!("Compressed Token - Transfer (Checked) ({} amount)", amt),
+                    None => "Compressed Token - Transfer (Checked)".to_string(),
                 }
             }
             Self::CTokenMintToChecked { amount } => {
@@ -203,14 +203,14 @@ impl LightProtocolAction {
                 if let Some(l) = out_lamports { parts.push(format!("{} out_lamports", l)); }
                 
                 if parts.is_empty() {
-                    "Compressed Token: Batch Transfer".to_string()
+                    "Compressed Token - Batch Transfer".to_string()
                 } else {
-                    format!("Compressed Token: Batch Transfer ({})", parts.join(", "))
+                    format!("Compressed Token - Batch Transfer ({})", parts.join(", "))
                 }
             }
-            Self::CreateAssociatedTokenAccountIdempotent => "Compressed Token: Create ATA (Idempotent)".to_string(),
-            Self::MintAction => "Compressed Token: Batch Mint Action".to_string(),
-            Self::Claim => "Compressed Token: Claim Rent".to_string(),
+            Self::CreateAssociatedTokenAccountIdempotent => "Compressed Token - Create ATA (Idempotent)".to_string(),
+            Self::MintAction => "Compressed Token - Batch Mint Action".to_string(),
+            Self::Claim => "Compressed Token - Claim Rent".to_string(),
             Self::WithdrawFundingPool { amount } => {
                 match amount {
                     Some(amt) => format!("Withdraw Funding Pool ({} amount)", amt),
@@ -266,14 +266,14 @@ impl LightProtocolAction {
             // Token Interface
             Self::TokenInterfaceMintTo { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Mint (Interface) ({} amount)", amt),
-                    None => "Compressed Token: Mint (Interface)".to_string(),
+                    Some(amt) => format!("Compressed Token - Mint ({} amount)", amt),
+                    None => "Compressed Token - Mint".to_string(),
                 }
             }
             Self::TokenInterfaceTransfer { amount } => {
                 match amount {
-                    Some(amt) => format!("Compressed Token: Transfer (Interface) ({} amount)", amt),
-                    None => "Compressed Token: Transfer (Interface)".to_string(),
+                    Some(amt) => format!("Compressed Token - Transfer ({} amount)", amt),
+                    None => "Compressed Token - Transfer".to_string(),
                 }
             }
             Self::BatchCompress { amount } => {
