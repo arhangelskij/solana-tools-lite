@@ -42,8 +42,8 @@ fn emit_summary(analysis: &TxAnalysis) {
             if t.from_is_signer { " (signer)" } else { "" }
         );
         eprintln!("  To:     {}", t.to);
-        eprintln!("  Amount: {}", format_sol(t.lamports as u128));
-        eprintln!("          ({} lamports)", t.lamports);
+        eprintln!("  Amount: {} ({} lamports)", format_sol(t.lamports as u128), t.lamports);
+        // eprintln!("          ({} lamports)", t.lamports);
     }
 
     eprintln!("--------------------------------------------------");

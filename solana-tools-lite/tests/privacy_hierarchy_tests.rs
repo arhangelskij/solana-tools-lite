@@ -1,5 +1,5 @@
 use solana_tools_lite::models::analysis::{PrivacyLevel, TxAnalysis, TransferView};
-use solana_tools_lite::models::extensions::AnalysisExtensionAction;
+use solana_tools_lite::extensions::analysis::AnalysisExtensionAction;
 use extensions::analysis::light_protocol::models::LightProtocolAction;
 use std::sync::Arc;
 
