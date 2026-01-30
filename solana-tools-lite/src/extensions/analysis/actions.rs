@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::sync::Arc;
+use super::super::traits::ExtensionAction;
 
 /// Privacy impact of a specific instruction or protocol action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -14,27 +15,21 @@ pub enum PrivacyImpact {
     Confidential,
 }
 
-/// Trait for protocol-specific actions detected during analysis.
-/// 
-/// Extensions implement this trait for their specific action types,
-/// allowing core to remain agnostic to specific protocol details.
-pub trait ExtensionAction: Send + Sync  {
-    /// Get the protocol name (e.g., "Light Protocol", "Arcium").
-    fn protocol_name(&self) -> &'static str;
-    
-    /// Get a human-readable description of this action.
-    fn description(&self) -> String;
-    
+/// Analysis-specific action trait that extends `ExtensionAction` with privacy classification.
+pub trait AnalysisAction: ExtensionAction {
     /// Get the privacy impact classification of this action.
     fn privacy_impact(&self) -> PrivacyImpact;
-}
+} 
 
-/// Type-erased wrapper for extension actions.
+/// Type-erased wrapper for analysis-specific extension actions.
+/// 
+/// Wraps any action implementing `AnalysisAction` (which includes privacy impact classification).
+/// Used in `TxAnalysis` to store heterogeneous protocol-specific actions.
 #[derive(Clone)]
-pub struct AnalysisExtensionAction(Arc<dyn ExtensionAction>);
+pub struct AnalysisExtensionAction(Arc<dyn AnalysisAction>);
 
 impl AnalysisExtensionAction {
-    pub fn new(action: Arc<dyn ExtensionAction>) -> Self {
+    pub fn new(action: Arc<dyn AnalysisAction>) -> Self {
         Self(action)
     }
     

@@ -1,6 +1,6 @@
 use solana_tools_lite::extensions::traits::ProtocolAnalyzer;
 use solana_tools_lite::models::analysis::{TxAnalysis, AnalysisWarning};
-use solana_tools_lite::models::extensions::{PrivacyImpact, AnalysisExtensionAction};
+use solana_tools_lite::extensions::analysis::{PrivacyImpact, AnalysisExtensionAction};
 use solana_tools_lite::models::message::Message;
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 use solana_tools_lite::ToolError;

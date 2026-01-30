@@ -1,4 +1,4 @@
-use solana_tools_lite::models::extensions::PrivacyImpact;
+use solana_tools_lite::extensions::{traits::ExtensionAction, analysis::{PrivacyImpact, AnalysisAction}};
 
 /// Action types detected for Light Protocol (ZK Compression).
 #[derive(Debug, Clone, PartialEq)]
@@ -338,8 +338,8 @@ impl LightProtocolAction {
     }
 }
 
-/// Implement ExtensionAction trait for Light Protocol actions.
-impl solana_tools_lite::models::extensions::ExtensionAction for LightProtocolAction {
+/// Implement ExtensionAction trait (base trait) for Light Protocol actions.
+impl ExtensionAction for LightProtocolAction {
     fn protocol_name(&self) -> &'static str {
         "Light Protocol"
     }
@@ -347,7 +347,10 @@ impl solana_tools_lite::models::extensions::ExtensionAction for LightProtocolAct
     fn description(&self) -> String {
         self.description()
     }
-    
+}
+
+/// Implement AnalysisAction trait (specialized trait) for Light Protocol actions.
+impl AnalysisAction for LightProtocolAction {
     fn privacy_impact(&self) -> PrivacyImpact {
         self.privacy_impact()
     }

@@ -3,6 +3,20 @@ use crate::models::message::Message;
 use crate::models::pubkey_base58::PubkeyBase58;
 use crate::ToolError;
 
+/// Base trait for protocol-specific extension actions.
+/// 
+/// This is the foundation trait that all extension action types must implement.
+/// It provides basic identification and description methods.
+/// 
+/// Specialized extensions (e.g., for analysis) can extend this trait with additional methods.
+pub trait ExtensionAction: Send + Sync {
+    /// Get the protocol name (e.g., "Light Protocol", "Arcium").
+    fn protocol_name(&self) -> &'static str;
+    
+    /// Get a human-readable description of this action.
+    fn description(&self) -> String;
+}
+
 /// Trait for protocol-specific analyzers (Plugins).
 ///
 /// Analyzers have full access to the transaction message and can mutate the

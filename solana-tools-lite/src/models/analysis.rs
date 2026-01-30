@@ -1,4 +1,4 @@
-use crate::models::extensions::AnalysisExtensionAction;
+use crate::extensions::analysis::AnalysisExtensionAction;
 use crate::models::pubkey_base58::PubkeyBase58;
 use serde::Serialize;
 
@@ -136,7 +136,7 @@ impl PrivacyLevel {
 impl TxAnalysis {
     /// Recalculates the privacy level based on current metrics and extension actions.
     pub fn recalculate_privacy_level(&mut self) {
-        use crate::models::extensions::PrivacyImpact;
+        use crate::extensions::analysis::PrivacyImpact;
 
         let has_confidential = self.confidential_ops_count > 0 
             || self.warnings.iter().any(|w| matches!(w, AnalysisWarning::ConfidentialTransferDetected));

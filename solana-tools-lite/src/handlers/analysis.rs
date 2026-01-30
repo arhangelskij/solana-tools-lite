@@ -8,7 +8,7 @@ use crate::constants::{compute_budget, programs};
 use crate::models::analysis::{
     AnalysisWarning, PrivacyLevel, SigningSummary, TokenProgramKind, TransferView, TxAnalysis,
 };
-use crate::models::extensions::{AnalysisExtensionAction, PrivacyImpact};
+use crate::extensions::analysis::{AnalysisExtensionAction, PrivacyImpact};
 use crate::models::input_transaction::InputTransaction;
 use crate::models::instruction::Instruction;
 use crate::models::message::{Message, MessageAddressTableLookup};

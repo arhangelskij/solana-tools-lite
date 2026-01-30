@@ -1,4 +1,6 @@
 pub mod traits;
-
-pub use traits::ProtocolAnalyzer;
+pub mod analysis;
 pub mod registry;
+
+pub use traits::{ProtocolAnalyzer, ExtensionAction};
+pub use analysis::{PrivacyImpact, AnalysisAction, AnalysisExtensionAction};
