@@ -10,7 +10,7 @@ use solana_tools_lite::models::instruction::Instruction;
 use solana_tools_lite::models::hash_base58::HashBase58;
 use extensions::analysis::light_protocol::constants::{DISCRIMINATOR_INVOKE, DISCRIMINATOR_INVOKE_CPI, LIGHT_SYSTEM_PROGRAM_ID, COMPRESSED_TOKEN_PROGRAM_ID};
 use solana_tools_lite_cli::flows::presenter::Presentable;
-use solana_tools_lite_cli::flows::presenter::sign_tx_presenter::SignTxPresentation;
+use solana_tools_lite_cli::flows::presenter::analysis_presenter::AnalysisPresenter;
 
 fn build_light_compress_message(signer: &PubkeyBase58, amount_lamports: u64) -> Message {
     let light_system_program = PubkeyBase58::try_from(LIGHT_SYSTEM_PROGRAM_ID).unwrap();
@@ -55,7 +55,7 @@ fn test_light_protocol_single_instruction_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -129,7 +129,7 @@ fn test_light_protocol_multiple_instructions_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -170,7 +170,7 @@ fn test_unknown_program_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -237,7 +237,7 @@ fn test_light_protocol_and_unknown_program_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -309,7 +309,7 @@ fn test_light_protocol_mixed_operations_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -391,7 +391,7 @@ fn test_light_protocol_mixed_and_unknown_program_presenter_output() {
     let analysis = analyze_transaction(&message, &signer, None);
     
     // Use real presenter
-    let presentation = SignTxPresentation {
+    let presentation = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };

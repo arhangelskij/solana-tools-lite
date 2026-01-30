@@ -6,7 +6,7 @@ use solana_tools_lite::handlers::analysis::{analyze_transaction, build_signing_s
 use solana_tools_lite::models::{InputTransaction, PubkeyBase58, Transaction};
 use std::convert::TryFrom;
 
-use crate::flows::presenter::{Presentable, SignTxPresentation};
+use crate::flows::presenter::{Presentable, AnalysisPresenter};
 use crate::shell::error::CliError;
 
 /// Analyze-transaction flow: thin orchestrator around the analysis handler.
@@ -56,7 +56,7 @@ pub fn execute(
     let analysis = analyze_transaction(message, &analyze_pubkey, tables.as_ref());
 
     // 6) Present analysis summary to stderr
-    let analysis_presenter = SignTxPresentation {
+    let analysis_presenter = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };

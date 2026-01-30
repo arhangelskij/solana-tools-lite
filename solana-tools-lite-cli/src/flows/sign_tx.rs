@@ -9,7 +9,7 @@ use solana_tools_lite::models::analysis::{SigningSummary, TxAnalysis};
 use solana_tools_lite::serde::fmt::OutputFormat;
 use solana_tools_lite::models::{PubkeyBase58, Transaction};
 
-use crate::flows::presenter::{Presentable, SignTxPresentation};
+use crate::flows::presenter::{Presentable, AnalysisPresenter};
 use crate::models::cmds::OutFmt;
 use crate::shell::error::CliError;
 
@@ -53,7 +53,7 @@ pub fn execute(
 
     // 5) Analyze unsigned transaction via analyze_input_transaction
     let analysis = analyze_input_transaction(&input_tx, &signing_pubkey, tables.as_ref())?;
-    let analysis_presenter = SignTxPresentation {
+    let analysis_presenter = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
@@ -96,7 +96,7 @@ pub fn execute(
     write_signed_transaction(&result.signed_tx, chosen_format, output, force)?;
 
     if let Some(payload) = summary_payload.as_deref() {
-        let summary_presenter = SignTxPresentation {
+        let summary_presenter = AnalysisPresenter {
             analysis: None,
             summary_payload: Some(payload),
         };

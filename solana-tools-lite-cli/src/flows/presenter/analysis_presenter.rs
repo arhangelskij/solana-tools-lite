@@ -7,12 +7,12 @@ use solana_tools_lite::models::analysis::{AnalysisWarning, TokenProgramKind, TxA
 use solana_tools_lite::utils::format_sol;
 
 /// Bundles analysis and an optional JSON summary payload.
-pub struct SignTxPresentation<'a> {
+pub struct AnalysisPresenter<'a> {
     pub analysis: Option<&'a TxAnalysis>,
     pub summary_payload: Option<&'a str>,
 }
 
-impl Presentable for SignTxPresentation<'_> {
+impl Presentable for AnalysisPresenter<'_> {
     fn present(
         &self,
         json: bool,
