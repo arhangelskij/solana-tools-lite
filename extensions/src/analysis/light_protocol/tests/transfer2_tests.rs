@@ -11,6 +11,33 @@ use crate::analysis::light_protocol::models::LightProtocolAction;
 use crate::analysis::light_protocol::constants;
 use solana_tools_lite::models::pubkey_base58::PubkeyBase58;
 
+/// Helper to build a Compression struct (31 bytes)
+fn build_compression(amount: u64) -> Vec<u8> {
+    let mut data = Vec::with_capacity(31);
+    data.push(0x00); // mode
+    data.extend_from_slice(&amount.to_le_bytes()); // amount
+    data.extend_from_slice(&[0u8; 22]); // seq + other fields (22 bytes)
+    data
+}
+
+/// Helper to build MultiInputTokenDataWithContext (var size, ~19 bytes min)
+fn build_input_token(amount: u64) -> Vec<u8> {
+    let mut data = Vec::with_capacity(20);
+    data.extend_from_slice(&amount.to_le_bytes()); // amount
+    data.push(0x00); // hasDelegate: false
+    data.push(0x00); // cpi_context option: None
+    data.extend_from_slice(&[0u8; 9]); // tokenIdx(4) + poolIdx(4) + bump(1)
+    data
+}
+
+/// Helper to build MultiTokenTransferOutputData (21 bytes)
+fn build_output_token(amount: u64) -> Vec<u8> {
+    let mut data = Vec::with_capacity(21);
+    data.extend_from_slice(&amount.to_le_bytes()); // amount
+    data.extend_from_slice(&[0u8; 13]); // recipient(0..)+tokenIdx+poolIdx+bump
+    data
+}
+
 /// Helper function to create a PubkeyBase58 for the Compressed Token Program
 fn compressed_token_program() -> PubkeyBase58 {
     // This is the actual Compressed Token Program ID
@@ -105,27 +132,18 @@ fn test_parse_transfer2_complex() {
     // compressions: Some(Vec)
     data.push(0x01); // Some discriminator
     data.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]); // Vec length 1
-    // Compression struct (31 bytes)
-    data.push(0x00); // mode
-    data.extend_from_slice(&100u64.to_le_bytes()); // amount
-    data.extend_from_slice(&[0u8; 22]); // the rest (4*5 + 1 + 1)
+    data.extend_from_slice(&build_compression(100));
     
     // proof: None
     data.push(0x00);
     
     // in_token_data: Vec length 1
     data.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]);
-    // MultiInputTokenDataWithContext:
-    data.extend_from_slice(&200u64.to_le_bytes()); // amount
-    data.push(0x00); // hasDelegate: false
-    data.push(0x00); // option discriminator: None
-    data.extend_from_slice(&[0u8; 4+4+1]); // tokenIdx + poolIdx + bump
+    data.extend_from_slice(&build_input_token(200));
     
     // out_token_data: Vec length 1
     data.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]);
-    // MultiTokenTransferOutputData (21 bytes):
-    data.extend_from_slice(&300u64.to_le_bytes()); // amount
-    data.extend_from_slice(&[0u8; 13]); // recipient + tokenIdx + poolIdx + bump
+    data.extend_from_slice(&build_output_token(300));
     
     // in_lamports: Some(Vec[1000])
     data.push(0x01); // Some
