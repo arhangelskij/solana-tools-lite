@@ -451,4 +451,39 @@ mod tests {
             _ => panic!("Parsed into wrong command variant"),
         }
     }
+
+    /// Test parsing the `analyze` command with all options.
+    #[test]
+    fn test_parse_analyze_command() {
+        let args = vec![
+            "solana-lite",
+            "analyze",
+            "--input",
+            "tx.json",
+            "--pubkey",
+            "Author1111111111111111111111111111111111111",
+            "--tables",
+            "luts.json",
+            "--summary-json",
+        ];
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Commands::Analyze {
+                input,
+                pubkey,
+                lookup_tables,
+                summary_json,
+            } => {
+                assert_eq!(input, "tx.json");
+                assert_eq!(
+                    pubkey.as_deref(),
+                    Some("Author1111111111111111111111111111111111111")
+                );
+                assert_eq!(lookup_tables.as_deref(), Some("luts.json"));
+                assert!(summary_json);
+            }
+            _ => panic!("Parsed into wrong command variant"),
+        }
+    }
+
 }
