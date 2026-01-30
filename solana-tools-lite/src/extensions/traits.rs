@@ -68,5 +68,6 @@ pub trait ProtocolAnalyzer: Send + Sync {
 
     /// Add custom notices or disclaimers to the analysis output.
     /// This is typically used to warn users about non-standard behavior or privacy implications.
+    /// Implementation should append descriptive strings to `analysis.extension_notices`.
     fn enrich_notice(&self, analysis: &mut TxAnalysis);
 }

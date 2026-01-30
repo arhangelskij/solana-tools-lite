@@ -138,6 +138,7 @@ impl ProtocolAnalyzer for LightProtocol {
         }
     }
 
+    /// Enrich the analysis with custom protocol notices (e.g. ZK Compression warnings).
     fn enrich_notice(&self, analysis: &mut TxAnalysis) {
         let mut notice = String::new();
         
