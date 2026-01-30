@@ -46,6 +46,31 @@ pub const U16_SIZE: usize = 2;
 pub const DISCRIMINATOR_SIZE: usize = 8;
 
 // ============================================================================
+// DECODING CONSTANTS
+// ============================================================================
+
+/// Size of the fixed header in Transfer2 instruction.
+pub const TRANSFER2_HEADER_SIZE: usize = 7;
+
+/// Size of Compression struct (mode + amount + seq + ...).
+pub const COMPRESSION_STRUCT_SIZE: usize = 31;
+
+/// Offset of the amount field within Compression struct.
+pub const COMPRESSION_AMOUNT_OFFSET: usize = 1;
+
+/// Size of MultiplexTokenTransferOutputData struct.
+pub const OUTPUT_STRUCT_SIZE: usize = 21;
+
+/// Offset of the amount field within Output struct.
+pub const OUTPUT_AMOUNT_OFFSET: usize = 0;
+
+/// Size of NewAddressParams struct (seed + address).
+pub const NEW_ADDRESS_PARAMS_SIZE: usize = 40;
+
+/// Size of a Pubkey (32 bytes).
+pub const PUBKEY_SIZE: usize = 32;
+
+// ============================================================================
 // INSTRUCTION DATA OFFSETS
 // ============================================================================
 

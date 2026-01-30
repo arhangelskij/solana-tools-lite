@@ -1,4 +1,9 @@
-use super::constants::{U64_SIZE, U16_SIZE, DISCRIMINATOR_SIZE};
+use super::constants::{
+    U64_SIZE, U16_SIZE, DISCRIMINATOR_SIZE,
+    TRANSFER2_HEADER_SIZE, COMPRESSION_STRUCT_SIZE, COMPRESSION_AMOUNT_OFFSET,
+    OUTPUT_STRUCT_SIZE, OUTPUT_AMOUNT_OFFSET, NEW_ADDRESS_PARAMS_SIZE,
+    PUBKEY_SIZE,
+};
 
 /// Safely decode a u64 value from instruction data at the given offset.
 /// 
@@ -350,10 +355,14 @@ pub fn decode_transfer2(data: &[u8]) -> super::models::LightProtocolAction {
     // with_transaction_hash: bool, with_lamports_change_account_merkle_tree_index: bool,
     // lamports_change_account_merkle_tree_index: u8, lamports_change_account_owner_index: u8,
     // output_queue: u8, max_top_up: u16
-    if data.len() < cursor + 7 {
+    // Fixed fields (7 bytes)
+    // with_transaction_hash: bool, with_lamports_change_account_merkle_tree_index: bool,
+    // lamports_change_account_merkle_tree_index: u8, lamports_change_account_owner_index: u8,
+    // output_queue: u8, max_top_up: u16
+    if data.len() < cursor + TRANSFER2_HEADER_SIZE {
         return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None };
     }
-    cursor += 7;
+    cursor += TRANSFER2_HEADER_SIZE;
 
     // Helper to safely advance cursor
     macro_rules! advance {
@@ -384,7 +393,7 @@ pub fn decode_transfer2(data: &[u8]) -> super::models::LightProtocolAction {
     if let Some(&disc) = data.get(cursor) {
         cursor += 1;
         if disc == 1 {
-            let (sum, consumed) = match decode_borsh_vec_amount(&data[cursor..], 31, 1) {
+            let (sum, consumed) = match decode_borsh_vec_amount(&data[cursor..], COMPRESSION_STRUCT_SIZE, COMPRESSION_AMOUNT_OFFSET) {
                 Some(res) => res,
                 None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
             };
@@ -436,7 +445,7 @@ pub fn decode_transfer2(data: &[u8]) -> super::models::LightProtocolAction {
     }
 
     // out_token_data: Vec<MultiTokenTransferOutputData>
-    let (out_sum, out_consumed) = match decode_borsh_vec_amount(&data[cursor..], 21, 0) {
+    let (out_sum, out_consumed) = match decode_borsh_vec_amount(&data[cursor..], OUTPUT_STRUCT_SIZE, OUTPUT_AMOUNT_OFFSET) {
         Some(res) => res,
         None => return Action::Transfer2 { in_lamports: None, out_lamports: None, amount: None },
     };
@@ -475,7 +484,7 @@ pub fn decode_batch_compress(data: &[u8]) -> super::models::LightProtocolAction 
     let mut sum_amounts: Option<u64> = None;
 
     // pubkeys: Vec<[u8; 32]>
-    if let Some(consumed) = skip_borsh_vec(&data[cursor..], 32) {
+    if let Some(consumed) = skip_borsh_vec(&data[cursor..], PUBKEY_SIZE) {
         cursor += consumed;
     } else {
         return Action::BatchCompress { amount: None };
@@ -514,6 +523,15 @@ pub fn decode_batch_compress(data: &[u8]) -> super::models::LightProtocolAction 
 }
 
 /// Decode Invoke instruction from Light System Program.
+///
+/// # Heuristic Parsing Note
+/// This function relies on a "tail parsing" heuristic to extract `lamports` and `is_compress` flags.
+/// Since `Invoke` contains variable length fields (proofs, compressed accounts) whose schemas
+/// are complex, we skip full parsing and look at the last 10 bytes of the instruction data,
+/// where `[1 byte Option] + [8 byte amount] + [1 byte bool]` is expected to reside.
+///
+/// This is efficient but brittle: if the instruction schema changes (e.g. adding trailing fields),
+/// this logic will break. 
 pub fn decode_invoke(data: &[u8]) -> super::models::LightProtocolAction {
     use super::models::LightProtocolAction as Action;
     
@@ -547,7 +565,7 @@ pub fn decode_invoke(data: &[u8]) -> super::models::LightProtocolAction {
 
     // new_address_params: Vec<NewAddressParams>
     // NewAddressParams is 40 bytes: [u8; 32] seed + Pubkey address
-    if let Some(_len) = skip_borsh_vec(&data[cursor..], 40) {
+    if let Some(_len) = skip_borsh_vec(&data[cursor..], NEW_ADDRESS_PARAMS_SIZE) {
         // ... len is skipped
     } else { return Action::Invoke { lamports: None, from_index: None, to_index: None }; }
 
@@ -671,7 +689,7 @@ pub fn decode_token_interface_mint_to(data: &[u8]) -> super::models::LightProtoc
     let mut cursor = DISCRIMINATOR_SIZE; // Skip discriminator
     
     // proof: Vec<[u8; 32]>
-    if let Some(consumed) = skip_borsh_vec(&data[cursor..], 32) {
+    if let Some(consumed) = skip_borsh_vec(&data[cursor..], PUBKEY_SIZE) {
         cursor += consumed;
     } else {
         // Fallback or attempt Vec<u8> if fixed-size skip fails
