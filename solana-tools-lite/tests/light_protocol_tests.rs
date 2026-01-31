@@ -79,6 +79,7 @@ fn test_detect_transfer2() {
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
     assert_eq!(analysis.confidential_ops_count, 1);
+    assert_eq!(analysis.storage_ops_count, 1);
     assert!(!analysis.extension_actions.is_empty());
 }
 
@@ -257,7 +258,7 @@ fn test_detect_batch_compress() {
 
     analyzer.analyze(&message, &message.account_keys(), &signer, &mut analysis);
     
-    assert_eq!(analysis.confidential_ops_count, 1);
+    assert_eq!(analysis.storage_ops_count, 1);
     assert!(!analysis.extension_actions.is_empty());
 }
 
