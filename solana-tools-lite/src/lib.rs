@@ -28,7 +28,7 @@ pub use crate::errors::{Result, ToolError};
 /// Unified analysis facade.
 pub mod analysis {
     pub use crate::handlers::analysis::{
-        analyze_transaction, build_signing_summary
+        analyze_transaction, analyze_input_transaction, build_signing_summary
     };
     pub use crate::serde::parse_lookup_tables;
     /// Analysis models for transaction inspection and summaries.

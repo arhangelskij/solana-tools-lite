@@ -145,7 +145,7 @@ impl ProtocolAnalyzer for LightProtocol {
         notice.push_str("!!! ZK COMPRESSION NOTICE !!!\n");
         notice.push_str("This transaction uses ZK Compression (Light Protocol).\n");
         notice.push_str(
-            "- Compressed assets are NOT visible in standard explorers (SolanaFM, Solscan, etc.)\n",
+            "- Compressed assets are NOT always visible in standard explorers (SolanaFM, Solscan, etc.)\n",
         );
         notice.push_str("- You need a specialized indexer or explorer (e.g. Photon) to view state.\n");
         
