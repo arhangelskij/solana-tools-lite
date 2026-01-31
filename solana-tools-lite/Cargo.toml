@@ -1,6 +1,6 @@
 [package]
 name = "solana-tools-lite"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "A lightweight, SDK-free, offline-first signing toolkit for Solana keys, messages, and transactions."
 repository = "https://github.com/arhangelskij/solana-tools-lite"

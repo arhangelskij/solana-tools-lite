@@ -105,6 +105,13 @@ Sign a Versioned Transaction and emit a summary using an offline ALT context.
 solana-tools-lite sign-tx --input unsigned_v0.b64 --keypair kp.json --tables tables.json --output signed_v0.b64 --summary-json
 ```
 
+### 5. Analyze a transaction
+Inspect a transaction without signing. Useful for verifying fees, transfers, and privacy impact before approval.
+
+```bash
+solana-tools-lite analyze --input tx.b64 --tables tables.json
+```
+
 ### 🤖 Scripting & CI Integration
 Combine with `jq` for reliable one-liners:
 
@@ -163,6 +170,12 @@ Global flags:
 - `-y, --yes` Auto-approve (no prompt) [env: `SOLANA_TOOLS_LITE_YES`]
 - `--max-fee <LAMPORTS>` Fail if fee exceeds limit [env: `SOLANA_TOOLS_LITE_MAX_FEE`]
 - `--summary-json` Emit signing summary JSON to stdout (requires `--output`)
+
+#### `analyze`
+- `-i, --input <FILE>` Input transaction (JSON/Base64/Base58)
+- `--tables <FILE>` ALT tables file (JSON map)
+- `-p, --pubkey <BASE58>` Public key to analyze as (defaults to first signer)
+- `--summary-json` Emit analysis summary JSON to stdout
 
 </details>
 
@@ -224,3 +237,16 @@ fn main() -> anyhow::Result<()> {
 ```
 
 API docs: [docs.rs/solana-tools-lite](https://docs.rs/solana-tools-lite)
+
+## 🧩 Extensions (Protocol Analysis)
+
+`solana-tools-lite` supports pluggable protocol analyzers to provide enhanced insights for complex interactions:
+
+### Light Protocol (ZK Compression)
+- **Deep Analysis:** Detects compressed state operations (Confidential transfers, Compress/Decompress).
+- **Privacy Classification:**
+  - 🟢 **Public:** Standard transparent transaction.
+  - 🟡 **Compressed:** Storage optimization only (public -> private state).
+  - 🟠 **Hybrid:** Mixed operations (e.g., Transfer2/Bridge) involving both public and private state.
+  - 🔴 **Confidential:** Fully private value transfers (shielded).
+

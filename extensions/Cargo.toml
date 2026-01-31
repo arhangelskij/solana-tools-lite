@@ -1,6 +1,6 @@
 [package]
 name = "extensions"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Extensions for solana-tools-lite (not published separately)"
 publish = false
