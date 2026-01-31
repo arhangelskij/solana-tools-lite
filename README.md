@@ -243,7 +243,7 @@ API docs: [docs.rs/solana-tools-lite](https://docs.rs/solana-tools-lite)
 `solana-tools-lite` supports pluggable protocol analyzers to provide enhanced insights for complex interactions:
 
 ### Light Protocol (ZK Compression)
-- **Deep Analysis:** Detects compressed state operations (Confidential transfers, Compress/Decompress).
+- **Operation Detection:** Detects compressed state operations (Confidential transfers, Compress/Decompress).
 - **Privacy Classification:**
   - 🟢 **Public:** Standard transparent transaction.
   - 🟡 **Compressed:** Storage optimization only (public -> private state).

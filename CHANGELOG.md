@@ -3,7 +3,7 @@
 ## Ready for release
 
 ### Added
-- New `analyze` command for deep transaction inspection without signing.
+- New `analyze` command for detailed transaction inspection without signing.
 - Protocol Extension system for specialized analysis (Light Protocol support).
 - Privacy impact classification (Public vs Compressed/Hybrid/Confidential).
 
