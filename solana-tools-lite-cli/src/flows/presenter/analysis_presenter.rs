@@ -158,7 +158,7 @@ fn warning_to_message(warning: &AnalysisWarning) -> String {
                 TokenProgramKind::AssociatedToken => "Associated Token Program",
             };
             format!(
-                "{} transfer detected; amounts are shown as raw u64 (offline mode cannot infer decimals)",
+                "{} interaction detected. Detailed token transfer amounts are not displayed in offline mode.",
                 label
             )
         }
