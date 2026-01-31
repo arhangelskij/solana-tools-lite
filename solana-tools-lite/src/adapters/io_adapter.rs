@@ -3,10 +3,9 @@ use crate::codec::serialize_transaction;
 use crate::constants::permission::{FILE_PERMS_PUBLIC, FILE_PERMS_SECRET};
 use crate::crypto::helpers::parse_signing_key_content;
 use crate::errors::IoError;
-use crate::handlers::analysis::parse_lookup_tables;
+use crate::serde::{parse_lookup_tables, LookupTableEntry};
 use crate::layers::io as io_layer;
 use crate::models::input_transaction::{InputTransaction, UiTransaction};
-use crate::models::pubkey_base58::PubkeyBase58;
 use crate::serde::fmt::OutputFormat;
 use crate::{Result, ToolError};
 use bs58;
@@ -98,12 +97,12 @@ pub fn read_input_transaction(input: Option<&str>) -> Result<InputTransaction> {
     crate::serde::input_tx::parse_input_transaction(Some(&raw)).map_err(ToolError::from)
 }
 
-/// Read lookup tables JSON from file or stdin ("-") and parse into typed map.
+/// Read lookup tables JSON from file or stdin ("-") and parse into lookup table entry.
 pub fn read_lookup_tables(
     path: &str,
-) -> Result<std::collections::HashMap<PubkeyBase58, Vec<PubkeyBase58>>> {
+) -> Result<LookupTableEntry> {
     let raw = read_input(Some(path)).map_err(ToolError::Io)?;
-    parse_lookup_tables(&raw)
+    parse_lookup_tables(&raw).map_err(ToolError::from)
 }
 
 /// Read a secret key file and parse it into a SigningKey.

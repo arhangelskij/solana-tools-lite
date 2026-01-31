@@ -133,6 +133,25 @@ pub enum Commands {
         #[arg(long = "summary-json", default_value = "false")]
         summary_json: bool,
     },
+
+    /// Analyze a transaction file (JSON/Base64/Base58)
+    Analyze {
+        /// Path to input transaction (UI JSON/Base64/Base58)
+        #[arg(long, short = 'i')]
+        input: String,
+
+        /// Optional lookup table file (JSON map: table address -> array of addresses)
+        #[arg(long = "tables", value_name = "FILE")]
+        lookup_tables: Option<String>,
+
+        /// Public key to analyze as (Base58). If not provided, uses first signer from message.
+        #[arg(long, short = 'p')]
+        pubkey: Option<String>,
+
+        /// Emit analysis summary as JSON to stdout
+        #[arg(long = "summary-json", default_value = "false")]
+        summary_json: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]

@@ -2,6 +2,11 @@
 
 ## Ready for release
 
+### Added
+- New `analyze` command for detailed transaction inspection without signing.
+- Protocol Extension system for specialized analysis (Light Protocol support).
+- Privacy impact classification (Public vs Compressed/Hybrid/Confidential).
+
 ## [0.1.1]
 
 - Docs: fix README installation commands and CLI examples (stdin/pipeline, jq snippets).

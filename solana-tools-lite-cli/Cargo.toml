@@ -1,6 +1,6 @@
 [package]
 name = "solana-tools-lite-cli"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "CLI for solana-tools-lite: offline-first Solana signer toolkit."
 repository = "https://github.com/arhangelskij/solana-tools-lite"
@@ -15,9 +15,14 @@ exclude = [
     "tests/*",
 ]
 
+[features]
+default = ["protocol-extensions"]
+protocol-extensions = ["extensions"]
+
 [dependencies]
 clap = { version = "4.5.44", default-features = false, features = ["std", "derive", "help", "usage"] }
-solana-tools-lite = { version = "0.1.1", path = "../solana-tools-lite" }
+solana-tools-lite = { version = "0.1.2", path = "../solana-tools-lite" }
+extensions = { path = "../extensions", optional = true }
 
 # Dependencies needed by handlers and adapters
 serde = { version = "1.0.228", features = ["derive"] }

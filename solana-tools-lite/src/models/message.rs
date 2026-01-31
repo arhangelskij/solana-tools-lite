@@ -155,7 +155,7 @@ pub struct MessageAddressTableLookup {
 }
 
 /// Message metadata describing the number and type of signatures required.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MessageHeader {
     /// The number of signatures required for this transaction.

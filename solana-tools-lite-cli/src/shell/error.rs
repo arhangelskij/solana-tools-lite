@@ -90,6 +90,7 @@ fn format_user_friendly(err: &ToolError) -> String {
             )
         }
         ToolError::InvalidInput(msg) => msg.clone(),
+        ToolError::ConfigurationError(msg) => format!("Configuration error: {}", msg),
     }
 }
 

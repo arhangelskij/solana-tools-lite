@@ -28,7 +28,7 @@ fn write_tables_file(dir: &TempDir, table_key: &str, addrs: &[String]) -> String
     path.to_string_lossy().to_string()
 }
 
-fn build_v0_tx_json(signer_pk: &str, table_key: &str, _lookup_addr: &str) -> String {
+fn build_v0_tx_json(signer_pk: &str, table_key: &str) -> String {
     let header = MessageHeader {
         num_required_signatures: 1,
         num_readonly_signed_accounts: 0,
@@ -77,7 +77,7 @@ fn sign_tx_with_tables_and_assume_yes() {
     let table_key = bs58::encode([7u8; 32]).into_string();
     let lookup_addr = bs58::encode([8u8; 32]).into_string();
 
-    let tx_json = build_v0_tx_json(&signer_pk, &table_key, &lookup_addr);
+    let tx_json = build_v0_tx_json(&signer_pk, &table_key);
     let tx_path = dir.path().join("tx.json");
     fs::write(&tx_path, tx_json).unwrap();
 
@@ -111,9 +111,8 @@ fn sign_tx_max_fee_exceeded_errors() {
     let signer_pk = bs58::encode(signer.verifying_key().to_bytes()).into_string();
 
     let table_key = bs58::encode([7u8; 32]).into_string();
-    let lookup_addr = bs58::encode([8u8; 32]).into_string();
 
-    let tx_json = build_v0_tx_json(&signer_pk, &table_key, &lookup_addr);
+    let tx_json = build_v0_tx_json(&signer_pk, &table_key);
     let tx_path = dir.path().join("tx.json");
     fs::write(&tx_path, tx_json).unwrap();
 

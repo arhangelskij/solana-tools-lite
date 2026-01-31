@@ -216,11 +216,19 @@ impl TryFrom<UiTransaction> for Transaction {
     type Error = TransactionParseError;
 
     fn try_from(ui: UiTransaction) -> Result<Self, Self::Error> {
+        Transaction::try_from(&ui)
+    }
+}
+
+impl TryFrom<&UiTransaction> for Transaction {
+    type Error = TransactionParseError;
+
+    fn try_from(ui: &UiTransaction) -> Result<Self, Self::Error> {
         let signatures = ui
             .signatures
-            .into_iter()
+            .iter()
             .map(|s| {
-                let bytes = bs58::decode(&s).into_vec().map_err(|e| {
+                let bytes = bs58::decode(s).into_vec().map_err(|e| {
                     TransactionParseError::InvalidFormat(format!("Invalid signature base58: {}", e))
                 })?;
                 let arr: [u8; 64] = bytes.as_slice().try_into().map_err(|_| {
@@ -232,7 +240,7 @@ impl TryFrom<UiTransaction> for Transaction {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let message = match ui.message {
+        let message = match &ui.message {
             UiRawMessage::Legacy(msg) => {
                 let (account_keys, recent_blockhash, instructions) =
                     map_common_parts(&msg.account_keys, &msg.recent_blockhash, &msg.instructions)?;
@@ -249,7 +257,7 @@ impl TryFrom<UiTransaction> for Transaction {
 
                 let address_table_lookups =
                     msg.address_table_lookups
-                        .into_iter()
+                        .iter()
                         .map(|lut| {
                             Ok(MessageAddressTableLookup {
                                 account_key: PubkeyBase58::try_from(lut.account_key.as_str())
@@ -259,8 +267,8 @@ impl TryFrom<UiTransaction> for Transaction {
                                             e
                                         ))
                                     })?,
-                                writable_indexes: lut.writable_indexes,
-                                readonly_indexes: lut.readonly_indexes,
+                                writable_indexes: lut.writable_indexes.clone(),
+                                readonly_indexes: lut.readonly_indexes.clone(),
                             })
                         })
                         .collect::<Result<Vec<_>, TransactionParseError>>()?;

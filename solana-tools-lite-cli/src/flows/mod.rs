@@ -1,3 +1,4 @@
+pub mod analyze;
 pub mod base58;
 pub mod generation;
 pub mod presenter;

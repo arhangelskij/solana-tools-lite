@@ -3,13 +3,13 @@ use serde_json;
 use solana_tools_lite::adapters::io_adapter::{
     read_and_parse_secret_key, read_input_transaction, read_lookup_tables, write_signed_transaction,
 };
-use solana_tools_lite::handlers::analysis::{analyze_transaction, build_signing_summary};
+use solana_tools_lite::handlers::analysis::{analyze_input_transaction, build_signing_summary};
 use solana_tools_lite::handlers::sign_tx::handle as handle_sign_transaction;
 use solana_tools_lite::models::analysis::{SigningSummary, TxAnalysis};
 use solana_tools_lite::serde::fmt::OutputFormat;
-use solana_tools_lite::models::{InputTransaction, PubkeyBase58, Transaction};
+use solana_tools_lite::models::{PubkeyBase58, Transaction};
 
-use crate::flows::presenter::{Presentable, SignTxPresentation};
+use crate::flows::presenter::{Presentable, AnalysisPresenter};
 use crate::models::cmds::OutFmt;
 use crate::shell::error::CliError;
 
@@ -38,7 +38,7 @@ pub fn execute(
         return Err(CliError::SummaryRequiresOutput);
     }
     // 1) Read input transaction (file/stdin) via adapter
-    let input_tx: InputTransaction = read_input_transaction(input)?;
+    let input_tx = read_input_transaction(input)?;
 
     // 2) Resolve default output format from input type (mirrors input format)
     let default_format = input_tx.default_output_format(pretty_json);
@@ -48,23 +48,19 @@ pub fn execute(
 
     let signing_pubkey = PubkeyBase58::from(signing_key.verifying_key().to_bytes());
 
-    // 4) Domain signing via pure handler (returns raw tx in result)
-    let result = handle_sign_transaction(input_tx, &signing_key)?;
-
-    // Optional: expand v0 accounts with lookup tables and show to user (stderr)
+    // 4) Optional: expand v0 accounts with lookup tables
     let tables = lookup_tables_path.map(read_lookup_tables).transpose()?;
 
-    // Analyze for UX (fees/transfers)
-    let analysis =
-        analyze_transaction(&result.signed_tx.message, &signing_pubkey, tables.as_ref());
-    let analysis_presenter = SignTxPresentation {
+    // 5) Analyze unsigned transaction via analyze_input_transaction
+    let analysis = analyze_input_transaction(&input_tx, &signing_pubkey, tables.as_ref())?;
+    let analysis_presenter = AnalysisPresenter {
         analysis: Some(&analysis),
         summary_payload: None,
     };
     
     analysis_presenter.present(false, false, true)?;
 
-    // Enforce fee limit for CI/pipeline safety
+    // 6) Enforce fee limit for CI/pipeline safety
     if let Some(limit) = max_fee {
         if analysis.total_fee_lamports > limit as u128 {
             return Err(CliError::FeeLimitExceeded {
@@ -74,12 +70,15 @@ pub fn execute(
         }
     }
 
-    // Interactive confirm unless --yes
+    // 7) Interactive confirm unless --yes
     if !assume_yes && !confirm_stdin()? {
         return Err(CliError::UserRejected);
     }
 
-    // 5) Choose output format (override or mirror input)
+    // 8) Sign the tx
+    let result = handle_sign_transaction(input_tx, &signing_key)?;
+
+    // 9) Choose output format (override or mirror input)
     let chosen_format = match out_override {
         Some(OutFmt::Json) => OutputFormat::Json {
             pretty: pretty_json,
@@ -93,11 +92,11 @@ pub fn execute(
     let summary_payload =
         prepare_summary_payload(summary_json, &result.signed_tx, &analysis, output)?;
 
-    // 6) Write out via adapter (file or stdout), respecting force for files
+    // 10) Write out via adapter (file or stdout), respecting force for files
     write_signed_transaction(&result.signed_tx, chosen_format, output, force)?;
 
     if let Some(payload) = summary_payload.as_deref() {
-        let summary_presenter = SignTxPresentation {
+        let summary_presenter = AnalysisPresenter {
             analysis: None,
             summary_payload: Some(payload),
         };
