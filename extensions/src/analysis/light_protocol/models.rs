@@ -305,14 +305,19 @@ impl LightProtocolAction {
         match self {
             // Confidential operations - fully private value transfers
             Self::CTokenTransfer { .. } | Self::CTokenTransferChecked { .. } |
-            Self::Transfer2 { .. } | Self::CTokenMintTo { .. } | Self::CTokenMintToChecked { .. } |
+            Self::CTokenMintTo { .. } | Self::CTokenMintToChecked { .. } |
             Self::CTokenBurn { .. } | Self::CTokenBurnChecked { .. } |
-            Self::TokenInterfaceMintTo { .. } | Self::TokenInterfaceTransfer { .. } |
-            Self::BatchCompress { .. } => {
+            Self::TokenInterfaceMintTo { .. } | Self::TokenInterfaceTransfer { .. } => {
                 PrivacyImpact::Confidential
             }
 
-            // Storage compression operations - infrastructure management
+            // Hybrid operations - mixed public/private state transitions (e.g. Bridge/Defi)
+            Self::Transfer2 { .. } => {
+                PrivacyImpact::Hybrid
+            }
+
+            // Storage compression operations - infrastructure management & public->private
+            Self::BatchCompress { .. } |
             Self::CreateTokenAccount | Self::CreateAssociatedTokenAccount |
             Self::CreateAssociatedTokenAccountIdempotent | Self::CloseTokenAccount |
             Self::CTokenFreezeAccount | Self::CTokenThawAccount |
