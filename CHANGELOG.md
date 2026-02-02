@@ -2,6 +2,8 @@
 
 ## Ready for release
 
+## [0.1.2]
+
 ### Added
 - New `analyze` command for detailed transaction inspection without signing.
 - Protocol Extension system for specialized analysis (Light Protocol support).

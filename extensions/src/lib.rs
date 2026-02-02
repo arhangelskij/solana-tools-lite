@@ -13,8 +13,8 @@ pub mod analysis;
 /// 
 /// # Example
 /// ```no_run
-/// // Initialize protocol extensions at startup
-/// extensions::init();
+/// // In your application's startup (e.g., main.rs):
+/// solana_tools_lite_extensions::init();
 /// 
 /// // Now the analysis engine will detect Light Protocol instructions
 /// ```

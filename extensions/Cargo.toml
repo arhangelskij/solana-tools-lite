@@ -1,13 +1,15 @@
 [package]
-name = "extensions"
+name = "solana-tools-lite-extensions"
 version = "0.1.2"
 edition = "2024"
-description = "Extensions for solana-tools-lite (not published separately)"
-publish = false
+description = "Internal extension plugins for solana-tools-lite."
+repository = "https://github.com/arhangelskij/solana-tools-lite/tree/main/extensions"
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 serde = { workspace = true }
 serde_json = "1.0"
 bs58 = { workspace = true }
 thiserror = { workspace = true }
-solana-tools-lite = { path = "../solana-tools-lite" }
+solana-tools-lite = { version = "0.1.2", path = "../solana-tools-lite" }

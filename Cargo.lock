@@ -353,17 +353,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "extensions"
-version = "0.1.2"
-dependencies = [
- "bs58",
- "serde",
- "serde_json",
- "solana-tools-lite",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,7 +816,6 @@ dependencies = [
  "criterion",
  "data-encoding",
  "ed25519-dalek",
- "extensions",
  "hex",
  "hmac",
  "pbkdf2",
@@ -837,6 +825,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "solana-short-vec",
+ "solana-tools-lite-extensions",
  "thiserror 2.0.17",
  "tiny-bip39",
  "zeroize",
@@ -848,11 +837,22 @@ version = "0.1.2"
 dependencies = [
  "anyhow",
  "clap",
- "extensions",
  "serde",
  "serde_json",
  "solana-tools-lite",
+ "solana-tools-lite-extensions",
  "tempfile",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "solana-tools-lite-extensions"
+version = "0.1.2"
+dependencies = [
+ "bs58",
+ "serde",
+ "serde_json",
+ "solana-tools-lite",
  "thiserror 2.0.17",
 ]
 

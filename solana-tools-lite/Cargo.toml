@@ -43,7 +43,7 @@ default = []
 rayon = "1.11.0"
 criterion = "0.8.1"
 anyhow = "1.0.100"
-extensions = { path = "../extensions" }
+extensions = { package = "solana-tools-lite-extensions", path = "../extensions" }
 
 [[bench]]
 name = "bench_signing"
